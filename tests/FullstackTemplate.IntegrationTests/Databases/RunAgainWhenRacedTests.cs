@@ -50,15 +50,21 @@ public class RunAgainWhenRacedTests : TestBase
         var pause = PauseAtQuery.After("users.remove_permission.load");
         await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)
-            .AddUser(out var user, u => u.Role = "User")
+            .AddTenant(out _)
+            .AddUsers(out var users, u => u.Role = "Admin", u => u.Role = "User")
             .BuildAsync();
-        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ManageUsers));
+        var (admin, user) = (users[0], users[1]);
+        var underTest = new TestingServiceScope(services);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
+        await rival.SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ManageUsers));
 
         // Act
-        var remove = new TestingServiceScope(services).SendAsync(
+        var remove = underTest.SendAsync(
             new RemoveUserPermission.Command(user.Id, Permission.Names.ManageUsers));
         await pause.ReachedAsync();
-        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
+        await rival.SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
         pause.Release();
 
         // Assert
@@ -73,13 +79,19 @@ public class RunAgainWhenRacedTests : TestBase
         var pause = PauseAtQuery.After("users.update_role.load");
         await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)
-            .AddUser(out var user, u => u.Role = "User")
+            .AddTenant(out _)
+            .AddUsers(out var users, u => u.Role = "Admin", u => u.Role = "User")
             .BuildAsync();
+        var (admin, user) = (users[0], users[1]);
+        var underTest = new TestingServiceScope(services);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
 
         // Act
-        var change = new TestingServiceScope(services).SendAsync(new UpdateUserRole.Command(user.Id, "Admin"));
+        var change = underTest.SendAsync(new UpdateUserRole.Command(user.Id, "Admin"));
         await pause.ReachedAsync();
-        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
+        await rival.SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
         pause.Release();
 
         // Assert
@@ -98,13 +110,19 @@ public class RunAgainWhenRacedTests : TestBase
         var pause = PauseAtQuery.After("users.delete.load");
         await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)
-            .AddUser(out var user, u => u.Role = "User")
+            .AddTenant(out _)
+            .AddUsers(out var users, u => u.Role = "Admin", u => u.Role = "User")
             .BuildAsync();
+        var (admin, user) = (users[0], users[1]);
+        var underTest = new TestingServiceScope(services);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
 
         // Act
-        var delete = new TestingServiceScope(services).SendAsync(new DeleteUser.Command(user.Id));
+        var delete = underTest.SendAsync(new DeleteUser.Command(user.Id));
         await pause.ReachedAsync();
-        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
+        await rival.SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
         pause.Release();
 
         // Assert

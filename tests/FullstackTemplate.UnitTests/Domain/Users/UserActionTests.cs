@@ -4,6 +4,7 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Mappings;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Shouldly;
 
 /// <summary>
@@ -180,7 +181,7 @@ public class UserActionTests
         // Arrange
         var user = UserWithRole("Admin");
         var callerBeforeTheChange = OwnRecord(user);
-        user.UpdateRole(UserRole.User());
+        user.ChangeRoleIgnoringLastManager(UserRole.User());
 
         // Act
         var allowedActions = user.AllowedActions(callerBeforeTheChange);

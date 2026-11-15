@@ -1,6 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Tenants.Features;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
@@ -42,6 +43,26 @@ public class InitiateUserAndTenantCommandTests : TestBase
 
         // Assert
         result.User.AllowedActions.ShouldBe(["Update", "UpdateRole", "AddPermission", "RemovePermission", "Delete"]);
+    }
+
+    [Test]
+    [Property("Rule", "UM-4")]
+    public async Task a_tenant_cannot_start_with_a_first_user_who_cannot_manage_it()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        var dto = new FakeInitiateUserAndTenantDto().Generate() with { Role = "User" };
+        testingServiceScope.SetUserWithDefaults(identifier: dto.Identifier);
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new InitiateUserAndTenant.Command(dto));
+
+        // Assert
+        var refusal = await act.ShouldThrowAsync<ValidationException>();
+        refusal.Property.ShouldBe("role");
+        refusal.Message.ShouldBe(TenantManagers.FirstUserMessage);
+        (await testingServiceScope.ExecuteDbContextAsync(db => db.Tenants.IgnoreQueryFilters()
+            .AnyAsync(t => t.Name == dto.TenantName))).ShouldBeFalse();
     }
 
     [Test]

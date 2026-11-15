@@ -55,6 +55,14 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
         return user;
     }
 
+    /// <summary>Creates the user who starts a tenant. This user must be able to manage it (UM-4).</summary>
+    public static User CreateFirstOfTenant(UserForCreation userForCreation)
+    {
+        Exceptions.ValidationException.Must(TenantManagers.CanManage(UserRole.Of(userForCreation.Role).GetDefaultPermissions()),
+            "role", TenantManagers.FirstUserMessage);
+        return Create(userForCreation);
+    }
+
     public User Update(UserForUpdate userForUpdate)
     {
         GuardVersion(userForUpdate.Version);
@@ -82,8 +90,10 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
         return this;
     }
 
-    public User UpdateRole(UserRole newRole)
+    public User UpdateRole(ManagerKept kept)
     {
+        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRole { Role: var newRole })
+            throw new ArgumentException("Give the proof of a role change of this user.", nameof(kept));
         if (newRole == Role)
             return this;
 
@@ -115,14 +125,10 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
         return this;
     }
 
-    public User RemovePermission(UserPermission permission)
+    public User RemovePermission(ManagerKept kept)
     {
-        _userPermissions.RemoveAll(x => x.Id == permission.Id);
-        return this;
-    }
-
-    public User RemovePermission(Permission permission)
-    {
+        if (kept.UserId != Id || kept.Change is not ManagerChange.PermissionRemoval { Permission: var permission })
+            throw new ArgumentException("Give the proof of a permission removal of this user.", nameof(kept));
         _userPermissions.RemoveAll(x => x.Permission == permission);
         return this;
     }
@@ -140,19 +146,28 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     /// Call it in the feature that removes the user. A handler of <see cref="UserDeleted"/> in another domain can then
     /// clear or mark a link to the user, in the same save. See <c>docs/backend/domain-events.md</c>.
     /// </summary>
-    public User Delete()
+    public User Delete(ManagerKept kept)
+    {
+        if (kept.UserId != Id || kept.Change is not ManagerChange.Removal)
+            throw new ArgumentException("Give the proof of the removal of this user.", nameof(kept));
+        return QueueDelete();
+    }
+
+    BaseEntity IDeletedWithEvent.Delete() => QueueDelete();
+
+    private User QueueDelete()
     {
         QueueDomainEvent(new UserDeleted(Id));
         DeleteQueued = true;
         return this;
     }
 
-    BaseEntity IDeletedWithEvent.Delete() => Delete();
-
     bool IDeletedWithEvent.DeleteQueued => DeleteQueued;
 
     public bool HasPermission(Permission permission)
         => _userPermissions.Any(x => x.Permission == permission);
+
+    public bool CanManageTenant => TenantManagers.CanManage(CurrentPermissions());
 
     /// <summary>
     /// The actions that the caller can send for this user now. The read DTO carries them, so the SPA shows a button
@@ -173,7 +188,7 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
         action.Guard(OnThisRecord(caller, permissions), Id, permissions);
     }
 
-    private Permission[] CurrentPermissions() => _userPermissions.Select(x => x.Permission).ToArray();
+    internal Permission[] CurrentPermissions() => _userPermissions.Select(x => x.Permission).ToArray();
 
     // A member holds the permissions of their own user. After a command changes them, the caller that the handler
     // loaded still has the old set, so the response would list the actions from before the change.

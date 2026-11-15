@@ -18,6 +18,19 @@ public static class PermissionMigrationExtensions
         => migrationBuilder.GrantPermission(UserPermissions, permission, $"o.role = {Literal(role)}");
 
     /// <summary>
+    /// Gives a new permission to each live user with the Admin role, and to each live user who holds each permission
+    /// that a live user holds, who has no live row for it. The second set keeps each tenant manager of UM-4 a manager
+    /// when that user has another role. A second run changes nothing.
+    /// </summary>
+    public static void GrantPermissionToManagers(this MigrationBuilder migrationBuilder, string permission)
+        => migrationBuilder.GrantPermission(UserPermissions, permission, $"""
+            (o.role = 'Admin' OR NOT EXISTS (
+                  SELECT a.permission FROM user_permissions a WHERE NOT a.is_deleted AND a.permission <> {Literal(permission)}
+                  EXCEPT
+                  SELECT h.permission FROM user_permissions h WHERE h.user_id = o.id AND NOT h.is_deleted))
+            """);
+
+    /// <summary>
     /// Gives the permission to each live user and to each live agent that has a live row for
     /// <paramref name="heldPermission"/> or one of <paramref name="otherHeldPermissions"/>, and no live row for the
     /// permission. For an agent, the rows are its grant. A second run changes nothing.

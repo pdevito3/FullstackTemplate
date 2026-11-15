@@ -786,7 +786,7 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         var downStart = text.IndexOf($"{{{newline}", down, StringComparison.Ordinal) + 1 + newline.Length;
 
         text = text.Insert(downStart, $"""            migrationBuilder.DeletePermission("{n.PermissionName}");{newline}{newline}""");
-        text = text.Insert(upEnd, $"""{newline}{newline}            migrationBuilder.GrantPermissionToRole("Admin", "{n.PermissionName}");""");
+        text = text.Insert(upEnd, $"""{newline}{newline}            migrationBuilder.GrantPermissionToManagers("{n.PermissionName}");""");
         File.WriteAllText(migration, text);
 
         return Directory.GetFiles(folder, $"*_{n.Migration}*.cs")

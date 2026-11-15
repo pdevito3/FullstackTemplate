@@ -66,8 +66,10 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     }
 
     // ...
-    public User UpdateRole(UserRole newRole)
+    public User UpdateRole(ManagerKept kept)
     {
+        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRole { Role: var newRole })
+            throw new ArgumentException("Give the proof of a role change of this user.", nameof(kept));
         if (newRole == Role)
             return this;
 
@@ -178,11 +180,11 @@ The command checks the part of the rule that needs only the ID before the load, 
 ```csharp
 var caller = await permissionGuard.GetCallerAsync(cancellationToken);
 UserAction.Delete().GuardBeforeLoad(caller, request.Id);
-
+// ...
 var user = await dbContext.Users
     .TagWithOperationCallSite("users.delete.load")
     .Include(u => u.UserPermissions)
-    .GetById(request.Id, cancellationToken);
+    .GetById(request.Id, ct);
 user.GuardAllows(UserAction.Delete(), caller);
 ```
 

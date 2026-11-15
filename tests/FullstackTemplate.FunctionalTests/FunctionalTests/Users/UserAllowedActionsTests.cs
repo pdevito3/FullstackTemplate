@@ -100,7 +100,7 @@ public class UserAllowedActionsTests : TestBase
     public async Task admin_who_changes_their_own_role_gets_the_actions_of_the_new_role()
     {
         // Arrange
-        var (admin, _) = await AddTwoUsersAsync("Admin", "User");
+        var (admin, _) = await AddTwoUsersAsync("Admin", "Admin");
         SignInAs(admin);
 
         // Act

@@ -57,7 +57,7 @@ public static class InitiateUserAndTenant
                 Username = request.Dto.Username,
                 Role = request.Dto.Role
             };
-            var user = User.Create(userForCreation);
+            var user = User.CreateFirstOfTenant(userForCreation);
             Activity.Current?.SetTag("app.user_id", user.Id);
 
             // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.

@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Jobs;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Shouldly;
@@ -190,7 +191,7 @@ public class WriteGuardTests : TestBase
             reads.Add((await db.Users.AsNoTracking().Include(u => u.UserPermissions).SingleAsync(u => u.Id == userId, ct)).Id);
             await db.Entry(user!).Collection(u => u.UserPermissions).LoadAsync(ct);
             reads.Add(db.Entry(user!).Collection(u => u.UserPermissions).IsLoaded);
-            user!.UpdateRole(UserRole.Admin());
+            user!.ChangeRoleIgnoringLastManager(UserRole.Admin());
         }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();

@@ -22,20 +22,31 @@ public static class DeleteUser
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             UserAction.Delete().GuardBeforeLoad(caller, request.Id);
 
-            var user = await dbContext.Users
-                .TagWithOperationCallSite("users.delete.load")
-                .Include(u => u.UserPermissions)
-                .GetById(request.Id, cancellationToken);
-            user.GuardAllows(UserAction.Delete(), caller);
+            var tenantId = (await dbContext.Users
+                .TagWithOperationCallSite("users.delete.find_tenant")
+                .AsNoTracking()
+                .GetById(request.Id, cancellationToken)).TenantId;
 
-            // Remove permissions first (due to PropertyAccessMode.Field)
-            foreach (var permission in user.UserPermissions.ToList())
+            var user = await RootLock.Tenant.RunExclusiveAsync(dbContext, tenantId, async ct =>
             {
-                dbContext.UserPermissions.Remove(permission);
-            }
+                var user = await dbContext.Users
+                    .TagWithOperationCallSite("users.delete.load")
+                    .Include(u => u.UserPermissions)
+                    .GetById(request.Id, ct);
+                user.GuardAllows(UserAction.Delete(), caller);
 
-            dbContext.Users.Remove(user.Delete());
-            await dbContext.SaveChangesAsync(cancellationToken);
+                var kept = await dbContext.KeepManagerAsync(user, new ManagerChange.Removal(), ct);
+
+                // Remove permissions first (due to PropertyAccessMode.Field)
+                foreach (var permission in user.UserPermissions.ToList())
+                {
+                    dbContext.UserPermissions.Remove(permission);
+                }
+
+                dbContext.Users.Remove(user.Delete(kept));
+                await dbContext.SaveChangesAsync(ct);
+                return user;
+            }, cancellationToken);
 
             _logger.Here().Information("Deleted user {UserId}", user.Id);
         }

@@ -1,0 +1,3 @@
+[tools]
+java = "temurin-25"
+"http:tla2tools" = { version = "1.7.4", url = "https://github.com/tlaplus/tlaplus/releases/download/v{{version}}/tla2tools.jar" }

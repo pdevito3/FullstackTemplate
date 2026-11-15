@@ -77,7 +77,7 @@ public class UserDeletedTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message
-            .ShouldBe("Remove a user with Remove(user.Delete()), so that the save queues UserDeleted.");
+            .ShouldBe("Remove a user with Remove(user.Delete(kept)), where kept is the proof of TenantManagers.Decide, so that the save queues UserDeleted.");
         (await DeletedAsync(user.Id)).ShouldBeFalse();
     }
 
@@ -97,13 +97,21 @@ public class UserDeletedTests : TestBase
                 db.Users.Add(NewUser(tenantId!, linkIdentifier));
                 return Task.CompletedTask;
             }));
-        await new TestingServiceScope().StartGraph(out _).AddUser(out var user, u => u.Role = "User").BuildAsync();
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out _)
+            .AddUsers(out var users, u => u.Role = "Admin", u => u.Role = "User")
+            .BuildAsync();
+        var (admin, user) = (users[0], users[1]);
+        var underTest = new TestingServiceScope(services);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
         tenantId = user.TenantId;
 
         // Act
-        var delete = new TestingServiceScope(services).SendAsync(new DeleteUser.Command(user.Id));
+        var delete = underTest.SendAsync(new DeleteUser.Command(user.Id));
         await pause.ReachedAsync();
-        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
+        await rival.SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
         pause.Release();
         await delete;
 

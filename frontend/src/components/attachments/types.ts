@@ -27,3 +27,8 @@ export interface AttachmentList {
   uploadRules: UploadRules
   attachments: Attachment[]
 }
+
+export interface Upload {
+  file: File
+  signal: AbortSignal
+}

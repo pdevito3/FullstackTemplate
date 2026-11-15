@@ -9,11 +9,12 @@ import { QueryError } from '@/components/query-error'
 import { Button } from '@/components/ui/button'
 
 import { AttachmentList } from './attachment-list'
-import type { Attachment, AttachmentList as AttachmentListData } from './types'
+import type { Attachment, AttachmentList as AttachmentListData, Upload } from './types'
 import { acceptedFileTypes, uploadHint } from './upload-rules'
 
 interface Mutation<TVariables> {
   mutate: (variables: TVariables, options?: { onSuccess?: () => void }) => void
+  reset: () => void
   isPending: boolean
   variables?: TVariables
 }
@@ -21,7 +22,7 @@ interface Mutation<TVariables> {
 interface AttachmentsSectionProps {
   /** The list query of the record. Its upload rules give the hint and the types that the file chooser shows. */
   list: UseQueryResult<AttachmentListData>
-  upload: Mutation<File>
+  upload: Mutation<Upload>
   /** Takes the ID of the attachment. */
   remove: Mutation<string>
   /** From `allowedActions` of the record. */
@@ -35,13 +36,22 @@ export function AttachmentsSection({ list, upload, remove, canManage, emptyText 
   const hintId = useId()
   // A delete removes the focused row, so the focus goes to the heading of the section
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const uploadButtonRef = useRef<HTMLButtonElement>(null)
+  const uploadAbort = useRef<AbortController | null>(null)
   const rules = list.data?.uploadRules
 
   const handleSelect = (files: FileList | null) => {
     const file = files?.[0]
     if (file) {
-      upload.mutate(file, { onSuccess: () => Notification.success('File uploaded') })
+      uploadAbort.current = new AbortController()
+      upload.mutate({ file, signal: uploadAbort.current.signal }, { onSuccess: () => Notification.success('File uploaded') })
     }
+  }
+
+  const handleCancelUpload = () => {
+    uploadAbort.current?.abort()
+    upload.reset()
+    uploadButtonRef.current?.focus()
   }
 
   const handleDelete = (attachment: Attachment) =>
@@ -66,12 +76,19 @@ export function AttachmentsSection({ list, upload, remove, canManage, emptyText 
           )}
         </div>
         {canManage && (
-          <FileTrigger acceptedFileTypes={rules && acceptedFileTypes(rules)} onSelect={handleSelect}>
-            <Button variant="outline" isPending={upload.isPending} aria-describedby={rules && hintId}>
-              <HugeiconsIcon icon={Upload04Icon} aria-hidden />
-              {upload.isPending ? 'Uploading' : 'Upload file'}
-            </Button>
-          </FileTrigger>
+          <div className="flex items-center gap-2">
+            <FileTrigger acceptedFileTypes={rules && acceptedFileTypes(rules)} onSelect={handleSelect}>
+              <Button ref={uploadButtonRef} variant="outline" isPending={upload.isPending} aria-describedby={rules && hintId}>
+                <HugeiconsIcon icon={Upload04Icon} aria-hidden />
+                {upload.isPending ? 'Uploading' : 'Upload file'}
+              </Button>
+            </FileTrigger>
+            {upload.isPending && (
+              <Button variant="ghost" onPress={handleCancelUpload}>
+                Cancel upload
+              </Button>
+            )}
+          </div>
         )}
       </div>
       <AttachmentListState

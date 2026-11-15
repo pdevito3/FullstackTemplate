@@ -52,7 +52,7 @@ function FilesOfOneLongFileType() {
       attachments: [],
     }),
   })
-  const noWrite = { mutate: () => {}, isPending: false }
+  const noWrite = { mutate: () => {}, reset: () => {}, isPending: false }
   return <AttachmentsSection list={list} upload={noWrite} remove={noWrite} canManage emptyText="No files." />
 }
 

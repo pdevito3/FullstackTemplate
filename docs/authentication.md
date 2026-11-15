@@ -17,6 +17,15 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 | `/api/{**catch-all}` | any | yes | The proxy to the server |
 | `/health`, `/alive` | GET | no | The health checks |
 
+### Time limits
+
+| Setting | Default | Content |
+|---|---|---|
+| `Bff:Proxy:ActivityTimeout` | 30 seconds | The longest time that a request to `/api` waits with no progress, such as for the answer of a hung Server. The request then gets a 504. |
+| `Bff:Proxy:UploadActivityTimeout` | 5 minutes | The same limit for a request with a multipart form, such as an upload. The Server stores the file after the last byte arrives, so the answer can take minutes. |
+
+`ActivityTimeoutsByContentType` in `Proxy/ApiProxy.cs` maps each content type to its setting, and each content type gets its own forwarder. The SPA stops its own wait after 35 seconds, and after 10 minutes for an upload (`requestTimeoutMs` and `uploadTimeoutMs` in `frontend/src/lib/api-client.ts`). So the 504 of the BFF normally comes first, and a dropped network does not keep a page pending with no end. Either stop ends only the wait: the Server can still complete the request.
+
 ## Login flow
 
 1. The React app calls `/bff/user` before it shows a page. Each page needs a session. If the answer is 204, the app shows no page and goes to the login.

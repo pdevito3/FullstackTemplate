@@ -22,6 +22,8 @@ export const serverFaultMessage = 'The server could not complete the request. Tr
 /** The text for a request that got no answer. */
 export const noAnswerMessage = 'The app could not reach the server. Check your connection, then try again.'
 
+export const timedOutMessage = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
+
 // A refusal (a 4xx) has a text for the user. The text of a 5xx is the default title of ASP.NET or a detail for a
 // developer, so the user gets the text of the SPA.
 function messageOf({ status, detail, title }: ProblemDetails): string {

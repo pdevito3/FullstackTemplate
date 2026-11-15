@@ -1,15 +1,15 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using System.Net.Http.Json;
 using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Shouldly;
-using Yarp.ReverseProxy.Forwarder;
 
 public class ApiProxyTests
 {
@@ -237,11 +237,10 @@ public class ApiProxyTests
     }
 
     [Test]
-    public async Task a_server_that_does_not_answer_in_time_gives_504()
+    public async Task a_server_that_does_not_answer_gives_504_at_the_limit()
     {
         // Arrange
-        await using var app = BffApp.StartAnotherInstance(services: services =>
-            services.Replace(ServiceDescriptor.Singleton<IForwarderHttpClientFactory, ShortTimeoutForwarderHttpClientFactory>()));
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?> { ["Bff:Proxy:ActivityTimeout"] = "00:00:01" });
         using var browser = app.CreateBrowser();
 
         // Act
@@ -249,6 +248,43 @@ public class ApiProxyTests
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.GatewayTimeout);
+    }
+
+    [Test]
+    public void the_limits_are_30_seconds_and_5_minutes_for_an_upload_by_default()
+    {
+        // Act
+        var options = BffApp.Instance.Services.GetRequiredService<IOptions<ProxyOptions>>().Value;
+
+        // Assert
+        options.ActivityTimeout.ShouldBe(TimeSpan.FromSeconds(30));
+        options.UploadActivityTimeout.ShouldBe(TimeSpan.FromMinutes(5));
+    }
+
+    [Test]
+    public async Task an_upload_waits_for_a_slow_server_that_another_request_does_not_wait_for()
+    {
+        // Arrange
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["Bff:Proxy:ActivityTimeout"] = "00:00:01",
+            ["Bff:Proxy:UploadActivityTimeout"] = "00:01:00",
+        });
+        using var browser = app.CreateBrowser();
+        var json = new HttpRequestMessage(HttpMethod.Post, EchoApi.SlowPath) { Content = JsonContent.Create(new { name = "x" }) };
+        json.Headers.Add("X-CSRF", "1");
+        var upload = new HttpRequestMessage(HttpMethod.Post, EchoApi.SlowPath)
+        {
+            Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "notes.pdf" } },
+        };
+        upload.Headers.Add("X-CSRF", "1");
+
+        // Act
+        var responses = await Task.WhenAll(browser.SendAsync(json), browser.SendAsync(upload));
+
+        // Assert
+        responses[0].StatusCode.ShouldBe(HttpStatusCode.GatewayTimeout);
+        responses[1].StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Test]
@@ -301,27 +337,6 @@ public class ApiProxyTests
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
         (await response.Content.ReadAsStringAsync()).ShouldBe(EchoApi.TooLargeText);
-    }
-
-    /// <summary>
-    /// The forwarder client with a timeout of 300 ms on each request, in place of the activity timeout of 100 s, so
-    /// that a test of a hung server does not wait 100 s. The forwarder sees the same cancellation as from its own
-    /// activity timeout.
-    /// </summary>
-    private sealed class ShortTimeoutForwarderHttpClientFactory : ForwarderHttpClientFactory
-    {
-        protected override HttpMessageHandler WrapHandler(ForwarderHttpClientContext context, HttpMessageHandler handler) =>
-            new TimeoutHandler { InnerHandler = base.WrapHandler(context, handler) };
-
-        private sealed class TimeoutHandler : DelegatingHandler
-        {
-            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(TimeSpan.FromMilliseconds(300));
-                return await base.SendAsync(request, timeout.Token);
-            }
-        }
     }
 
     /// <summary>

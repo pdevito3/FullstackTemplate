@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig, type AxiosError } from 'axios'
+import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 
 import type { client as KubbClient } from '@/api/generated/.kubb/client'
 import { Notification } from '@/components/notification'
@@ -8,6 +8,7 @@ import {
   isProblemDetails,
   noAnswerMessage,
   serverFaultMessage,
+  timedOutMessage,
 } from './problem-details'
 
 declare module 'axios' {
@@ -43,6 +44,18 @@ export const apiClient = axios.create({
   headers: {
     'X-CSRF': '1', // BFF CSRF protection header
   },
+  // A request that reaches its time limit fails with ETIMEDOUT, not with the ECONNABORTED of an abort
+  transitional: { clarifyTimeoutError: true },
+})
+
+// Over Bff:Proxy:ActivityTimeout (30 s) and Bff:Proxy:UploadActivityTimeout (5 min), so that the 504 of the BFF comes
+// first. The upload limit also counts the time to send the file.
+const requestTimeoutMs = 35_000
+const uploadTimeoutMs = 10 * 60_000
+
+apiClient.interceptors.request.use((config) => {
+  config.timeout ||= config.data instanceof FormData ? uploadTimeoutMs : requestTimeoutMs
+  return config
 })
 
 /**
@@ -57,14 +70,19 @@ function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
     return new ProblemDetailsError(responseData)
   }
   if (!error.response) {
-    return new Error(noAnswerMessage)
+    return new Error(error.code === AxiosError.ETIMEDOUT ? timedOutMessage : noAnswerMessage)
   }
-  // The Server answers 401 with no body to a call that needs a user.
-  return new Error(error.response.status === 401 ? signInRejectedMessage : serverFaultMessage)
+  return new Error(messageOfEmptyAnswer[error.response.status] ?? serverFaultMessage)
 }
 
 const signInRejectedMessage =
   'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
+const messageOfEmptyAnswer: Partial<Record<number, string>> = {
+  // The Server answers 401 with no body to a call that needs a user.
+  401: signInRejectedMessage,
+  504: timedOutMessage,
+}
 
 let isSessionEnded = () => Promise.resolve(false)
 

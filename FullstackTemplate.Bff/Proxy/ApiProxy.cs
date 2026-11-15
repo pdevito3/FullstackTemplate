@@ -4,6 +4,8 @@ using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using Serilog;
@@ -24,8 +26,11 @@ public static class ApiProxy
 
     private static readonly ILogger Logger = Log.ForContext(typeof(ApiProxy));
 
+    private static Dictionary<string, TimeSpan> ActivityTimeoutsByContentType(ProxyOptions options) =>
+        new() { ["multipart/form-data"] = options.UploadActivityTimeout };
+
     /// <summary>
-    /// Maps the forwarder. <paramref name="apiBaseUrl"/> ends with <c>/api</c>, because the forwarder strips the
+    /// Maps the forwarders. <paramref name="apiBaseUrl"/> ends with <c>/api</c>, because the forwarder strips the
     /// local prefix: <c>/api/v1/x</c> goes to <c>&lt;server&gt;/api/v1/x</c>.
     /// <para>
     /// The request transforms: remove <c>Cookie</c>, remove <c>Authorization</c> and <c>DPoP</c> (the BFF is the only
@@ -35,8 +40,16 @@ public static class ApiProxy
     /// <c>-Prefix</c> are set, <c>Forwarded</c> is removed, and the other response headers go back as they are.
     /// </para>
     /// </summary>
-    public static IEndpointConventionBuilder MapApiProxy(this IEndpointRouteBuilder endpoints, Uri apiBaseUrl) =>
-        endpoints.MapForwarder($"{Prefix}/{{**catch-all}}", apiBaseUrl.ToString(), ForwarderRequestConfig.Empty, transforms =>
+    public static void MapApiProxy(this IEndpointRouteBuilder endpoints, Uri apiBaseUrl)
+    {
+        var options = endpoints.ServiceProvider.GetRequiredService<IOptions<ProxyOptions>>().Value;
+        endpoints.MapApiForwarder(apiBaseUrl, options.ActivityTimeout);
+        foreach (var (contentType, activityTimeout) in ActivityTimeoutsByContentType(options))
+            endpoints.MapApiForwarder(apiBaseUrl, activityTimeout).WithMetadata(new AcceptsMetadata([contentType]));
+    }
+
+    private static IEndpointConventionBuilder MapApiForwarder(this IEndpointRouteBuilder endpoints, Uri apiBaseUrl, TimeSpan activityTimeout) =>
+        endpoints.MapForwarder($"{Prefix}/{{**catch-all}}", apiBaseUrl.ToString(), new ForwarderRequestConfig { ActivityTimeout = activityTimeout }, transforms =>
             {
                 transforms.AddRequestHeaderRemove(HeaderNames.Cookie);
                 transforms.AddRequestHeaderRemove(HeaderNames.Authorization);

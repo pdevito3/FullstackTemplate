@@ -265,6 +265,31 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task a_login_that_a_logout_ended_before_its_row_sends_the_navigation_to_the_sign_in_failed_page()
+    {
+        // Arrange
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        var exchange = app.IdentityProvider.HoldCodeExchanges(subject);
+        using var browser = app.CreateBrowser();
+        browser.DefaultRequestHeaders.Add("Sec-Fetch-Mode", "navigate");
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={sessionId}");
+        await exchange.Arrived.Task.WaitAsync(Timeout);
+        await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; }));
+
+        // Act
+        exchange.Released.SetResult();
+        var callback = await signIn.WaitAsync(Timeout);
+
+        // Assert
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/sign-in-failed");
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+        (await app.WithStoreAsync(store => store.FindBySessionIdAsync(sessionId, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task a_logout_of_the_sub_that_comes_before_the_login_writes_its_row_ends_that_login()
     {
         // Arrange

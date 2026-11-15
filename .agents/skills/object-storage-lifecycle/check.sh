@@ -8,7 +8,12 @@ mise trust --quiet . >/dev/null
 mise install --quiet >/dev/null
 jar="$(mise where http:tla2tools)/tla2tools.jar"
 java="$(mise which java)"
-out=$(mktemp -d)
+out=$(mktemp -d "${TMPDIR:-/tmp}/object-storage-lifecycle.XXXXXX")
+status=0
+# The state files of TLC can take many GB. Delete them after each run and when the script stops. Keep the logs of a
+# changed config, and delete the folder when each config gives its expected result.
+trap 'rm -rf "$out"/*/states-*; [ "$status" -ne 0 ] || rm -rf "$out"' EXIT
+trap 'status=1; exit 130' INT TERM HUP
 
 expected() {
   case $1 in
@@ -40,6 +45,7 @@ result() {
     log="$dir/run-$run.out"
     "$java" -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto -metadir "$dir/states-$run" \
       -config "$dir/run.cfg" ObjectStorage.tla >"$log" 2>&1 || echo "TLC exit code $?" >>"$log"
+    rm -rf "$dir/states-$run"
     sed -n 's/.* \([0-9,]*\) distinct states found.*/\1/p' "$log" | tail -1 >"$dir/states"
     new=$(broken "$log")
     if [ -z "$new" ]; then
@@ -56,7 +62,6 @@ result() {
 }
 
 configs=${*:-"ObjectStorage Liveness Chart LateCommit GraceNone GraceLimit SoftDeletedNames DeletedTenantOrphan"}
-status=0
 for cfg in $configs; do
   want=$(expected "$cfg")
   mkdir -p "$out/$cfg"

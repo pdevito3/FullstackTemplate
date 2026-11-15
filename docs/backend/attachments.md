@@ -24,7 +24,7 @@ For the bucket in each environment, see [Object storage](../backend.md#object-st
 | [`AttachmentStorage`](../../FullstackTemplate.Server/Domain/Attachments/AttachmentStorage.cs) | The add and the delete, in the order of [The order of the writes](#the-order-of-the-writes) |
 | [`AttachmentMapper`](../../FullstackTemplate.Server/Domain/Attachments/Mappings/AttachmentMapper.cs) | The `AttachmentDto` with signed URLs, and the `AttachmentListDto` with the upload rules |
 | [`MapStoredFile`](../../FullstackTemplate.Server/Databases/EntityConfigurations/StoredFileMapping.cs) | The columns `file_name`, `media_type`, `size_bytes`, and `storage_key` |
-| [`AttachmentsSection`](../../frontend/src/components/attachments/attachments-section.tsx) | The Files section of a page: the heading, the hint, the upload button, the list, and the delete |
+| [`AttachmentsSection`](../../frontend/src/components/attachments/attachments-section.tsx) | The Files section of a page: the heading, the hint, the upload button, the Cancel upload button, the list, and the delete |
 | [`refreshBeforeUrlsExpire`](../../frontend/src/lib/attachment-list-refresh.ts) | The query options that load the list again before its URLs expire |
 
 ## Add attachments to an entity

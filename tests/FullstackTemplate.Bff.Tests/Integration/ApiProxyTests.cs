@@ -236,7 +236,7 @@ public class ApiProxyTests
     }
 
     [Test]
-    public async Task a_server_that_does_not_answer_gives_504_within_30_seconds()
+    public async Task a_server_that_does_not_answer_gives_504_after_the_default_limit()
     {
         // Arrange
         using var browser = BffApp.Instance.CreateBrowser();

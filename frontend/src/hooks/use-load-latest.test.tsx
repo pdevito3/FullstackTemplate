@@ -12,16 +12,20 @@ interface RoomValues {
   version: number
 }
 
-function RoomForm({ latest }: { latest: RoomValues }) {
+function RoomForm({ latest }: { latest: RoomValues | Error }) {
   const form = useForm<RoomValues>({ defaultValues: { name: 'Blue Room', capacity: 10, version: 1 } })
   const loadLatest = useLoadLatest(form, FIELDS)
+  const read = async () => {
+    if (latest instanceof Error) throw latest
+    return latest
+  }
   return (
     <form aria-label="Edit room">
       <label>Name <input {...form.register('name')} /></label>
       <label>Capacity <input type="number" {...form.register('capacity', { valueAsNumber: true })} /></label>
       <output aria-label="Version">{form.watch('version')}</output>
       <output aria-label="Changed">{loadLatest.changed?.join(', ') ?? 'none'}</output>
-      <button type="button" onClick={() => loadLatest.load(async () => latest)}>Load the latest</button>
+      <button type="button" onClick={() => loadLatest.load(read)}>Load the latest</button>
     </form>
   )
 }
@@ -58,6 +62,21 @@ test('names no field and focuses the first field when the latest save changed no
   await expect.element(name).toHaveValue('Green Room')
   await expect.element(name).toHaveFocus()
   await expect.element(screen.getByRole('status', { name: 'Changed' })).toHaveTextContent('')
+})
+
+test('keeps each edit when the read fails', async () => {
+  // Arrange
+  const screen = await render(<RoomForm latest={new Error('The app could not reach the server.')} />)
+  const name = screen.getByRole('textbox', { name: 'Name' })
+  await userEvent.fill(name, 'Green Room')
+
+  // Act
+  await userEvent.click(screen.getByRole('button', { name: 'Load the latest' }))
+
+  // Assert
+  await expect.element(name).toHaveValue('Green Room')
+  await expect.element(screen.getByRole('status', { name: 'Version' })).toHaveTextContent('1')
+  await expect.element(screen.getByRole('status', { name: 'Changed' })).toHaveTextContent('none')
 })
 
 test('takes only fields whose values compare by their text', () => {

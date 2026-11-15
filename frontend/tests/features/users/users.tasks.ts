@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { failedLoad, nextFrames } from '@tests/support/answers'
 import { usersPaths } from '@tests/support/api/users-api'
 import { users } from './users.locators'
 
@@ -72,6 +73,13 @@ export function usersPage(page: Page) {
       const settled = Promise.all([answered('PUT', usersPaths.role(id)), answered('GET', usersPaths.one(id))])
       await at.confirmRole.click()
       await settled
+    },
+
+    async confirmRoleRefusedAndFailToReadAgain(id: string) {
+      const settled = Promise.all([answered('PUT', usersPaths.role(id)), failedLoad(page, usersPaths.one(id))])
+      await at.confirmRole.click()
+      await settled
+      await nextFrames(page)
     },
 
     async keepRole() {

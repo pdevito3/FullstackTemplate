@@ -84,7 +84,7 @@ export const authClaimsQuery = queryOptions({
  * Hook for fetching and managing auth state
  */
 export function useAuth(): AuthState {
-  const { data, isLoading, isError } = useQuery(authClaimsQuery)
+  const { data, isLoading } = useQuery(authClaimsQuery)
 
   if (isLoading) {
     return {
@@ -95,7 +95,7 @@ export function useAuth(): AuthState {
     }
   }
 
-  if (isError || !data) {
+  if (!data) {
     return {
       isLoggedIn: false,
       isLoading: false,

@@ -6,10 +6,11 @@ interface StaleVersionAlertProps {
   noun: string
   problem: SaveProblem | null
   isLoadingLatest: boolean
+  loadFailure: string | null
   onLoadLatest: () => void
 }
 
-export function StaleVersionAlert({ noun, problem, isLoadingLatest, onLoadLatest }: StaleVersionAlertProps) {
+export function StaleVersionAlert({ noun, problem, isLoadingLatest, loadFailure, onLoadLatest }: StaleVersionAlertProps) {
   if (problem?.kind !== 'stale') {
     return null
   }
@@ -21,6 +22,11 @@ export function StaleVersionAlert({ noun, problem, isLoadingLatest, onLoadLatest
         Your edits are still in the form, and they are not saved. Load the latest to see what changed. The form keeps
         your edits to each field that the latest save did not change.
       </p>
+      {loadFailure !== null && (
+        <p className="text-destructive wrap-anywhere">
+          The latest {noun} did not load. {loadFailure}
+        </p>
+      )}
       <Button variant="outline" className="self-start" onPress={onLoadLatest} isPending={isLoadingLatest}>
         Load the latest
       </Button>
@@ -46,7 +52,7 @@ export function LatestLoadedNote<F extends string>({ noun, changed, labels }: La
     <p role="status" className="rounded-lg border p-4 text-sm">
       {changed.length > 0
         ? `A save after you opened this ${noun} changed ${listFormat.format(changed.map((field) => labels[field]))}. The form shows the saved values of these fields. Your edits to the other fields are still in the form. Check the form, then save.`
-        : `The latest ${noun} has no change to the fields of this form. Your edits are still in the form. Save again to keep them.`}
+        : `The latest ${noun} has no change to the fields of this form. Check the form, then save.`}
     </p>
   )
 }

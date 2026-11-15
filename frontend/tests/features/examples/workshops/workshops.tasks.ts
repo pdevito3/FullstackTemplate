@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { failedLoad, nextFrames } from '@tests/support/answers'
 import { workshopPaths } from '@tests/support/examples/workshops-api'
 import { workshops } from './workshops.locators'
 
@@ -200,6 +201,20 @@ export function workshopsPage(page: Page) {
       await expect(at.editForm).toBeVisible()
     },
 
+    async editWithAFailedLoad(title: string, id: string) {
+      const settled = failedLoad(page, workshopPaths.one(id))
+      await at.editLink(title).click()
+      await expect(at.editForm).toBeVisible()
+      await settled
+      await nextFrames(page)
+    },
+
+    async tryAgain(title: string, id: string) {
+      const settled = answered('GET', workshopPaths.one(id))
+      await at.tryAgain(title).click()
+      await settled
+    },
+
     async renameTo(title: string) {
       await at.title.fill(title)
     },
@@ -230,6 +245,28 @@ export function workshopsPage(page: Page) {
       const settled = answered('POST', path)
       await at.actionButton(title, action).click()
       await settled
+    },
+
+    async sendRefusedAndFailToReadAgain(title: string, action: string, path: string, id: string) {
+      const settled = Promise.all([answered('POST', path), failedLoad(page, workshopPaths.one(id))])
+      await at.actionButton(title, action).click()
+      await settled
+      await nextFrames(page)
+    },
+
+    async backToListThatFailsToLoad() {
+      const settled = failedLoad(page, workshopPaths.list)
+      await at.allWorkshopsLink.click()
+      await expect(at.listHeading).toBeVisible()
+      await settled
+      await nextFrames(page)
+    },
+
+    async loadLatestThatFails(id: string) {
+      const settled = failedLoad(page, workshopPaths.one(id))
+      await at.loadLatest.click()
+      await settled
+      await nextFrames(page)
     },
 
     async sendWithEnter(title: string, action: string, path: string) {

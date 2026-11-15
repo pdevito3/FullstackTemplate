@@ -369,6 +369,14 @@ const selectorStringRule = (message) => ({
   message,
 })
 
+// docs/frontend/server-state.md, rule 7.
+const queryErrorMessage = 'A failed refetch also sets isError, while the query still has the data of the last answer. Branch on isLoadingError to show the error in place of the data, so that a failed refetch keeps the page and the edits of the user.'
+const readsIsError = ":matches(Identifier[name='isError'], :has(Identifier[name='isError']))"
+const queryErrorRules = [
+  { selector: `:matches(IfStatement, ConditionalExpression):has(JSXElement, JSXFragment) > ${readsIsError}.test`, message: queryErrorMessage },
+  { selector: `LogicalExpression:matches([right.type='JSXElement'], [right.type='JSXFragment']) > ${readsIsError}.left`, message: queryErrorMessage },
+]
+
 // docs/messages.md, rule 1: words made from a code, such as "Pago Pago" from Pacific/Pago_Pago, are not the words of the screen.
 const codeToWordsMessage = 'Do not make words from a code (docs/messages.md, rule 1). Name a time zone with timeZoneLabel(zone) from @/lib/zoned-time. Give another code a property or a map with its words.'
 export const codeToWordsRules = [
@@ -564,6 +572,7 @@ export default tseslint.config(
           selector: 'ImportDeclaration[source.value=/^date-fns/]',
           message: 'date-fns formats in the zone of the browser. Use @/lib/zoned-time.',
         },
+        ...queryErrorRules,
         ...codeToWordsRules,
       ],
     },

@@ -102,6 +102,8 @@ function AttachmentListState({ list, canManage, emptyText, deletingId, onDelete 
     )
   }
 
+  // The presigned URLs of the last answer expire soon after a refresh fails, so a failed refresh shows the error too.
+  // eslint-disable-next-line no-restricted-syntax
   if (list.isError) {
     return <QueryError title="The files did not load." error={list.error} onRetry={() => list.refetch()} />
   }

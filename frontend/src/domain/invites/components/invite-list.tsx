@@ -49,7 +49,7 @@ function InviteRows({ page, onPageChange, onRevokeSettled }: InviteListProps & {
     return <p role="status" aria-label="Loading invites" className="text-muted-foreground">Loading invites</p>
   }
 
-  if (list.isError) {
+  if (list.isLoadingError) {
     return <QueryError title="The invites did not load." error={list.error} onRetry={() => list.refetch()} />
   }
 

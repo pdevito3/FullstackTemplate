@@ -37,6 +37,16 @@ export const workshopsApi = {
     return { method: 'get', path: workshopPaths.one(body.id), status: 200, body }
   },
 
+  oneFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
+    const body = problem.build()
+    return { method: 'get', path: workshopPaths.one(id), status: body.status ?? 500, body }
+  },
+
+  listFails(problem: Buildable<ProblemDetails>): MockRoute {
+    const body = problem.build()
+    return { method: 'get', path: workshopPaths.list, status: body.status ?? 500, body }
+  },
+
   createSaves(workshop: Buildable<WorkshopDto>): MockRoute {
     return { method: 'post', path: workshopPaths.list, status: 201, body: workshop.build() }
   },

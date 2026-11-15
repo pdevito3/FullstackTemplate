@@ -28,7 +28,7 @@ function WorkshopPage() {
     return <p role="status" aria-label="Loading workshop" className="px-4 py-8 text-muted-foreground">Loading workshop</p>
   }
 
-  if (workshop.isError) {
+  if (workshop.isLoadingError) {
     return (
       <div className="mx-auto w-full max-w-4xl px-4 py-8">
         <QueryError title="The workshop did not load." error={workshop.error} onRetry={() => workshop.refetch()} />
@@ -43,6 +43,14 @@ function WorkshopPage() {
       <Link to="/workshops" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         All workshops
       </Link>
+      {workshop.isRefetchError && (
+        <QueryError
+          title="The latest workshop did not load."
+          error={workshop.error}
+          isRetrying={workshop.isFetching}
+          onRetry={() => workshop.refetch()}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <PageHeading ref={headingRef}>
           {title}

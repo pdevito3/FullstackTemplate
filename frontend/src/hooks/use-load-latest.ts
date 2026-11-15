@@ -5,36 +5,52 @@ import { latestOverEdits, type TextComparable } from '@/lib/latest-over-edits'
 
 type TextField<T extends FieldValues> = { [K in Path<T>]: PathValue<T, K> extends TextComparable ? K : never }[Path<T>]
 
+type LoadLatest<F> =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'loaded'; changed: F[] }
+
 /**
  * The Load the latest button of an edit form after a stale save. `load` reads the record again and gives its form
- * values. Each field that the latest save changed takes the saved value, each other field keeps the edit of the user,
- * and the focus goes to the first changed field. `changed` names those fields for `LatestLoadedNote`.
+ * values, or throws when the read fails. Each field that the latest save changed takes the saved value, each other
+ * field keeps the edit of the user, and the focus goes to the first changed field. `changed` names those fields for
+ * `LatestLoadedNote`. A failed read changes no field and returns false, so the caller shows the error of its query.
  */
 export function useLoadLatest<T extends FieldValues, F extends TextField<T>>(
   form: UseFormReturn<T>,
   fields: readonly F[],
 ) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [changed, setChanged] = useState<F[] | null>(null)
+  const [state, setState] = useState<LoadLatest<F>>({ kind: 'idle' })
 
   /** Returns true when it loaded the latest into the form. */
-  const load = async (read: () => Promise<T | undefined>) => {
-    setIsLoading(true)
+  const load = async (read: () => Promise<T>) => {
+    setState({ kind: 'loading' })
+    let latest: T
     try {
-      const latest = await read()
-      if (!latest) return false
+      latest = await read()
+    } catch {
+      setState({ kind: 'idle' })
+      return false
+    }
+    try {
       const edited = form.getValues()
       const result = latestOverEdits<F>(form.formState.defaultValues ?? {}, edited, latest, fields)
       // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
       form.setFocus(result.changed[0] ?? fields[0])
       form.reset(latest)
       for (const field of result.kept) form.setValue(field, edited[field] as PathValue<T, F>, { shouldDirty: true })
-      setChanged(result.changed)
+      setState({ kind: 'loaded', changed: result.changed })
       return true
-    } finally {
-      setIsLoading(false)
+    } catch (error) {
+      setState({ kind: 'idle' })
+      throw error
     }
   }
 
-  return { isLoading, changed, load, clear: () => setChanged(null) }
+  return {
+    isLoading: state.kind === 'loading',
+    changed: state.kind === 'loaded' ? state.changed : null,
+    load,
+    clear: () => setState({ kind: 'idle' }),
+  }
 }

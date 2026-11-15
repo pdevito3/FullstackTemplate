@@ -37,6 +37,7 @@ export const users = (page: Page) => {
     deleteDialog,
     keepUser: deleteDialog.getByRole('button', { name: 'Keep user', exact: true }),
     confirmDelete: deleteDialog.getByRole('button', { name: 'Delete user', exact: true }),
+    loadError: (title: string) => page.getByRole('alert').filter({ hasText: title }),
     toast: (text: string) => page.getByRole('alertdialog').filter({ hasText: text }),
     toasts: page.getByRole('alertdialog'),
     sentence: (text: string) => page.getByText(text, { exact: true }),

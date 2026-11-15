@@ -109,6 +109,24 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detailHeading('Grace Hopper')).toBeFocused()
   })
 
+  test('keeps the user on the page when a refused role change reads the user again and that read fails', { tag: '@UM-2' }, async ({ page, api }) => {
+    const grace = aUser().named('Grace Hopper').seenByAdmin()
+    const { id } = grace.build()
+    api.mock(usersApi.oneIs(grace))
+    const users = usersPage(page)
+    await users.openDetail(id)
+    api.mock(usersApi.roleChangeFails(id, aProblem()), usersApi.oneFails(id, aProblem()))
+
+    await users.pickRole('Grace Hopper', 'Admin')
+    await users.confirmRoleRefusedAndFailToReadAgain(id)
+
+    await expect(users.at.toast('The server could not complete the request. Try again in a moment.')).toBeVisible()
+    await expect(users.at.detailHeading('Grace Hopper')).toBeVisible()
+    await expect(users.at.actionButton('Grace Hopper', 'Change role')).toBeVisible()
+    await expect(users.at.loadError('The latest user did not load.')).toBeVisible()
+    await expect(users.at.loadError('The user did not load.')).toHaveCount(0)
+  })
+
   test('removes a user after the caller confirms, and opens the list with one toast', { tag: '@UM-3' }, async ({ page, api }) => {
     const grace = aUser().named('Grace Hopper').seenByAdmin()
     const alan = aUser().named('Alan Turing')

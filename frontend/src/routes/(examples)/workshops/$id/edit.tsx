@@ -24,7 +24,7 @@ function EditWorkshopPage() {
     return <p role="status" aria-label="Loading workshop" className="px-4 py-8 text-muted-foreground">Loading workshop</p>
   }
 
-  if (workshop.isError) {
+  if (workshop.isLoadingError) {
     return (
       <div className="mx-auto w-full max-w-4xl px-4 py-8">
         <QueryError title="The workshop did not load." error={workshop.error} onRetry={() => workshop.refetch()} />
@@ -40,7 +40,8 @@ function EditWorkshopPage() {
 
   const handleLoadLatest = async () => {
     const result = await workshop.refetch()
-    return result.status === 'success' ? result.data : undefined
+    if (result.isSuccess) return result.data
+    throw result.error
   }
 
   return (
@@ -50,7 +51,12 @@ function EditWorkshopPage() {
       </Link>
       <PageHeading>Edit workshop</PageHeading>
       {workshop.data.allowedActions.includes('Update') ? (
-        <WorkshopEditForm workshop={workshop.data} onSave={handleSave} onLoadLatest={handleLoadLatest} />
+        <WorkshopEditForm
+          workshop={workshop.data}
+          refetchError={workshop.isRefetchError ? workshop.error : null}
+          onSave={handleSave}
+          onLoadLatest={handleLoadLatest}
+        />
       ) : (
         <p className="text-muted-foreground">
           {workshop.data.status === 'Draft'

@@ -22,7 +22,9 @@ public static class ObjectStorageRegistration
             .ValidateOnStart();
         builder.Services.AddSingleton<IAmazonS3>(_ =>
         {
-            var config = new AmazonS3Config();
+            // The SDK signs with the clock of S3 when the clock of this Server is off. Without that correction S3
+            // refuses a request more than 15 minutes off, and the sweep of the bucket needs that bound on its clock.
+            var config = new AmazonS3Config { DisableClockSkewCorrection = true };
             if (builder.Configuration[EndpointKey] is { Length: > 0 } endpoint)
             {
                 config.ServiceURL = endpoint;

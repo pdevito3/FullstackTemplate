@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Databases;
 
 using System.Net.Sockets;
 using DataProtection;
+using Domain.ObjectDeletes;
 using Medallion.Threading.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -15,7 +16,8 @@ using Serilog;
 /// <summary>
 /// Migrates the schemas of appdb: the BackWave schema, then the EF Core schemas of <see cref="AppDbContext"/> and
 /// <see cref="DataProtectionKeysDbContext"/>. Between them, <see cref="ObjectDeleteRequestsDrain"/> moves the rows of the
-/// old object delete queue onto BackWave, before the EF Core migration that drops the queue.
+/// old object delete queue onto BackWave, before the EF Core migration that drops the queue. Then
+/// <see cref="ObjectSweepSchedule"/> defines the schedule of the sweep of the bucket.
 /// </summary>
 /// <remarks>
 /// The host runs <see cref="StartingAsync"/> of each lifecycle service before <c>StartAsync</c> of any service. So the
@@ -72,6 +74,7 @@ public sealed class MigrationHostedService(
                     connectionString, scope.ServiceProvider.GetRequiredService<IJobWriter>(), cancellationToken);
                 await MigrateAsync(context, cancellationToken);
                 await MigrateAsync(scope.ServiceProvider.GetRequiredService<DataProtectionKeysDbContext>(), cancellationToken);
+                await ObjectSweepSchedule.UpsertAsync(scope.ServiceProvider, cancellationToken);
             }
 
             _logger.Here().Information("Migrations complete for {DatabaseName}", database);

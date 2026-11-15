@@ -77,7 +77,9 @@ internal sealed partial class AppRepo(string root)
         "ran those migrations, add a migration that drops the three tables and calls " +
         """migrationBuilder.DeletePermission("manage_workshops"). A row of a permission that Permission does not know """ +
         "stops each load of its user. The object storage of the app still has the files of the workshops under " +
-        "tenants/<tenant>/workshops/. Delete them.";
+        "tenants/<tenant>/workshops/. The sweep of the bucket deletes them, but it does not run while the database has a " +
+        "migration that the Server does not know. So also delete the rows of the example migrations from " +
+        "__EFMigrationsHistory.";
 
     private const string RecordFile = "scripts/examples-removed.txt";
 

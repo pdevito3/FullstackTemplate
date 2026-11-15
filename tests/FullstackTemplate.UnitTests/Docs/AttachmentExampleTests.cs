@@ -168,7 +168,7 @@ public static class AddRepairPhoto
             var photo = RepairPhoto.Create(repair, upload, timeProvider.GetUtcNow());
 
             // The upload is before the lock, because the work of the lock can run more than one time
-            await attachments.AddAsync(photo, request.File, async () =>
+            await attachments.AddAsync(photo, request.File, async addToken =>
                 await RootLock.Tenant.RunSharedAsync(dbContext, repair.TenantId, async ct =>
                 {
                     await dbContext.Set<Repair>()
@@ -179,7 +179,7 @@ public static class AddRepairPhoto
                     await dbContext.Set<RepairPhoto>().AddAsync(photo, ct);
                     await dbContext.SaveChangesAsync(ct);
                     return photo;
-                }, cancellationToken), cancellationToken);
+                }, addToken), cancellationToken);
 
             return await photo.ToAttachmentDtoAsync(storage, timeProvider.GetUtcNow());
         }

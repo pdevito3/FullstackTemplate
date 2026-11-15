@@ -29,8 +29,11 @@ public sealed partial class StoredFile : ValueObject
     /// <summary>True when the browser can show the file in the page. A type that the registry no longer has is false.</summary>
     public bool CanPreview => FileType.OfMediaType(MediaType)?.CanPreview == true;
 
+    /// <summary>The start of the key of each object of each tenant. The sweep of the bucket lists each object under it.</summary>
+    public const string TenantsPrefix = "tenants/";
+
     /// <summary>The start of the key of each object of the tenant. A tenant delete deletes each object under it.</summary>
-    public static string TenantPrefix(string tenantId) => $"tenants/{tenantId}/";
+    public static string TenantPrefix(string tenantId) => $"{TenantsPrefix}{tenantId}/";
 
     /// <summary>Checks the upload with the rules of its use, and gives the file that storage keeps under the key.</summary>
     /// <param name="upload">What the client sent with the file.</param>

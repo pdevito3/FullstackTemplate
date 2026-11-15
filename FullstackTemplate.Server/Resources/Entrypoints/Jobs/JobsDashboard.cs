@@ -41,8 +41,8 @@ public static class JobsDashboard
             AuthorizeViewSensitiveData = IsOperatorAsync,
             AuthorizeRequeue = IsOperatorAsync,
             AuthorizeCancel = IsOperatorAsync,
-            // AuthorizePauseQueue and AuthorizeTriggerSchedule keep the default deny. The app has no schedule, and a
-            // pause holds the jobs of all tenants.
+            // AuthorizePauseQueue and AuthorizeTriggerSchedule keep the default deny. A pause holds the jobs of all
+            // tenants, and each run of the one schedule, the sweep of the bucket, lists the whole bucket.
             // BackWave resolves the actor only after the check of the write passes, and an operator is a user.
             ResolveActor = context => context.RequestServices.GetRequiredService<ICurrentUserService>().UserIdentifier
                 ?? throw new InvalidOperationException("A write of the jobs dashboard passed the operator check with no user."),

@@ -16,12 +16,15 @@ public static class BackgroundJobsRegistration
     /// When the <paramref name="role"/> runs jobs, it also adds one worker group for each queue, and their check in
     /// <c>/health</c>.
     /// </summary>
-    /// <exception cref="InvalidOperationException">A setting of <see cref="ObjectDeleteOptions"/> is out of its range.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// A setting of <see cref="ObjectDeleteOptions"/> or <see cref="ObjectSweepOptions"/> is out of its range.
+    /// </exception>
     public static IServiceCollection AddBackgroundJobs(this IServiceCollection services, IConfiguration configuration,
         ServerRole role)
     {
         var deletes = ObjectDeleteOptions.From(configuration);
         services.AddSingleton(Options.Create(deletes));
+        services.AddSingleton(Options.Create(ObjectSweepOptions.From(configuration)));
 
         services.AddBackWave(backWave =>
         {

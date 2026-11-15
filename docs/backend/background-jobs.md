@@ -14,10 +14,10 @@ A job commits with the save that queues it, or it does not exist.
 
 ## Rules
 
-1. Make each job a `sealed record` with `[Job("wire-name")]` that implements `ITenantJob`. The `TenantId` of the job is the tenant that the job runs as.
+1. Make each job a `sealed record` with `[Job("wire-name")]` that implements `ITenantJob`. The `TenantId` of the job is the tenant that the job runs as. Only work that must see all tenants is an `ISystemJob` (see [System jobs](#system-jobs)).
 2. Put IDs and small values in a job, not entities and not personal data. The payload is stored, and an operator can read it in the dashboard.
 3. Do not change the wire name of a job after you deploy it. BackWave stores the name with each job, and a stored job with an unknown name goes to the quarantine. A new payload must also decode the stored jobs of the old payload. If it cannot, add a job with a new wire name, and keep the old job until no stored job has its name.
-4. Make each handler a `sealed class` that derives from `JobHandler<TJob>`, and put the work in `RunAsync`. Take `JobScope` in the constructor and give it to the base. The source generator of BackWave finds the job and its handler, so they need no registration.
+4. Make each handler a `sealed class` that derives from `JobHandler<TJob>`, or from `SystemJobHandler<TJob>` for an `ISystemJob`, and put the work in `RunAsync`. Take `JobScope` in the constructor and give it to the base. The source generator of BackWave finds the job and its handler, so they need no registration.
 5. Put a job and its handler in one file, in the folder of the domain that owns the work. `Domain/ObjectDeletes/DeleteObject.cs` is an example.
 6. Queue a job with `dbContext.QueueJob(job)`, in a feature handler or a domain event handler. Then call `SaveChangesAsync`. Do not use `BackWaveClient`. The build bans it (RS0030), because its jobs do not commit with the save.
 7. Queue a job only for a tenant that the caller can see. `QueueJob` refuses a job of another tenant. In a domain event handler, the scope is the tenant of the event.
@@ -38,6 +38,17 @@ The welcome email in `FullstackTemplate.Server/Examples/WelcomeEmails/` shows th
 - It holds each permission in its tenant. It cannot manage all tenants.
 - It can save. Each save of the job has the name of the job as its audit request. The audit actor is null, as for other work with no token.
 - It can queue another job of its tenant.
+
+### System jobs
+
+A system job does work for all tenants, such as `SweepObjects`, the sweep of the bucket (see [attachments.md](attachments.md#the-sweep-of-the-bucket)). It implements `ISystemJob` and has no `TenantId`. `SystemJobHandler` gives each attempt the caller `System`, as a system scope has.
+
+- It sees the rows of all tenants, also the deleted tenants with `IgnoreQueryFilters`.
+- It holds each permission, and it can manage all tenants. So read and change only what the work needs.
+- It has the same rule for unsaved work as `JobHandler` (rule 8).
+- Its telemetry has `app.caller.kind` = `system`, and no `app.caller.tenant_id`.
+
+A recurring system job has a schedule. `ObjectSweepSchedule` defines the one schedule of the Server at each start, after the migrations, with `BackWaveClient.UpsertRecurringAsync`. It is one of the two files that the build lets use `BackWaveClient`. An upsert keeps the time of the last run, so a restart does not give an extra run.
 
 ## Email
 
@@ -129,7 +140,7 @@ Only a process that serves requests serves the dashboard. The metrics panel of t
 ## Telemetry
 
 - Each attempt is a trace of its own. Its root is the `process {queue}` span of BackWave. The span links to the `send {queue}` span of the save that queued the job, which has the `code.*` tags of the `QueueJob` call.
-- `JobScope` puts the caller on the process span and on each log of the job: `app.caller.kind` = `tenant_job` and the tenant ID.
+- `JobScope` puts the caller on the process span and on each log of the job: `app.caller.kind` = `tenant_job` and the tenant ID, or `system` for a system job.
 - So a handler tags only the IDs of its entities, such as `app.user_id`, and tags each query with `TagWithOperationCallSite`. It writes one `Information` log with the result. It does not call `Telemetry.TraceRoot` or use `TraceContext`. See rules 9 and 10 of [feature-telemetry.md](feature-telemetry.md#rules).
 - The build does not check a job handler for the ID tag and the log (FSTTEL002 checks MediatR handlers only), so add them yourself.
 - BackWave counts the failed attempts in `backwave.jobs.failed` and the dead jobs in `backwave.jobs.dead_lettered`. `backwave.queue.depth` gives the jobs of each queue and state. It writes the logs `Retry scheduled after a failed attempt` and `Job dead-lettered after exhausting its retry ceiling.`.

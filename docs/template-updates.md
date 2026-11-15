@@ -149,6 +149,20 @@ The Server now runs background jobs on BackWave (see [background-jobs.md](backen
 - The first start of the new Server moves the rows of the old queue `object_delete_requests` onto BackWave, also the dead rows, and then drops the queue. A row that fails the check of its job gets the Warning log `Dropped object delete request {ObjectDeleteRequestId} ...` and no job. If the object of that row exists, delete it by hand.
 - After the drop, a Server of the previous version cannot delete an attachment or a tenant, because its save writes a row of the queue. Stop the previous version before the update, or accept that these deletes fail until the deploy ends. A row that the previous version adds after the move and before the drop stops that start, and the next start moves the row.
 
+### The update that adds the sweep of the bucket
+
+A recurring job now deletes each object in storage that no live row names (see [attachments.md](backend/attachments.md#the-sweep-of-the-bucket)).
+
+- Before the update, check that each object of the app under `tenants/` is the `StoredFile` of a row. The first run of the sweep deletes each other object of a tenant of the database that is older than the grace. Move other files under another prefix first.
+- Give each database its own bucket. A staging copy of the database that uses the bucket of production deletes the objects of the rows that the copy does not have.
+- Add a migration that indexes each storage key column of the app (`storage_key` with `MapStoredFile`), as [Index a column of a value object](backend/entity-configurations.md#index-a-column-of-a-value-object) shows. `StorageKeyIndexTests` fails for a column with no such index.
+- Give the credentials of each process that runs jobs `s3:ListBucket` on the bucket, if they do not have it.
+- The S3 client no longer corrects a clock that is off. Storage refuses each call of a process whose clock is more than 15 minutes off, so keep the clock of each host in sync, for example with NTP.
+- The new settings are `ObjectStorage:Sweep:Schedule` (`0 3 * * *`, in UTC), `ObjectStorage:Sweep:Margin` (1 hour, more than 15 minutes), and `Attachments:AddTimeout` (5 minutes).
+- A failed add no longer deletes its object at once, so the Error logs `Kept the object of attachment {AttachmentId}` and `Could not delete the object of unsaved attachment {AttachmentId}` and the Warning log `The save of attachment {AttachmentId} failed after its commit` are gone. Remove each alert of the app on them. The sweep deletes the object.
+- The sweep does not run while the database has a migration that the Server does not know. If the app deleted a migration that its database ran, for example with `scripts/remove-examples.cs`, delete the row of that migration from `__EFMigrationsHistory`. The Warning log `Skipped the sweep of the bucket` names each such migration.
+- `AttachmentStorage.AddAsync` now gives the save of the row a token, and stops the put and the save after `Attachments:AddTimeout`. The build fails at each add of an attachment entity of the app. Change `async () =>` to `async addToken =>`, and give `addToken` to `RootLock.Tenant.RunSharedAsync` in place of the token of the request.
+
 ## Keep the next update small
 
 - When you find a fault in the template, report it as an issue of the template, and get the fix with the next update. A fix that you copy by hand gives a conflict when the fix of the template comes.

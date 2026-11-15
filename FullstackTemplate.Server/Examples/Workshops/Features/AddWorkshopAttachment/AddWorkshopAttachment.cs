@@ -50,7 +50,7 @@ public static class AddWorkshopAttachment
             Activity.Current?.SetTag("app.attachment_id", attachment.Id);
 
             // The upload is before the lock, because the work of the lock can run more than one time
-            await attachments.AddAsync(attachment, request.File, async () =>
+            await attachments.AddAsync(attachment, request.File, async addToken =>
                 // The shared lock keeps a tenant delete out until the save, so the row does not land in a deleted tenant
                 await RootLock.Tenant.RunSharedAsync(dbContext, workshop.TenantId, async ct =>
                 {
@@ -63,7 +63,7 @@ public static class AddWorkshopAttachment
                     await dbContext.WorkshopAttachments.AddAsync(attachment, ct);
                     await dbContext.SaveChangesAsync(ct);
                     return attachment;
-                }, cancellationToken), cancellationToken);
+                }, addToken), cancellationToken);
 
             _logger.Here().Information("Added attachment {AttachmentId} of {SizeBytes} bytes to workshop {WorkshopId}",
                 attachment.Id, attachment.File.SizeBytes, workshop.Id);

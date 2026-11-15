@@ -11,7 +11,7 @@ public sealed class ScopeGrant
 {
     public CallerIdentity? Identity { get; private set; }
 
-    internal void GrantSystem() => Grant(new CallerIdentity.System());
+    internal CallerIdentity.System GrantSystem() => Grant(new CallerIdentity.System());
 
     internal CallerIdentity.TenantJob GrantTenantJob(string tenantId) => Grant(new CallerIdentity.TenantJob(tenantId));
 

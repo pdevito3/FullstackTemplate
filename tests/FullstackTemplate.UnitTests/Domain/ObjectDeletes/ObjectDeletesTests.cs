@@ -97,7 +97,7 @@ public class ObjectDeletesTests
         }, CancellationToken.None);
 
         // Assert
-        (await act.ShouldThrowAsync<TimeoutException>()).Message.ShouldBe("The object delete took more than 00:00:00.0100000.");
+        (await act.ShouldThrowAsync<TimeoutException>()).Message.ShouldBe("The call to storage took more than 00:00:00.0100000.");
     }
 
     [Test]

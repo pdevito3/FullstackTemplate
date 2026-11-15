@@ -307,7 +307,7 @@ A `Location` header can hold only ASCII. Thus the BFF percent-encodes each non-A
 1. Authenticate the cookie. Do the `sid` check (section 2).
 2. Do the local URL check on `returnUrl`.
 3. Delete the BFF session row. Add to `bff.sessions.ended` with `reason=logout`.
-4. If revocation is active, revoke the refresh token of the deleted row through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). The delete returns the row as it was at the delete. Thus, if a refresh in another request wrote new tokens after step 1, the BFF revokes the new refresh token. If no row was deleted, another end of the BFF session came first, and the BFF revokes nothing. If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
+4. If revocation is active, revoke the refresh token of the deleted row through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). The delete returns the row as it was at the delete. Thus, if a refresh in another request wrote new tokens after step 1, the BFF revokes the new refresh token. If no row was deleted, another end of the BFF session came first, and the BFF revokes nothing. If the identity provider returns an error, or does not answer within `Bff:Refresh:TokenRequestTimeout`, log it and continue. If revocation is not active, skip it with no exception.
 5. Sign out the cookie scheme.
 6. If a user was signed in and `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`. If no user was signed in, but the request has the `__Host-bff` cookie of an ended BFF session and `Auth:EndSessionWithoutIdTokenHint` is `true`, do the same with `client_id` in place of `id_token_hint`.
 7. If not, send a 302 to `returnUrl`.
@@ -332,8 +332,10 @@ A `Location` header can hold only ASCII. Thus the BFF percent-encodes each non-A
    - If the token has a `sid`, delete the rows with that `sid`.
    - If it has only a `sub`, delete all the rows of that `sub`.
    - The BFF does not revoke the refresh tokens of the deleted rows. The provider already ended its session. With Keycloak, a revoke of one refresh token also ends the other sessions of the user for the client, and Keycloak sends no logout token for them, so their BFF sessions would stay signed in until the next refresh fails.
-   - If a row delete fails, the BFF removes the `jti` and returns 500. The provider can then send the same token again.
-   - Add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
+   - The `jti` write of step 5 and the row deletes commit in one `bffdb` transaction. If a row delete fails, or the BFF stops before the commit, no row ends and the replay cache does not keep the `jti`. A failed delete returns 500. The provider can then send the same token again. A second request with the same `jti` waits for the transaction, and gets 400 after a commit.
+   - The transaction sets `idle_in_transaction_session_timeout` to 2 s. A BFF instance can stop with its connection open, for example when its host goes away. Then Postgres ends its session at the limit, and a second request with the same `jti` does not wait longer than that.
+   - If the commit fails, the BFF asks Postgres if that transaction committed (`pg_xact_status`). If it did, the BFF returns 200 for the rows of that commit. If not, the BFF runs the transaction again. A `jti` that a resend wrote in the meantime then gives 400, so only one request counts the rows.
+   - After the commit, add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
 7. Return 200. Any failure in steps 2 to 5 returns 400.
 
 If `Auth:Features:BackChannelLogout` is `Require`, the BFF stops at startup when `backchannel_logout_supported` is missing or `false`.
@@ -411,7 +413,9 @@ Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kin
    - If it is the same, run the refresh. The delegate of `ExecuteWithConcurrencyControlAsync` runs `RefreshAccessTokenAsync` and then `StoreTokenAsync`, so the lock wraps the refresh and the write. The write uses the `xmin` of the row that the lock read. Thus a waiter always reads the new tokens.
    - The BFF session store and the lock use the same scoped `DbContext` and the same connection, so that the write is inside the lock transaction.
 
-The lock releases itself when the transaction ends, also if the instance stops. It does not block a plain read of the row.
+The lock releases itself when the transaction ends, also if the instance stops. It does not block a plain read of the row. An instance can also stop with its connection open, for example when its host goes away. Thus the lock transaction sets `idle_in_transaction_session_timeout` to 3 times `Bff:Refresh:TokenRequestTimeout` plus 2 s: the token request, the ID token checks, and the revocation, each with its own limit, and then the write and the commit. At that limit, Postgres ends the session, and the lock is free. The lock wait does not count, because Postgres runs the lock statement during the wait.
+
+An instance that is still alive can also pass the limit, for example in a long pause of the process. Its next command then gets the SQLSTATE `25P03`. The `bffdb` context retries `25P03` as a lost connection, because Postgres rolled the transaction back. After the refresh call, a retry gives `bff_refresh_retry`, a temporary failure. The request sends the access token of the refresh response, and the BFF session stays. The row keeps the refresh token that the identity provider got, so with rotation the next refresh gets `invalid_grant` and the BFF session ends.
 
 **The wait.** `Bff:Refresh:LockTimeout`, default 10 s. If the wait reaches the limit, the BFF treats it as a temporary failure.
 

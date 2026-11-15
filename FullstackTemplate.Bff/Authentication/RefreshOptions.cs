@@ -40,6 +40,22 @@ public sealed class RefreshOptions : IValidatableObject
     /// </summary>
     public TimeSpan InProcessWaitLimit => LockTimeout + TokenRequestTimeout + CommitMargin;
 
+    /// <summary>
+    /// The longest time that the lock transaction can stay idle in Postgres (<c>idle_in_transaction_session_timeout</c>).
+    /// The lock wait does not count, because Postgres runs the lock statement during the wait. When a host stops with
+    /// its connection open, Postgres ends the session at this limit, and the advisory lock of the BFF session is free.
+    /// </summary>
+    public TimeSpan IdleInLockLimit
+    {
+        get
+        {
+            var tokenRequest = TokenRequestTimeout;
+            var idTokenChecks = TokenRequestTimeout;
+            var revocation = TokenRequestTimeout;
+            return tokenRequest + idTokenChecks + revocation + CommitMargin;
+        }
+    }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (TokenRequestTimeout >= LockTimeout)

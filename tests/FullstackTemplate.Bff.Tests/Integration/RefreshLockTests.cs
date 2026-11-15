@@ -264,6 +264,81 @@ public class RefreshLockTests
     }
 
     [Test]
+    public async Task a_refresh_that_stops_in_the_identity_provider_call_releases_the_lock_at_the_idle_limit()
+    {
+        // Arrange
+        var frozenClock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+            {
+                ["Bff:Refresh:LockTimeout"] = "00:00:00.300",
+                ["Bff:Refresh:TokenRequestTimeout"] = "00:00:00.200",
+            },
+            services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(frozenClock)));
+        var idleLimit = app.Services.GetRequiredService<IOptions<RefreshOptions>>().Value.IdleInLockLimit;
+        var subject = NewSubject();
+        var (cookie, key) = await SignInAsync(app, $"test_sub={subject}&test_expires_in=60");
+        var gate = app.IdentityProvider.HoldRefreshes(subject);
+        using var browser = Cookieless(app);
+        Task<HttpResponseMessage>? call = null;
+        try
+        {
+            // Act
+            call = browser.SendAsync(ApiRequest(cookie));
+            await gate.Arrived.Task.WaitAsync(Timeout);
+            (await LockCountAsync(key, granted: true)).ShouldBe(1);
+
+            // Assert
+            using var timeout = new CancellationTokenSource(idleLimit + TimeSpan.FromSeconds(5));
+            while (await LockCountAsync(key, granted: true) > 0)
+                await Task.Delay(TimeSpan.FromMilliseconds(50), timeout.Token);
+            call.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            gate.Released.TrySetResult();
+        }
+
+        // The call ends after the release. Wait for it, so that its refresh failure does not reach the metrics of a later test.
+        (await call.WaitAsync(Timeout)).Dispose();
+    }
+
+    [Test]
+    public async Task a_live_host_whose_refresh_outlasts_the_idle_limit_keeps_the_session_and_sends_the_new_access_token()
+    {
+        // Arrange
+        var frozenClock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+            {
+                ["Bff:Refresh:LockTimeout"] = "00:00:00.300",
+                ["Bff:Refresh:TokenRequestTimeout"] = "00:00:00.200",
+            },
+            services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(frozenClock)));
+        var idleLimit = app.Services.GetRequiredService<IOptions<RefreshOptions>>().Value.IdleInLockLimit;
+        var provider = app.IdentityProvider;
+        var subject = NewSubject();
+        var (cookie, key) = await SignInAsync(app, $"test_sub={subject}&test_expires_in=60");
+        var gate = provider.HoldRefreshes(subject);
+        using var browser = Cookieless(app);
+        var call = browser.SendAsync(ApiRequest(cookie));
+        await gate.Arrived.Task.WaitAsync(Timeout);
+        using (var timeout = new CancellationTokenSource(idleLimit + TimeSpan.FromSeconds(5)))
+        {
+            while (await LockCountAsync(key, granted: true) > 0)
+                await Task.Delay(TimeSpan.FromMilliseconds(50), timeout.Token);
+        }
+
+        // Act
+        gate.Released.SetResult();
+        var response = await call.WaitAsync(Timeout);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
+        provider.RefreshCount(subject).ShouldBe(1);
+        (await StoredTokensAsync(app, key)).RefreshToken.ShouldBe(provider.IssuedRefreshTokens(subject)[0]);
+    }
+
+    [Test]
     public async Task a_wait_for_the_refresh_of_another_call_on_the_same_host_outlasts_the_lock_timeout_and_the_token_request()
     {
         // Arrange

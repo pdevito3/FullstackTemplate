@@ -372,6 +372,96 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task a_database_that_goes_away_at_the_session_delete_keeps_no_jti()
+    {
+        // Arrange
+        await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(new LostDatabaseInterceptor("bff_sessions.delete"))));
+        var subject = NewSubject();
+        var jti = Guid.NewGuid().ToString();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; });
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        // Act
+        var response = await PostAsync(app, logoutToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        (await UsedLogoutTokenAsync(jti)).ShouldBeNull();
+        (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await BffApp.Instance.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_host_that_stops_inside_the_logout_transaction_does_not_hold_back_a_resend_of_the_token()
+    {
+        // Arrange
+        var stop = PauseAtQuery.Before("bff_sessions.delete");
+        await using var stopped = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(stop)));
+        var subject = NewSubject();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); });
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+        var first = PostAsync(stopped, logoutToken);
+        await stop.ReachedAsync();
+
+        // Act
+        var resend = await PostAsync(logoutToken).WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Assert
+        stop.Release();
+        resend.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await first).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
+    public async Task a_commit_whose_answer_gets_lost_gets_200()
+    {
+        // Arrange
+        var lostAnswer = new LostCommitAnswerInterceptor();
+        await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(lostAnswer)));
+        var subject = NewSubject();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); });
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+        lostAnswer.Arm();
+
+        // Act
+        var response = await PostAsync(app, logoutToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Test]
+    public async Task a_commit_that_fails_after_a_resend_ended_the_sessions_gets_400()
+    {
+        // Arrange
+        var stall = PauseAtQuery.After("bff_sessions.delete");
+        await using var stalled = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(stall)));
+        var subject = NewSubject();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); });
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+        var first = PostAsync(stalled, logoutToken);
+        await stall.ReachedAsync();
+        var resend = await PostAsync(logoutToken).WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Act
+        stall.Release();
+
+        // Assert
+        resend.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await first).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
     public async Task a_request_that_aborts_during_the_logout_still_ends_all_the_sessions()
     {
         // Arrange

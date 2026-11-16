@@ -9,10 +9,14 @@ JAR="$(mise where http:tla2tools)/tla2tools.jar"
 OUT="${TMPDIR:-/tmp}/bff-session-lifecycle"
 rm -rf "$OUT" && mkdir -p "$OUT"
 failed=0
+# The state files of TLC can take many GB. Delete them after each run and when the script stops. The logs stay.
+trap 'rm -rf "$OUT"/*.meta' EXIT
+trap 'exit 130' INT TERM HUP
 
 tlc() { # tlc NAME CFG
   mise exec -- java -XX:+UseParallelGC -jar "$JAR" -workers auto -metadir "$OUT/$1.meta" \
     BffSession.tla -config "$2" >"$OUT/$1.out" 2>&1 || true
+  rm -rf "${OUT:?}/$1.meta"
 }
 
 # check CFG FINDING...: the rules of CFG without the findings must hold, and each finding must break.

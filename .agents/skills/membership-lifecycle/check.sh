@@ -1,6 +1,6 @@
 #!/bin/sh
 # Model-checks the membership lifecycle with TLC: MC.cfg (safety, widest bounds), Live.cfg (liveness), Chart.cfg
-# (the small model that /statechart draws), Managers.cfg (the paths of UM-4 with no invites). Exits 1 when a rule breaks. TLC writes its files to a temp folder.
+# (the small model that /statechart draws), Managers.cfg (the paths of UM-4 with no invites). Exits 1 when a rule breaks. TLC writes its files to a temp folder. The script deletes the state files of TLC after each run and when it stops, keeps the logs of a failed config, and deletes the folder when all configs pass.
 # Usage: .agents/skills/membership-lifecycle/check.sh [CONFIG ...]
 set -eu
 model=$(cd "$(dirname "$0")/model" && pwd)
@@ -10,11 +10,14 @@ jar="$(mise where http:tla2tools)/tla2tools.jar"
 [ -f "$jar" ] || jar=$(find "$(mise where http:tla2tools)" -name 'tla2tools*.jar' | head -1)
 out=$(mktemp -d "${TMPDIR:-/tmp}/membership-lifecycle.XXXXXX")
 status=0
+trap 'find "$out" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +; [ "$status" -ne 0 ] || rm -rf "$out"' EXIT
+trap 'status=1; exit 130' INT TERM HUP
 for cfg in "${@:-MC.cfg Live.cfg Managers.cfg Chart.cfg}"; do
   for c in $cfg; do
     log="$out/${c%.cfg}.out"
     mise exec -- java -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto -metadir "$out/${c%.cfg}" \
       -config "$c" MC.tla >"$log" 2>&1 || true
+    rm -rf "${out:?}/${c%.cfg}"
     if grep -q "Model checking completed. No error has been found." "$log"; then
       echo "PASS $c: $(grep 'distinct states found' "$log" | tail -1)"
     else

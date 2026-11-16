@@ -42,7 +42,7 @@ The first run installs the pinned TLC (tla2tools 1.7.4) and Java (temurin-25) wi
 | `Liveness.cfg` | 1 upload, 2 workers, 2 attempts, 1 crash, late commits, the sweep | pass |
 | `Chart.cfg` | 1 upload, 1 worker, 1 attempt, no crash. Small enough for a chart | pass |
 | `DeletedTenantOrphan.cfg` | 1 upload, 1 crash. The witness and `OrphansGo` | `NoObjectLeftInDeletedTenant` breaks, `OrphansGo` holds |
-| `LateCommit.cfg` | The cleanup at once of a failed add (`Cleanup = TRUE`, `DeleteObjectWithNoRowAsync`, which `c5abb78b` removed), and late commits | `NoLiveRowWithoutObject` breaks (F2) |
+| `LateCommit.cfg` | The cleanup at once of a failed add (`Cleanup = TRUE`, `DeleteObjectWithNoRowAsync`, which `d4c3fef7` removed), and late commits | `NoLiveRowWithoutObject` breaks (F2) |
 | `GraceNone.cfg` | A grace shorter than the time limit of an add | `NoLiveRowWithoutObject` breaks |
 | `GraceLimit.cfg` | A grace of the time limit with no margin, and late commits | `NoLiveRowWithoutObject` breaks |
 | `SoftDeletedNames.cfg` | A sweep that keeps the object of a soft-deleted row | `OrphansGo` breaks |
@@ -51,12 +51,12 @@ Read each result with the pstack `/statechart` skill, with `model/ObjectStorage.
 
 ## Does your change touch the verified code
 
-The coverage record. The sync commit is `c5abb78b`: at that commit the model with `Cleanup = FALSE` and the sweep describes this code. `Cleanup = TRUE` stands for `DeleteObjectWithNoRowAsync` of `AttachmentStorage`, which the code had before `c5abb78b`. Only `LateCommit.cfg` uses it.
+The coverage record. The sync commit is `d4c3fef7`: at that commit the model with `Cleanup = FALSE` and the sweep describes this code. `Cleanup = TRUE` stands for `DeleteObjectWithNoRowAsync` of `AttachmentStorage`, which the code had before `d4c3fef7`. Only `LateCommit.cfg` uses it.
 
 | Model | Code |
 |---|---|
 | `StartAdd`, `Put`, `StopAdd` | `FullstackTemplate.Server/Domain/Attachments/AttachmentStorage.cs`: `AddAsync` |
-| `CleanupCheck`, `CleanupDelete` | No code now. `AttachmentStorage.DeleteObjectWithNoRowAsync` before `c5abb78b` |
+| `CleanupCheck`, `CleanupDelete` | No code now. `AttachmentStorage.DeleteObjectWithNoRowAsync` before `d4c3fef7` |
 | `TakeShared`, `CheckOwner`, `CommitRow` | The add handler of each attachment entity: `Handle` and its `saveRow`. `Databases/RootLock.cs`: `RunSharedAsync`, `RunAsync` |
 | `DeleteAttachment` | `AttachmentStorage.DeleteAsync`, and the delete handler of each attachment entity |
 | `TakeExclusive`, `CommitTenantDelete` | `Domain/Tenants/Features/DeleteTenant/DeleteTenant.cs`: `Handle`. `RootLock.RunExclusiveAsync` |
@@ -77,7 +77,7 @@ In the template, the handlers of the workshop example are `Examples/Workshops/Fe
 To see what changed in the covered code since the sync commit, add the folder of the add and delete handlers of each attachment entity of the app to this command:
 
 ```sh
-git log --oneline c5abb78b..HEAD -- FullstackTemplate.Server/Domain/Attachments FullstackTemplate.Server/Domain/ObjectDeletes FullstackTemplate.Server/Databases/RootLock.cs FullstackTemplate.Server/Databases/AppDbContext.cs FullstackTemplate.Server/Databases/MigrationHostedService.cs FullstackTemplate.Server/Databases/EntityConfigurations/StoredFileMapping.cs FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant FullstackTemplate.Server/Resources/Storage FullstackTemplate.Server/Resources/Jobs Directory.Packages.props
+git log --oneline d4c3fef7..HEAD -- FullstackTemplate.Server/Domain/Attachments FullstackTemplate.Server/Domain/ObjectDeletes FullstackTemplate.Server/Databases/RootLock.cs FullstackTemplate.Server/Databases/AppDbContext.cs FullstackTemplate.Server/Databases/MigrationHostedService.cs FullstackTemplate.Server/Databases/EntityConfigurations/StoredFileMapping.cs FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant FullstackTemplate.Server/Resources/Storage FullstackTemplate.Server/Resources/Jobs Directory.Packages.props
 ```
 
 <!-- example:start -->
@@ -115,7 +115,7 @@ When a config leaves its baseline, get the path from `/statechart`, then replay 
 
 Each break below was made in the real code and in the model, and then both were reverted, and `check.sh` was back at its baseline.
 
-- At `80d9f8f4`, `DeleteObjectWithNoRowAsync` with no `if (saved)` return, so the cleanup deletes the object of a row that committed. `ObjectStorage.cfg` breaks `NoLiveRowWithoutObject`: the put returns, the save takes the tenant lock, the save checks the owner of the attachment, the save commits and throws, the cleanup checks for the row, and the cleanup deletes the object of a file that is in the list.
+- At `3427e138` (#519), `DeleteObjectWithNoRowAsync` with no `if (saved)` return, so the cleanup deletes the object of a row that committed. `ObjectStorage.cfg` breaks `NoLiveRowWithoutObject`: the put returns, the save takes the tenant lock, the save checks the owner of the attachment, the save commits and throws, the cleanup checks for the row, and the cleanup deletes the object of a file that is in the list.
 - An add handler with no `RootLock.Tenant.RunSharedAsync` around the save. `ObjectStorage.cfg` breaks `NoLiveRowInDeletedTenant`: the save checks the owner of the attachment, a tenant delete takes the lock and commits, and then the save commits a live row in the deleted tenant, whose object the prefix delete then takes.
 - A sweep with no row check. `Chart.cfg` and `ObjectStorage.cfg` break `NoLiveRowWithoutObject`: the put returns, the save commits, the grace passes, the sweep lists the object, and it deletes the object of a file that is in the list.
 - A sweep that reads `now` after the row check, in the model only. `Chart.cfg` breaks `NoLiveRowWithoutObject`: the sweep lists the object while the save still runs, reads no row, the save commits, the grace passes, and the sweep deletes the object.
@@ -132,7 +132,7 @@ A run that ends in `error`, with a TLC log that stops with no TLC error and no `
 
 F1. An object stayed in the bucket with no row and no job, and no code deleted it. The causes: a process that dies after `PutAsync` and before the save or the cleanup ends, a cleanup whose row check or delete fails, and, as the worst case, a put that lands under a deleted tenant after its `DeleteTenantObjects` job listed the prefix. The sweep fixes F1: `OrphansGo` holds in `Liveness.cfg` and in `DeletedTenantOrphan.cfg`. In `DeletedTenantOrphan.cfg`, the witness gives the worst case: a user starts an upload, the tenant delete commits, the job lists the prefix, the put lands and throws, and the job succeeds.
 
-F2. A live row could lose its object (`LateCommit.cfg`). The save of the row throws while its COMMIT is still in flight on the backend, for example after a user cancels the upload and Npgsql gives up on the cancel of a slow COMMIT (synchronous replication, a slow fsync). The cleanup at once checks for the row on a new connection and does not see it, the COMMIT then lands, and the cleanup deletes the object. The list then shows a file that no one can download. With the sweep and no cleanup at once (`Cleanup = FALSE`), `ObjectStorage.cfg` passes with late commits on, so the sweep removes F2. `c5abb78b` removed the cleanup from the code. It is found in the model, not reproduced in the real app.
+F2. A live row could lose its object (`LateCommit.cfg`). The save of the row throws while its COMMIT is still in flight on the backend, for example after a user cancels the upload and Npgsql gives up on the cancel of a slow COMMIT (synchronous replication, a slow fsync). The cleanup at once checks for the row on a new connection and does not see it, the COMMIT then lands, and the cleanup deletes the object. The list then shows a file that no one can download. With the sweep and no cleanup at once (`Cleanup = FALSE`), `ObjectStorage.cfg` passes with late commits on, so the sweep removes F2. `d4c3fef7` removed the cleanup from the code. It is found in the model, not reproduced in the real app.
 
 The decisions of the sweep, each with its evidence:
 

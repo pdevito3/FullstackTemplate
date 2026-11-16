@@ -76,7 +76,7 @@ Compare the covered files below with the sync commit: `git diff <sync commit> --
 
 ## Coverage record
 
-Sync commit: `c0f2d686` with the UM-4 change of the branch `fix/membership-exits` (the model describes these files after that change). After the merge, set it to the merge commit of that branch.
+Sync commit: `adeb4db0` (#528, the UM-4 change). The model describes these files at this commit.
 
 - `FullstackTemplate.Server/Domain/Invites/Features/ClaimInvite/ClaimInvite.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Invites/Features/RevokeInvite/RevokeInvite.cs` - `Handler.Handle`

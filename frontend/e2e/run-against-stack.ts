@@ -105,6 +105,10 @@ if (idp === 'keycloak') {
 } else if (idp === 'authentik') {
   env.IDP_URL = endpointUrl('authentik', 'http')
   env.IDP_ADMIN_TOKEN = appHostSecret('Parameters:authentik-bootstrap-token')
+} else if (idp === 'pocketid') {
+  // The sign-in also uses the admin API: it gets a one-time login code for the test user
+  env.IDP_URL = endpointUrl('pocketid', 'http')
+  env.IDP_ADMIN_TOKEN = appHostSecret('Parameters:pocketid-static-api-key')
 }
 
 // CI sets an EXPECT_* variable for each feature that its leg must test, so that a leg cannot pass while its main test

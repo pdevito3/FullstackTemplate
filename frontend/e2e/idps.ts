@@ -22,10 +22,25 @@ export interface IdpConfig {
   twoStepLogin?: boolean
   // Second step submit selector for two-step login (if different from submitSelector)
   secondStepSubmitSelector?: string
+  // An IdP with passkeys and no password, such as Pocket ID, signs in a user with a one-time login code
+  loginCode?: IdpLoginCode
   // The provider features that the e2e tests expect (section 6 of docs/specs/home-rolled-bff.md)
   capabilities: IdpCapabilities
   // The provider features that discovery does not show
   sessionFeatures: IdpSessionFeatures
+}
+
+/**
+ * The sign-in with a one-time login code. The test gets a code from the admin API of the IdP, follows the links to the
+ * code field, types the code in usernameSelector, clicks submitSelector, and then clicks confirmSelector.
+ */
+export interface IdpLoginCode {
+  // The ID of the seed user that the test signs in as
+  userId: string
+  // The links from the login page to the code field, in sequence. The first link shows that the login page is visible.
+  linkSelectors: string[]
+  // The button that confirms the sign-in after the code
+  confirmSelector: string
 }
 
 /**
@@ -57,6 +72,7 @@ export interface IdpSessionFeatures {
   backChannelLogoutReachesBff: boolean
   // Each refresh gives a new refresh token, and a reuse of the old one gets invalid_grant. Cognito gives no new
   // refresh token. ZeroFactor gives a new one, but its refresh tokens are stateless, so the old one still works.
+  // Pocket ID gives a new one, but the old one still works for one minute after the refresh.
   refreshRotation: boolean
 }
 

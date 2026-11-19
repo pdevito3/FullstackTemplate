@@ -38,6 +38,9 @@ jobs:
           - idp: zerofactor
             provider: ZeroFactor
             refresh-margin: '86400'
+          - idp: pocketid
+            provider: PocketId
+            refresh-margin: '86400'
           # A public service, so its failure does not fail the workflow
           - idp: duendedemo
             provider: DuendeDemo

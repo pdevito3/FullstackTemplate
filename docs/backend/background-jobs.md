@@ -133,7 +133,7 @@ The BackWave dashboard is at `/backwave` of the app. The BFF sends the page to t
 - A browser with no session goes to the login, and then comes back to the page. A link from another site, such as a link in an email, opens the page with the session of the browser. A user who is not an operator gets a 403.
 - Each job has the tag `tenant` with its tenant ID, so an operator can find the jobs of one tenant.
 - An operator can read the payloads and the failure details, requeue a job, and cancel a job. The dashboard refuses a pause of a queue, because a pause holds the jobs of all tenants. It also refuses a trigger of a schedule.
-- In run mode, the AppHost makes `admin@example.com` of Keycloak and ZeroFactor an operator. For another provider, set `BackgroundJobs__OperatorSubjects__0` on the Server to the `sub` of your user.
+- In run mode, the AppHost makes `admin@example.com` of Keycloak, ZeroFactor, and Pocket ID an operator. For another provider, set `BackgroundJobs__OperatorSubjects__0` on the Server to the `sub` of your user.
 
 Only a process that serves requests serves the dashboard. The metrics panel of the dashboard shows the jobs that the process of the page ran, not the jobs of all processes. An Api process runs no job, so its panel shows no job metrics. For a deploy with more than one process, read the `backwave.*` metrics in the telemetry backend.
 

@@ -110,6 +110,8 @@ public static class AuthExtensions
         || (token.TryGetPayloadValue<string>("tty", out var tty) && tty == "idt")
         // Cognito: id, and access for an access token
         || (token.TryGetPayloadValue<string>("token_use", out var tokenUse) && tokenUse == "id")
+        // Pocket ID: id-token. Its access token has no type claim.
+        || (token.TryGetPayloadValue<string>("type", out var type) && type == "id-token")
         // A back-channel logout token has an events claim (OpenID Connect Back-Channel Logout 1.0, section 2.4)
         || token.TryGetPayloadValue<object>("events", out _);
 }

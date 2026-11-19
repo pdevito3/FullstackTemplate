@@ -32,6 +32,7 @@ public class AccessTokenTypeTests : TestBase
         ("Keycloak refresh token", "typ", "Refresh"),
         ("FusionAuth ID token", "tty", "idt"),
         ("Cognito ID token", "token_use", "id"),
+        ("Pocket ID ID token", "type", "id-token"),
         ("Back-channel logout token", "events", new Dictionary<string, object> { ["http://schemas.openid.net/event/backchannel-logout"] = new Dictionary<string, object>() }),
     ];
 
@@ -40,6 +41,8 @@ public class AccessTokenTypeTests : TestBase
         ("Keycloak access token", "typ", "Bearer"),
         ("FusionAuth access token", "tty", "at"),
         ("Cognito access token", "token_use", "access"),
+        // A Pocket ID access token has no type claim. It has client_id, as RFC 9068 gives.
+        ("Pocket ID access token", "client_id", "aspire-app"),
     ];
 
     [Test]

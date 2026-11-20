@@ -181,7 +181,7 @@ The app does not poll the session. It finds an ended BFF session, for example af
 | The check gives | `apiClient` |
 |---|---|
 | `null` | Shows no toast. The root route goes to the login. |
-| Claims | Shows "The Server did not accept your sign-in for this request." unless the call sets `suppressErrorToast`. The page stays. |
+| Claims | Shows "The server did not accept your sign-in for this request." unless the call sets `suppressErrorToast`. The page stays. |
 | An error | Shows the same toast as for claims. The root route keeps the last answer. |
 
 A 401 of `/bff/user` is a failed check. It does not start a check again.

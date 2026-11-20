@@ -191,7 +191,7 @@ describe('apiClient with a 401 or with no answer', () => {
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
     const signInRejected =
-      'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+      'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
     expect(failureText(error)).toBe(signInRejected)
     expect(checkSession).toHaveBeenCalledOnce()
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(signInRejected)

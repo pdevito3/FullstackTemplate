@@ -17,7 +17,7 @@ const textOf: Record<SpaTextKind, string> = {
   'timed-out': 'The server did not answer in time. Reload the page to see the latest data, then try again.',
   'server-fault': 'The server could not complete the request. Try again in a moment.',
   'sign-in-rejected':
-    'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.',
+    'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.',
   'app-fault': 'The app has a fault. Reload the page, then try again.',
 }
 

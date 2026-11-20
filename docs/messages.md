@@ -80,7 +80,7 @@ The text of an MCP tool error starts with a code such as `permission_denied`, so
 | A fault of the Server: a 5xx, or an answer that is not a problem | "The server could not complete the request. Try again in a moment." The `title` of a 5xx is the default of ASP.NET, and its `detail` is for a developer (#474). |
 | A time limit: a 504 with no body, or the time limit of the SPA | "The server did not answer in time. Reload the page to see the latest data, then try again." |
 | No answer | "The app could not reach the server. Check your connection, then try again." |
-| A 401 | "The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again." |
+| A 401 | "The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again." |
 | A fault of the app: an error that is not of a request, such as a bug | "The app has a fault. Reload the page, then try again." The `message` of the error is for a developer. |
 
 `Record<SpaTextKind, string>` holds the texts of the SPA, so a new kind does not build until it has a text. A component writes only a title that names what did not happen, such as "The invites did not load.", and shows `failureText(error)` with it. A component that also shows the error must not repeat the same text.

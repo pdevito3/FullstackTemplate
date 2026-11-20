@@ -98,10 +98,11 @@ test.describe('a failed check of the session', () => {
     await session.openWhileTheCheckFails('/about')
     const checksBefore = api.all('get', bffPaths.user).length
 
-    api.mock({ ...bffApi.userIs(as.user()), delayMs: 1000 })
+    const answer = api.hold(bffApi.userIs(as.user()))
     await session.pressTryAgain()
     await expect(session.at.tryAgain).toBeDisabled()
     await session.pressTryAgain()
+    answer()
 
     await expect(session.at.aboutHeading).toBeVisible()
     expect(api.all('get', bffPaths.user)).toHaveLength(checksBefore + 1)

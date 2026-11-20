@@ -119,11 +119,12 @@ export function usersWithInvites(page: Page) {
     },
 
     /** The menu keeps the caches of the SPA. The count is the buttons that the page shows from them. */
-    async goToUsersAndCountTheButtonsBeforeTheTenantAnswers(tenantId = 'tnt_1') {
+    async goToUsersAndCountTheButtonsBeforeTheTenantAnswers(answerTheTenant: () => void, tenantId = 'tnt_1') {
       const settled = answered('GET', tenantsPaths.one(tenantId))
       await at.usersNavLink.click()
       await expect(at.usersHeading).toBeVisible()
       const buttons = await at.inviteButton.count()
+      answerTheTenant()
       await settled
       return buttons
     },
@@ -140,11 +141,11 @@ export function usersWithInvites(page: Page) {
       await nextFrames(page)
     },
 
-    /** The list reads for longer than the timeout of this wait, so the link does not wait for the list. */
-    async createInviteAndSeeTheLinkBeforeTheList() {
+    async createInviteAndSeeTheLinkBeforeTheList(answerTheList: () => void) {
       const settled = answered('GET', invitesPaths.list)
       await at.createLink.click()
-      await expect(at.linkField).toBeVisible({ timeout: 2000 })
+      await expect(at.linkField).toBeVisible()
+      answerTheList()
       await settled
     },
 

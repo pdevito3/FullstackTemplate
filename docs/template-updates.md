@@ -167,7 +167,7 @@ A recurring job now deletes each object in storage that no live row names (see [
 
 `AttachmentStorage.AddAsync` is now the one put of the Server, because the sweep of the bucket can delete the object of a put on another path before its row is saved (see [attachments.md](backend/attachments.md#the-sweep-of-the-bucket)). `ObjectStorage.PutAsync` is gone, and `ObjectWriter` has the put.
 
-- The build fails (RS0030) at each use of `ObjectWriter` and of the `Amazon.S3` namespace outside `AttachmentStorage.AddAsync`, `ObjectStorage`, `ObjectWriter`, and `ObjectStorageRegistration`.
+- The build fails (RS0030) at each call to a member of `ObjectWriter` or of a type in the `Amazon.S3` namespace outside `AttachmentStorage.AddAsync`, the S3 members of `ObjectStorage`, `ObjectWriter`, and `ObjectStorageRegistration.AddObjectStorage`.
 - Give the put of each attachment entity of the app to `AttachmentStorage.AddAsync`.
 - For a file that is not an attachment, such as an export, put it under a prefix other than `tenants/`. Suppress RS0030 on the method that puts it, with a justification, and add the file to the list of `BannedApiSuppressionTests`.
 

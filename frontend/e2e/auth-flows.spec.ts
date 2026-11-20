@@ -48,9 +48,6 @@ async function expandSwaggerTag(page: Page, tag: string) {
   await expect(section).toHaveClass(/\bis-open\b/)
 }
 
-/**
- * The element that shows that the login page of the IdP is visible
- */
 function idpLoginPage(page: Page, idp: IdpConfig): Locator {
   return page.locator(idp.loginCode?.linkSelectors[0] ?? idp.usernameSelector)
 }
@@ -571,7 +568,6 @@ async function endAuthentikSessions(email: string) {
   }
 }
 
-// The admin API of Pocket ID, with the static API key of the AppHost
 function pocketIdApi(path: string, init: RequestInit = {}) {
   return callIdp(`${requiredEnv('IDP_URL').replace(/\/$/, '')}/api${path}`, {
     ...init,

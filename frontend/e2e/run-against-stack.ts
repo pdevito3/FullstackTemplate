@@ -106,7 +106,6 @@ if (idp === 'keycloak') {
   env.IDP_URL = endpointUrl('authentik', 'http')
   env.IDP_ADMIN_TOKEN = appHostSecret('Parameters:authentik-bootstrap-token')
 } else if (idp === 'pocketid') {
-  // The sign-in also uses the admin API: it gets a one-time login code for the test user
   env.IDP_URL = endpointUrl('pocketid', 'http')
   env.IDP_ADMIN_TOKEN = appHostSecret('Parameters:pocketid-static-api-key')
 }

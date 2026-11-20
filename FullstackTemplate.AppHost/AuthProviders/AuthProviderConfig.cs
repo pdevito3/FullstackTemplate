@@ -134,6 +134,11 @@ public sealed record AuthClientUrls(
     public const string ServerHttpVariable = "APP_SERVER_HTTP_URL";
     public const string BffVariable = "APP_BFF_URL";
     public const string BffBackChannelVariable = "APP_BFF_BACKCHANNEL_URL";
+
+    /// <summary>
+    /// The back-channel logout URL of the BFF in the container network view.
+    /// </summary>
+    public ReferenceExpression BffBackChannel => ReferenceExpression.Create($"{BffForContainers}/bff/backchannel");
 }
 
 /// <summary>
@@ -207,8 +212,7 @@ public static class AuthProviderExtensions
             context.EnvironmentVariables[AuthClientUrls.ServerVariable] = clientUrls.Server.Url;
             context.EnvironmentVariables[AuthClientUrls.ServerHttpVariable] = clientUrls.ServerHttp.Url;
             context.EnvironmentVariables[AuthClientUrls.BffVariable] = clientUrls.Bff.Url;
-            context.EnvironmentVariables[AuthClientUrls.BffBackChannelVariable] =
-                ReferenceExpression.Create($"{clientUrls.BffForContainers}/bff/backchannel");
+            context.EnvironmentVariables[AuthClientUrls.BffBackChannelVariable] = clientUrls.BffBackChannel;
         });
     }
 

@@ -10,20 +10,13 @@ using Microsoft.Extensions.Logging;
 
 namespace FullstackTemplate.AppHost.AuthProviders;
 
-/// <summary>
-/// Brings Pocket ID to the seed state through its admin API: the groups, the test users with fixed IDs, and the client
-/// with a fixed ID, URLs, and secret. Each step reads the current state and creates or updates the item, so a start
-/// with a kept data volume converges to the same state. The API reference is at /api/docs of Pocket ID.
-/// </summary>
 internal sealed partial class PocketIdSeeder(EndpointReference pocketId, ParameterResource staticApiKey, AuthClientUrls clientUrls)
 {
     public const string ClientId = "aspire-app";
     public const string ClientSecret = "super-secret-client-secret-change-in-production";
-    // The IDs of the Keycloak and ZeroFactor seeds, so the sub claim is the same with these providers
     public const string AdminUserId = "154c705b-f83d-4657-a9dd-af6ad1d36796";
     private const string UserId = "09d798af-976f-416a-8a28-001db736ab59";
 
-    // Long enough for a working day. A login link works one time.
     private const string LoginLinkLifetime = "24h";
 
     private static readonly SeedUser[] Users =
@@ -34,13 +27,8 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
-    // Set after the first seed of this AppHost run. The login links of the seed are in the log only one time.
     private bool _seeded;
 
-    /// <summary>
-    /// Seeds one time for each AppHost run, and again if the client is gone, for example after a restart of an
-    /// isolated Pocket ID with no volume.
-    /// </summary>
     public async Task<HealthCheckResult> CheckAsync(ILogger log, CancellationToken cancellationToken)
     {
         try
@@ -74,7 +62,6 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
             await EnsureSuccessAsync(response, "create a login code", cancellationToken);
             var code = await response.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdLoginCodeResponse, cancellationToken)
                 ?? throw new PocketIdSeedException("Pocket ID answered the login code request with no body.");
-            // The users are the test users of the seed, and a link works only on this local Pocket ID
             var link = $"{pocketId.Url}/lc/{code.Token}";
             // After the link, Pocket ID stays on its own pages. It cannot send the browser to the app.
             LogLoginLink(log, user.Email, link, clientUrls.Frontend.Url, LoginLinkLifetime);
@@ -106,9 +93,7 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
 
     private async Task<PocketIdClientRequest> ClientRequestAsync(CancellationToken cancellationToken)
     {
-        // The container network view of the BFF, as WithClientUrls gives it to the other providers
-        var backChannel = await ReferenceExpression.Create($"{clientUrls.BffForContainers}/bff/backchannel")
-            .GetValueAsync(cancellationToken)
+        var backChannel = await clientUrls.BffBackChannel.GetValueAsync(cancellationToken)
             ?? throw new PocketIdSeedException("The back-channel URL of the BFF has no value.");
         return new PocketIdClientRequest(
             ClientId,
@@ -129,7 +114,6 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
             BackchannelLogoutURL: backChannel,
             IsPublic: false,
             PkceEnabled: true,
-            // A first-party app, so the user sees no consent page
             SkipConsent: true);
     }
 
@@ -176,7 +160,6 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
         return group.Id;
     }
 
-    // An item with a fixed ID: update it if it exists, else create it with the ID in the body
     private async Task UpsertAsync(string itemPath, string createPath, Func<HttpContent> body, string item, CancellationToken cancellationToken)
     {
         var status = await StatusAsync(itemPath, cancellationToken);
@@ -241,7 +224,6 @@ internal sealed class PocketIdSeedHealthCheck(PocketIdSeeder seeder, ILogger log
         seeder.CheckAsync(log, cancellationToken);
 }
 
-// The bodies of the Pocket ID admin API that the seed sends and reads
 internal sealed record PocketIdUserRequest(
     string Id, string Username, string Email, bool EmailVerified, string FirstName, string LastName, string DisplayName,
     bool IsAdmin, bool Disabled);

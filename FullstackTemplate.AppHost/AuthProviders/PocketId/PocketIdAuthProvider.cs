@@ -19,8 +19,6 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 /// <remarks>
 /// Pocket ID is different from the other providers in these ways:
 /// <list type="bullet">
-///   <item>The ID token and the access token have the same aud, the client ID. The ID token has the claim
-///   <c>type</c> with the value <c>id-token</c>, and the server refuses such a token.</item>
 ///   <item>The access token has only sub, client_id, and the scopes. It has no email and no groups.</item>
 ///   <item>A refresh gives a new refresh token, but the old one still works for one minute.</item>
 ///   <item>The end_session_endpoint needs an id_token_hint. Without one, Pocket ID shows its own logout page.</item>
@@ -34,9 +32,14 @@ public sealed class PocketIdAuthProvider : IAuthProvider
 
     public AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
+        // The container turns off rate limiting and trusts a fixed client secret from the source, so a deployment
+        // must never include it
+        if (builder.ExecutionContext.IsPublishMode)
+            throw new InvalidOperationException(
+                $"{nameof(PocketIdAuthProvider)} is for local development only. Select another AuthProvider to publish or deploy.");
+
         // Pocket ID encrypts its data with this key, so the value must stay the same while the data volume stays
         var encryptionKey = builder.AddParameter("pocketid-encryption-key", new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true);
-        // The admin API key. The seeder and the back-channel logout e2e test send it in X-API-KEY.
         var staticApiKey = builder.AddParameter("pocketid-static-api-key", new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true);
 
         var pocketId = builder.AddContainer("pocketid", "ghcr.io/pocket-id/pocket-id", ImageTag)
@@ -63,13 +66,11 @@ public sealed class PocketIdAuthProvider : IAuthProvider
         pocketId.WithEnvironment(context => context.EnvironmentVariables["APP_URL"] = pocketIdHttp.Url);
 
         var seeder = new PocketIdSeeder(pocketIdHttp, staticApiKey.Resource, clientUrls);
-        // The BFF and the server wait for this check. It passes only when the seed is complete.
         builder.Services.AddHealthChecks().Add(new HealthCheckRegistration(
             SeedHealthCheck,
             services => new PocketIdSeedHealthCheck(seeder, services.GetRequiredService<ResourceLoggerService>().GetLogger(pocketId.Resource)),
             failureStatus: null,
             tags: null,
-            // A seed that hangs shows as an unhealthy check, not as a check that never ends
             timeout: TimeSpan.FromSeconds(30)));
         pocketId.WithCommand("login-links", "Print login links", async context =>
         {

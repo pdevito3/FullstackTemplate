@@ -157,7 +157,6 @@ public class AuthProviderCatalogTests
         var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
         var subject = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls).OperatorSubject;
         var seed = Path.Combine(AppHostSourceDirectory(), "AuthProviders", name, "seed");
-        // A provider with no seed folder seeds in code. PocketIdSeeder seeds its admin user with the OperatorSubject.
         if (subject is null || !Directory.Exists(seed))
             return;
 

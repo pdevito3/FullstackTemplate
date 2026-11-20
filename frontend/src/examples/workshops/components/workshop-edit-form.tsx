@@ -34,7 +34,7 @@ function valuesOf(workshop: WorkshopDto) {
 
 interface WorkshopEditFormProps {
   workshop: WorkshopDto
-  refetchError: Error | null
+  refetchError: unknown
   onSave: (body: WorkshopForUpdateDto) => Promise<unknown>
   onLoadLatest: () => Promise<WorkshopDto>
 }
@@ -68,7 +68,7 @@ export function WorkshopEditForm({ workshop, refetchError, onSave, onLoadLatest 
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit} noValidate aria-label="Edit workshop" className="flex max-w-lg flex-col gap-5">
-        {refetchError && serverErrors.problem?.kind !== 'stale' && !form.formState.isSubmitting && (
+        {refetchError !== null && serverErrors.problem?.kind !== 'stale' && !form.formState.isSubmitting && (
           <QueryError
             title="The latest workshop did not load."
             error={refetchError}
@@ -82,7 +82,7 @@ export function WorkshopEditForm({ workshop, refetchError, onSave, onLoadLatest 
           noun="workshop"
           problem={serverErrors.problem}
           isLoadingLatest={latest.isLoading}
-          loadFailure={refetchError?.message ?? null}
+          loadError={refetchError}
           onLoadLatest={handleLoadLatest}
         />
         <LatestLoadedNote noun="workshop" changed={latest.changed} labels={FIELD_LABELS} />

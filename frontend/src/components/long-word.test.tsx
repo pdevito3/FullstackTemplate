@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/responsive-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ProblemDetailsError } from '@/lib/problem-details'
 
 const longWord = 'Northdepotfleetmaintenanceworkorderforthevehiclewithplatexyz'
 
@@ -230,7 +231,7 @@ const cases: {
   },
   {
     name: 'query error',
-    ui: () => <QueryError title={`Could not load ${longWord}`} error={new Error(`${longWord} was not found.`)} onRetry={() => {}} />,
+    ui: () => <QueryError title={`Could not load ${longWord}`} error={new ProblemDetailsError({ type: 'urn:test', title: 'Not found', status: 404, detail: `${longWord} was not found.` })} onRetry={() => {}} />,
     text: '[role=alert] p',
     box: '[role=alert]',
     count: 2,

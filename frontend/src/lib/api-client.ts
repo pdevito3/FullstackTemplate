@@ -1,15 +1,9 @@
-import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 
 import type { client as KubbClient } from '@/api/generated/.kubb/client'
 import { Notification } from '@/components/notification'
 
-import {
-  ProblemDetailsError,
-  isProblemDetails,
-  noAnswerMessage,
-  serverFaultMessage,
-  timedOutMessage,
-} from './problem-details'
+import { failureText, requestError } from './request-failure'
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -58,32 +52,6 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-/**
- * Converts a failed request to an error whose message is the text for the user. Each place that shows the error, such
- * as the toast, a form, or a page, shows this message.
- */
-function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
-  const responseData = error.response?.data
-
-  // Check if response follows Problem Details format
-  if (isProblemDetails(responseData)) {
-    return new ProblemDetailsError(responseData)
-  }
-  if (!error.response) {
-    return new Error(error.code === AxiosError.ETIMEDOUT ? timedOutMessage : noAnswerMessage)
-  }
-  return new Error(messageOfEmptyAnswer[error.response.status] ?? serverFaultMessage)
-}
-
-const signInRejectedMessage =
-  'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
-
-const messageOfEmptyAnswer: Partial<Record<number, string>> = {
-  // The Server answers 401 with no body to a call that needs a user.
-  401: signInRejectedMessage,
-  504: timedOutMessage,
-}
-
 let isSessionEnded = () => Promise.resolve(false)
 
 /**
@@ -108,18 +76,17 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Convert to appropriate error type
-    const processedError = handleErrorResponse(error)
+    const processedError = requestError(error)
 
     // The check of the session cannot wait for itself, so its own 401 is a failed check.
     if (error.response?.status === 401 && config?.url !== '/bff/user') {
-      if (!(await isSessionEnded()) && !suppressToast) Notification.error(signInRejectedMessage)
+      if (!(await isSessionEnded()) && !suppressToast) Notification.error(failureText(processedError))
       return Promise.reject(processedError)
     }
 
     // Show toast notification unless suppressed
     if (!suppressToast) {
-      Notification.error(processedError.message)
+      Notification.error(failureText(processedError))
     }
 
     return Promise.reject(processedError)

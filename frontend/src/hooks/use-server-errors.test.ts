@@ -40,6 +40,6 @@ describe('refusalOf', () => {
       kind: 'refused',
       messages: ['The server could not complete the request. Try again in a moment.'],
     })
-    expect(refusalOf(new Error(''), FIELDS).problem).toEqual({ kind: 'refused', messages: ['The save failed. Try again.'] })
+    expect(refusalOf(new Error(''), FIELDS).problem).toEqual({ kind: 'refused', messages: ['The app has a fault. Reload the page, then try again.'] })
   })
 })

@@ -156,11 +156,11 @@ public class AuthProviderCatalogTests
         var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
         var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
         var subject = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls).OperatorSubject;
-        if (subject is null)
+        var seed = Path.Combine(AppHostSourceDirectory(), "AuthProviders", name, "seed");
+        if (subject is null || !Directory.Exists(seed))
             return;
 
         // Act
-        var seed = Path.Combine(AppHostSourceDirectory(), "AuthProviders", name, "seed");
         var userIds = Directory.EnumerateFiles(seed, "*.json")
             .Select(file => JsonDocument.Parse(File.ReadAllText(file)).RootElement)
             .Where(realm => realm.TryGetProperty("users", out _))

@@ -127,7 +127,7 @@ The BFF does not revoke the refresh tokens of the deleted BFF sessions, because 
 
 The endpoint is always mapped. The BFF has no front-channel logout endpoint, so `/signout-oidc` does not end a BFF session.
 
-In the local stack, the Keycloak and Authentik seeds register the back-channel URL. The provider containers call the BFF through the Aspire container network.
+In the local stack, the Keycloak, Authentik, and Pocket ID seeds register the back-channel URL. The provider containers call the BFF through the Aspire container network.
 
 ## Provider features
 
@@ -150,15 +150,15 @@ The values are:
 
 These are the active features for each provider with `Auto`. The e2e tests have the same table, and one test makes sure that live discovery matches it.
 
-| Feature | Keycloak | FusionAuth | Authentik | Duende Demo | Cognito | ZeroFactor |
-|---|---|---|---|---|---|---|
-| Revocation | yes | no | yes | yes | no | yes (a no-op) |
-| `iss` parameter | yes | yes | no | yes | no | yes |
-| Back-channel logout | yes | no | yes | yes (the demo cannot reach the local BFF, so no test calls the receiver) | no | no |
-| `end_session_endpoint` | yes | yes | yes | yes | no (the BFF uses `/cognito-idp/logout`) | yes |
-| PAR | yes | no | no | yes | no | no |
-| Refresh token rotation | yes | yes | yes | no | no | no (the old token stays valid) |
-| DPoP | yes (the stack starts it with `--features=dpop`) | listed, not tested | listed, not tested | yes | no | no |
+| Feature | Keycloak | FusionAuth | Authentik | Duende Demo | Cognito | ZeroFactor | Pocket ID |
+|---|---|---|---|---|---|---|---|
+| Revocation | yes | no | yes | yes | no | yes (a no-op) | no |
+| `iss` parameter | yes | yes | no | yes | no | yes | yes |
+| Back-channel logout | yes | no | yes | yes (the demo cannot reach the local BFF, so no test calls the receiver) | no | no | yes |
+| `end_session_endpoint` | yes | yes | yes | yes | no (the BFF uses `/cognito-idp/logout`) | yes | yes (it needs an `id_token_hint`) |
+| PAR | yes | no | no | yes | no | no | yes |
+| Refresh token rotation | yes | yes | yes | no | no | no (the old token stays valid) | no (the old token stays valid for one minute) |
+| DPoP | yes (the stack starts it with `--features=dpop`) | listed, not tested | listed, not tested | yes | no | no | no |
 
 Other settings:
 
@@ -167,7 +167,7 @@ Other settings:
 | `Auth:ClientAuthentication` | `Auto` | `Auto`, `Basic`, or `Post`. `Auto` uses `client_secret_basic`, or `client_secret_post` if discovery lists only that method. |
 | `Auth:IdTokenSigningAlgorithm` | `RS256` | The signing algorithm of the ID tokens and the logout tokens, as the client registration sets it. |
 | `Auth:MetadataRefreshInterval` | The handler default | The shortest time between two reads of the discovery document and the signing keys. |
-| `Auth:UseAudienceAsScope` | `true` | Adds `Auth:Audience` to the scopes. FusionAuth needs `false`. |
+| `Auth:UseAudienceAsScope` | `true` | Adds `Auth:Audience` to the scopes. FusionAuth needs `false`. Cognito and Pocket ID also use `false`. |
 | `Auth:EndSessionWithoutIdTokenHint` | `false` | Set it to `true` if the `end_session_endpoint` accepts `client_id` with no `id_token_hint`. A logout with the cookie of an ended BFF session then also ends the provider session. See [Logout flow](#logout-flow). |
 | `Auth:DefaultAccessTokenLifetime` | none | The lifetime of an access token when the token response has no `expires_in`. With no value, such a token never expires, and the BFF never refreshes it. |
 
@@ -197,7 +197,7 @@ The server accepts both token types. A token with a `cnf.jkt` claim must come wi
 
 The server tags the span of a DPoP request with `app.auth.scheme=DPoP` and `app.dpop.jkt_prefix`, the first 8 characters of the thumbprint. No log or tag has a token, a proof, or a key.
 
-To run the local stack with DPoP, set `DPoP=true`. The AppHost then sets `Auth:Features:DPoP` to `Require` and gives the BFF a generated EC P-256 key as the secret parameter `bff-dpop-key`. Only a provider whose class sets `TestedWithDPoP` can run with DPoP: the Duende Demo and Keycloak. Keycloak always starts with `--features=dpop`. Keycloak 26.0.8 has DPoP as a preview feature. FusionAuth and Authentik list DPoP in discovery, but this stack does not test DPoP with them. Cognito and ZeroFactor have no DPoP support. For another provider, the AppHost stops.
+To run the local stack with DPoP, set `DPoP=true`. The AppHost then sets `Auth:Features:DPoP` to `Require` and gives the BFF a generated EC P-256 key as the secret parameter `bff-dpop-key`. Only a provider whose class sets `TestedWithDPoP` can run with DPoP: the Duende Demo and Keycloak. Keycloak always starts with `--features=dpop`. Keycloak 26.0.8 has DPoP as a preview feature. FusionAuth and Authentik list DPoP in discovery, but this stack does not test DPoP with them. Cognito, ZeroFactor, and Pocket ID have no DPoP support. For another provider, the AppHost stops.
 
 ```bash
 AuthProvider=Keycloak DPoP=true dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
@@ -228,20 +228,31 @@ The `AuthProvider` setting in `FullstackTemplate.AppHost/appsettings.json` selec
 
 The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is the default provider. It is for local development only, so select another provider before you publish or deploy.
 
+The `PocketId` provider is [Pocket ID](https://pocket-id.org), an OIDC provider with passkeys and no passwords. It is for local development only: the AppHost stops in publish mode, so select another provider before you publish or deploy. A new Pocket ID database has no passkey, so you sign in with a one-time login link:
+
+1. Start the stack with `AuthProvider=PocketId`.
+2. Find the line `Sign in as admin@example.com with <link>, and then open <app URL>` in the console log of the `pocketid` resource. The link works one time, for 24 hours.
+3. Open the link. Pocket ID signs you in and asks you to set up a passkey. Choose **Skip for now**, or add a passkey to sign in later without a link.
+4. Open the app URL. The login completes with no prompt.
+
+To get new links, run the command **Print login links** of the `pocketid` resource in the dashboard.
+
+The access token of Pocket ID has no name and no email. So the server does not know them, and the home page shows the user ID after "Signed in as".
+
 ### Change the provider of a database that has users
 
 The app finds a user by the `sub` claim, which it stores in `User.Identifier`. Each provider gives its own `sub`. If you change the provider of a normal run, the database volume keeps the users of the old provider. Then a login with the new provider does not find the old user.
 
 An isolated run starts with an empty database, so it does not have this problem.
 
-- The Keycloak seed and the ZeroFactor seed give the test users the same IDs. You can change between these two providers and keep your data.
+- The Keycloak, ZeroFactor, and Pocket ID seeds give the test users the same IDs. You can change between these providers and keep your data.
 - To use the user of another provider with ZeroFactor, register a user on the ZeroFactor login page. Enter the `sub` of the old user as the User ID.
 
 ### Add a provider
 
 1. Add the folder `FullstackTemplate.AppHost/AuthProviders/<Name>/`.
 2. In the folder, add the class `<Name>AuthProvider` that implements `IAuthProvider`. The AppHost finds the class by reflection, and `<Name>` from the class name is the value of the `AuthProvider` setting. `AddTo` adds the containers of the provider to the stack and returns an `AuthProviderConfig`.
-3. Put the seed files in `seed/`, and mount them with `WithSeedFiles`. Call `WithClientUrls` on the container, and read the app URLs from the `APP_*` variables in the seed files. An isolated run gives the apps random ports.
+3. Put the seed files in `seed/`, and mount them with `WithSeedFiles`. Call `WithClientUrls` on the container, and read the app URLs from the `APP_*` variables in the seed files. An isolated run gives the apps random ports. A provider that cannot read seed files can get its seed from the AppHost through its admin API, in a health check of the container, as `PocketIdSeeder` does. The BFF and the server then wait for the seed.
 4. Add `frontend/e2e/idps/<name>.json`, with `<name>` in lowercase. Give the login form and the test user. Set `resource` to the name of the Aspire resource of the provider. Set `capabilities` to what the discovery document of the provider lists, and `sessionFeatures` to what the provider does. The e2e tests skip a feature test if the provider does not have the feature.
 5. To run the provider with `DPoP=true`, make `TestedWithDPoP` of the class return true, and run the e2e tests with DPoP. See [DPoP](#dpop).
 
@@ -261,7 +272,7 @@ An agent is an OAuth client other than this app that calls the server, usually t
 
 ### How the server identifies the caller
 
-The server takes only access tokens. An ID token of the BFF has the client ID as its `aud`, and the browser sees it in the `id_token_hint` of the logout. So the Keycloak seed gives the API its own audience, `fullstacktemplate-api`, in the access token only. Some providers can give the API only the client ID, so the server also refuses a token that names itself an ID token or a logout token: `typ` `ID`, `Logout`, or `Refresh` (Keycloak), `tty` `idt` (FusionAuth), `token_use` `id` (Cognito), or an `events` claim. An Authentik ID token has no such claim, but it also has no `azp`, so the server takes it as a token of an unknown client.
+The server takes only access tokens. An ID token of the BFF has the client ID as its `aud`, and the browser sees it in the `id_token_hint` of the logout. So the Keycloak seed gives the API its own audience, `fullstacktemplate-api`, in the access token only. Some providers can give the API only the client ID, so the server also refuses a token that names itself an ID token or a logout token: `typ` `ID`, `Logout`, or `Refresh` (Keycloak), `tty` `idt` (FusionAuth), `token_use` `id` (Cognito), `type` `id-token` (Pocket ID), or an `events` claim. An Authentik ID token has no such claim, but it also has no `azp`, so the server takes it as a token of an unknown client.
 
 The server reads the client ID of the token from `client_id`, then `azp`, then `applicationId` (FusionAuth). It never takes a missing `sub` to mean a machine. `CallerIdentityResolver` decides the caller once for each request:
 
@@ -311,6 +322,7 @@ Agents need a provider that can give a client other than the first-party client 
 - ZeroFactor: the seed has the delegated client `clinic-assistant` and the machine client `fleet-sync`. Both get the `aspire-app` audience. Send a token request to `{zerofactor}/realms/aspire/protocol/openid-connect/token`. For `clinic-assistant`, use `grant_type=password` with `username=admin@example.com` and any password. For `fleet-sync`, use `grant_type=client_credentials` with any client secret.
 - Keycloak: give the client an `oidc-audience-mapper` that includes the custom audience `fullstacktemplate-api` in the access token only, as the seed in `realm-export.json` does for `aspire-app`. For a machine client, set `serviceAccountsEnabled`.
 - Cognito: agents do not work. The server checks the audience in `client_id`, so it accepts only the first-party client.
+- Pocket ID: not tested. The access token of a client has the ID of that client as its `aud`, so the seed does not give another client the `aspire-app` audience.
 
 ### How an MCP client finds the provider
 
@@ -366,10 +378,11 @@ CI also sets an `EXPECT_*` variable for each feature that a leg must test, for e
 
 The script also gives the tests the client id and the client secret of the BFF, and the admin credentials of the provider. It never prints them.
 
-- The refresh rotation test uses the client of the BFF for its own code flow. It proves that the provider rejects the old refresh token after one refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik.
+- The refresh rotation test uses the client of the BFF for its own code flow. It proves that the provider rejects the old refresh token after one refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik. Pocket ID gives a new refresh token, but it accepts the old one for one more minute, so the test skips.
 - The BFF refresh test makes two API calls through the BFF, and each call refreshes. The second call succeeds only if the BFF stored the rotated refresh token of the first call. Then the test logs out, and the `id_token_hint` proves that the BFF stored the ID token of the second refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik. On a provider that does not reject a reused refresh token, the test cannot prove the rotation.
 - The refresh lock test makes two API calls through the BFF at the same time, and both need the same refresh. Both calls must succeed, and the BFF session must still work after them. With no refresh lock, both calls send the same refresh token, and the provider rejects the second one. It runs on the same providers as the BFF refresh test.
-- The back-channel logout test ends the session at the provider through its admin API, and expects a 204 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database.
+- The back-channel logout test ends the session at the provider through its admin API, and expects a 204 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database. Pocket ID has no admin API that ends a session. So the test disables the user with the `pocketid-static-api-key` parameter, and Pocket ID sends the logout token. Then the test enables the user again.
+- On Pocket ID, each login gets a one-time login code from the admin API, with the `pocketid-static-api-key` parameter.
 
 ## Conformance
 
@@ -424,6 +437,6 @@ Use a separate deployment for the test run. The suite is the identity provider o
 
 ## Test users
 
-The seed files of each provider create its test users. The doc comment of each provider class in `FullstackTemplate.AppHost/AuthProviders/` lists them. The file in `frontend/e2e/idps/` gives the user that the e2e tests log in with.
+The seed of each provider creates its test users. The doc comment of each provider class in `FullstackTemplate.AppHost/AuthProviders/` lists them. The file in `frontend/e2e/idps/` gives the user that the e2e tests log in with.
 
 The seed files create users in the provider only. A new database has no user records, so a test user who signs in has no tenant and no permissions. Each page of the SPA then shows a notice that links to `Start a tenant` (`/start-tenant`). That page sends `POST /api/v1/users/initiate`, and the user becomes the admin of a new tenant. See [multi-tenancy.md](multi-tenancy.md#add-a-user-to-a-tenant).

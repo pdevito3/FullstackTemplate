@@ -1,0 +1,24 @@
+{
+  "name": "Pocket ID",
+  "resource": "pocketid",
+  "email": "admin@example.com",
+  "usernameSelector": "role=textbox[name=\"Code\" s]",
+  "submitSelector": "role=button[name=\"Submit\" s]",
+  "loginCode": {
+    "userId": "154c705b-f83d-4657-a9dd-af6ad1d36796",
+    "linkSelectors": ["role=link[name=\"Alternative Sign In Methods\" s]", "role=link[name=/^Login Code/]"],
+    "confirmSelector": "role=button[name=\"Sign in\" s]"
+  },
+  "capabilities": {
+    "revocation": false,
+    "issuerParameter": true,
+    "backChannelLogout": true,
+    "endSession": true,
+    "pushedAuthorization": true,
+    "dpop": false
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": true,
+    "refreshRotation": false
+  }
+}

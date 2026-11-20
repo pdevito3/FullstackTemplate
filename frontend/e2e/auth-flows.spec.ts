@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { test, expect, type Locator, type Page, type Request } from '@playwright/test'
-import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
+import { loadIdp, type IdpCapabilities, type IdpConfig, type IdpLoginCode } from './idps.ts'
 import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
 
 /**
@@ -15,6 +15,7 @@ import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
  * - Keycloak/FusionAuth/Authentik/Cognito: admin@example.com / password123!
  * - Duende Demo: bob / bob
  * - ZeroFactor: admin@example.com, with no password
+ * - Pocket ID: admin@example.com, with a one-time login code from the admin API
  *
  * Run with: pnpm test:e2e:stack (against the IdP of the running stack, see docs/authentication.md)
  * Debug with: pnpm test:e2e:stack --debug
@@ -47,10 +48,19 @@ async function expandSwaggerTag(page: Page, tag: string) {
   await expect(section).toHaveClass(/\bis-open\b/)
 }
 
+function idpLoginPage(page: Page, idp: IdpConfig): Locator {
+  return page.locator(idp.loginCode?.linkSelectors[0] ?? idp.usernameSelector)
+}
+
 /**
  * Helper to login via the IDP login page
  */
 async function loginAtIdp(page: Page, idp: IdpConfig) {
+  if (idp.loginCode) {
+    await loginWithCode(page, idp, idp.loginCode)
+    return
+  }
+
   // Wait for the IDP login form
   await page.locator(idp.usernameSelector).waitFor({ state: 'visible' })
 
@@ -78,6 +88,21 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
 }
 
 /**
+ * Signs in with a one-time login code from the admin API of Pocket ID. A code with a lifetime of more than 15 minutes
+ * has 12 characters. The code field takes only such a long code, because the seed does not turn on the login by email.
+ */
+async function loginWithCode(page: Page, idp: IdpConfig, loginCode: IdpLoginCode) {
+  for (const link of loginCode.linkSelectors) {
+    await page.locator(link).click()
+  }
+  const code = await pocketIdApi(`/users/${loginCode.userId}/one-time-access-token`, { method: 'POST', body: JSON.stringify({ ttl: '1h' }) })
+  expect(code.status, 'the Pocket ID login code').toBe(201)
+  await page.locator(idp.usernameSelector).fill(code.body.token as string)
+  await page.locator(idp.submitSelector).click()
+  await page.locator(loginCode.confirmSelector).click()
+}
+
+/**
  * The number of server spans of the current user call with a DPoP proof since `startedAt`. The server tags the span
  * of a request with `app.auth.scheme=DPoP` after it checked the proof and the binding of the token.
  */
@@ -101,7 +126,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
   test.describe('React UI Authentication', () => {
     test('should login, call the Server as the signed-in user, and logout', async ({ page }) => {
       await page.goto('/')
-      await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
+      await expect(idpLoginPage(page, currentIdp)).toBeVisible({ timeout: 30000 })
 
       // Step 4: Login at the IDP
       await loginAtIdp(page, currentIdp)
@@ -133,7 +158,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       // An IDP that redirects to the app by itself goes through the app, and the app sends the browser with no session
       // to the login form.
       const returnLink = backToAppLink.or(duendeReturnLink).first()
-      const idpLoginForm = page.locator(currentIdp.usernameSelector)
+      const idpLoginForm = idpLoginPage(page, currentIdp)
       await expect
         .poll(async () => (await returnLink.isVisible()) || (await idpLoginForm.isVisible()), { timeout: 30000 })
         .toBe(true)
@@ -152,7 +177,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const startedAt = Date.now()
 
       await page.goto('/')
-      await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
+      await expect(idpLoginPage(page, currentIdp)).toBeVisible({ timeout: 30000 })
       await loginAtIdp(page, currentIdp)
       await page.waitForURL('/', { timeout: 30000 })
       await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
@@ -240,7 +265,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
     context,
   }) => {
     await page.goto('/')
-    await page.locator(currentIdp.usernameSelector).waitFor({ state: 'visible', timeout: 30000 })
+    await idpLoginPage(page, currentIdp).waitFor({ state: 'visible', timeout: 30000 })
 
     // The browser must send these two cookies on the cross-site GET from the identity provider to /signin-oidc
     const loginCookies = await context.cookies()
@@ -543,6 +568,29 @@ async function endAuthentikSessions(email: string) {
   }
 }
 
+function pocketIdApi(path: string, init: RequestInit = {}) {
+  return callIdp(`${requiredEnv('IDP_URL').replace(/\/$/, '')}/api${path}`, {
+    ...init,
+    headers: { 'X-API-KEY': requiredEnv('IDP_ADMIN_TOKEN'), 'Content-Type': 'application/json' },
+  })
+}
+
+/**
+ * Pocket ID has no admin API that ends a session. When an admin disables a user, Pocket ID sends a back-channel logout
+ * token to each client of the user. After the check, the user is enabled again, so that the next tests can sign in.
+ */
+async function whilePocketIdUserIsDisabled(userId: string, check: () => Promise<void>) {
+  const user = await pocketIdApi(`/users/${userId}`)
+  expect(user.status, 'the Pocket ID user').toBe(200)
+  const update = (disabled: boolean) => pocketIdApi(`/users/${userId}`, { method: 'PUT', body: JSON.stringify({ ...user.body, disabled }) })
+  expect((await update(true)).status, 'disable the Pocket ID user').toBe(200)
+  try {
+    await check()
+  } finally {
+    expect((await update(false)).status, 'enable the Pocket ID user').toBe(200)
+  }
+}
+
 // Section 3.4 of docs/specs/home-rolled-bff.md: a back-channel logout token from the provider ends the BFF session
 test.describe(`Back-channel logout - ${currentIdp.name}`, () => {
   test('an IdP session that ends at the provider ends the BFF session', async ({ page }) => {
@@ -554,14 +602,17 @@ test.describe(`Back-channel logout - ${currentIdp.name}`, () => {
     await signInThroughSpa(page)
     expect(await bffUserStatus(page)).toBe(200)
 
+    // The BFF deletes the session row when the logout token arrives. Authentik sends it from a worker task.
+    const sessionEnds = () => expect.poll(() => bffUserStatus(page), { timeout: 30000 }).toBe(204)
     if (process.env.IDP === 'authentik') {
       await endAuthentikSessions(currentIdp.email!)
+      await sessionEnds()
+    } else if (process.env.IDP === 'pocketid') {
+      await whilePocketIdUserIsDisabled(currentIdp.loginCode!.userId, sessionEnds)
     } else {
       await endKeycloakSession(await bffSessionId(page))
+      await sessionEnds()
     }
-
-    // The BFF deletes the session row when the logout token arrives. Authentik sends it from a worker task.
-    await expect.poll(() => bffUserStatus(page), { timeout: 30000 }).toBe(204)
   })
 })
 

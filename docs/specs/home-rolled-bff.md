@@ -601,15 +601,15 @@ Decision: [Provider seed and version changes](https://github.com/pdevito3/Fullst
 
 The capability table (section 7) holds the expected result of these changes:
 
-| Feature | Keycloak | FusionAuth | Authentik 2026.8 | Cognito | ZeroFactor | Duende Demo |
-|---|---|---|---|---|---|---|
-| Revocation | yes | no | yes | no | yes | yes |
-| `iss` parameter | yes | yes | no | no | yes | yes |
-| Back-channel logout (testable) | yes | no | yes | no | no | no (cannot reach the BFF) |
-| `end_session_endpoint` | yes | yes | yes | no | yes | yes |
-| PAR | yes | no | no | no | no | yes |
-| Refresh rotation | yes | yes | yes | no | no (stateless refresh tokens) | no |
-| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | not tested | not tested | yes |
+| Feature | Keycloak | FusionAuth | Authentik 2026.8 | Cognito | ZeroFactor | Duende Demo | Pocket ID 2.19 |
+|---|---|---|---|---|---|---|---|
+| Revocation | yes | no | yes | no | yes | yes | no |
+| `iss` parameter | yes | yes | no | no | yes | yes | yes |
+| Back-channel logout (testable) | yes | no | yes | no | no | no (cannot reach the BFF) | yes |
+| `end_session_endpoint` | yes | yes | yes | no | yes | yes | yes |
+| PAR | yes | no | no | no | no | yes | yes |
+| Refresh rotation | yes | yes | yes | no | no (stateless refresh tokens) | no | no (the old token works for one more minute) |
+| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | not tested | not tested | yes | no |
 
 The live discovery test (section 7) makes sure that the table is correct.
 
@@ -675,7 +675,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
   - `frontend/vite.config.ts` and `frontend/src/**`, the SPA and the dev server proxy that the e2e tests drive
 - `conformance.yml` also counts `frontend/conformance/**`.
 - **`bff-tests`.** The BFF unit and integration tests, with the two-host lock tests.
-- **`e2e`.** A matrix of eight legs: Keycloak, Keycloak with DPoP, FusionAuth, Authentik, Cognito, ZeroFactor, the Duende Demo, and the Duende Demo with DPoP. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The two Duende Demo legs use `continue-on-error`, because the Duende Demo is a public service. A failure of one of the other six legs fails the workflow.
+- **`e2e`.** A matrix of nine legs: Keycloak, Keycloak with DPoP, FusionAuth, Authentik, Cognito, ZeroFactor, Pocket ID, the Duende Demo, and the Duende Demo with DPoP. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The two Duende Demo legs use `continue-on-error`, because the Duende Demo is a public service. A failure of one of the other seven legs fails the workflow.
   - Each leg of a provider in the stack sets `BffRefreshBeforeExpirationSeconds` to 86400, so that each API call refreshes, and `EXPECT_REFRESH_MARGIN=true`. The two Duende Demo legs set no margin and `EXPECT_REFRESH_MARGIN=false`.
   - A DPoP leg sets `DPoP=true` and `EXPECT_DPOP=true`. The other legs set `EXPECT_DPOP=false`.
   - `run-against-stack.ts` fails the leg when an `EXPECT_*` variable and the stack disagree, so a leg cannot pass while its refresh tests or its DPoP test skip.

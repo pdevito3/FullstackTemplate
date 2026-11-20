@@ -101,4 +101,5 @@ The email match of INV-9 reads `email` and `email_verified` from the access toke
 | Authentik | JSON `false` for each user, from the managed email scope mapping of version 2026.8.5 | Probably no. The seed adds no enrollment flow. | Each user is refused. | Seed and vendor source |
 | Cognito | Absent, with `email`. A Cognito access token has no email. | Probably yes, with the SignUp API. Not examined on the local emulator. | Each user is refused. | Provider class and AWS documents |
 | Duende Demo | Absent. The API resource of the demo has only `name` and `email`. | Yes, on `/Account/Create` | Each user is refused. | Source of the demo on GitHub |
+| Pocket ID | Absent, with `email`. The access token has only `sub`, `client_id`, and the scopes. | No. The default of the sign-up setting is `disabled`, and the seed does not change it. | Each user is refused. | Access token read on an isolated stack, and source of version 2.19.3 |
 | Conformance | JSON `false`, from the userinfo response | No | Each user is refused. | Source of the suite on GitHub |

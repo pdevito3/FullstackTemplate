@@ -72,9 +72,10 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
             using var response = await SendAsync(HttpMethod.Post, $"/api/users/{user.Id}/one-time-access-token",
                 Json(new PocketIdLoginCodeRequest(LoginLinkLifetime), PocketIdJsonContext.Default.PocketIdLoginCodeRequest), cancellationToken);
             await EnsureSuccessAsync(response, "create a login code", cancellationToken);
-            var code = await response.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdLoginCodeResponse, cancellationToken);
+            var code = await response.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdLoginCodeResponse, cancellationToken)
+                ?? throw new PocketIdSeedException("Pocket ID answered the login code request with no body.");
             // The users are the test users of the seed, and a link works only on this local Pocket ID
-            var link = $"{pocketId.Url}/lc/{code!.Token}";
+            var link = $"{pocketId.Url}/lc/{code.Token}";
             // After the link, Pocket ID stays on its own pages. It cannot send the browser to the app.
             LogLoginLink(log, user.Email, link, clientUrls.Frontend.Url, LoginLinkLifetime);
         }
@@ -107,7 +108,8 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
     {
         // The container network view of the BFF, as WithClientUrls gives it to the other providers
         var backChannel = await ReferenceExpression.Create($"{clientUrls.BffForContainers}/bff/backchannel")
-            .GetValueAsync(cancellationToken);
+            .GetValueAsync(cancellationToken)
+            ?? throw new PocketIdSeedException("The back-channel URL of the BFF has no value.");
         return new PocketIdClientRequest(
             ClientId,
             "Aspire App",
@@ -124,7 +126,7 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
                 $"{clientUrls.Frontend.Url}/signout-callback-oidc",
                 $"{clientUrls.Bff.Url}/signout-callback-oidc",
             ],
-            BackchannelLogoutURL: backChannel!,
+            BackchannelLogoutURL: backChannel,
             IsPublic: false,
             PkceEnabled: true,
             // A first-party app, so the user sees no consent page
@@ -156,9 +158,10 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
     {
         using var list = await SendAsync(HttpMethod.Get, $"/api/user-groups?search={Uri.EscapeDataString(name)}", content: null, cancellationToken);
         await EnsureSuccessAsync(list, "list the groups", cancellationToken);
-        var groups = await list.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdGroupList, cancellationToken);
+        var groups = await list.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdGroupList, cancellationToken)
+            ?? throw new PocketIdSeedException("Pocket ID answered the group list request with no body.");
         var body = new PocketIdGroupRequest(name, name);
-        if (groups!.Data.SingleOrDefault(group => group.Name == name) is { } existing)
+        if (groups.Data.SingleOrDefault(group => group.Name == name) is { } existing)
         {
             await PutAsync($"/api/user-groups/{existing.Id}", Json(body, PocketIdJsonContext.Default.PocketIdGroupRequest),
                 $"the group {name}", cancellationToken);
@@ -168,7 +171,9 @@ internal sealed partial class PocketIdSeeder(EndpointReference pocketId, Paramet
         using var created = await SendAsync(HttpMethod.Post, "/api/user-groups",
             Json(body, PocketIdJsonContext.Default.PocketIdGroupRequest), cancellationToken);
         await EnsureSuccessAsync(created, $"create the group {name}", cancellationToken);
-        return (await created.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdGroup, cancellationToken))!.Id;
+        var group = await created.Content.ReadFromJsonAsync(PocketIdJsonContext.Default.PocketIdGroup, cancellationToken)
+            ?? throw new PocketIdSeedException($"Pocket ID answered the create of the group {name} with no body.");
+        return group.Id;
     }
 
     // An item with a fixed ID: update it if it exists, else create it with the ID in the body

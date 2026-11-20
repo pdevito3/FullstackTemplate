@@ -228,7 +228,7 @@ The `AuthProvider` setting in `FullstackTemplate.AppHost/appsettings.json` selec
 
 The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is the default provider. It is for local development only, so select another provider before you publish or deploy.
 
-The `PocketId` provider is [Pocket ID](https://pocket-id.org), an OIDC provider with passkeys and no passwords. A new Pocket ID database has no passkey, so you sign in with a one-time login link:
+The `PocketId` provider is [Pocket ID](https://pocket-id.org), an OIDC provider with passkeys and no passwords. It is for local development only: the AppHost stops in publish mode, so select another provider before you publish or deploy. A new Pocket ID database has no passkey, so you sign in with a one-time login link:
 
 1. Start the stack with `AuthProvider=PocketId`.
 2. Find the line `Sign in as admin@example.com with <link>, and then open <app URL>` in the console log of the `pocketid` resource. The link works one time, for 24 hours.

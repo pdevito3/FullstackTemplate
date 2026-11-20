@@ -190,8 +190,9 @@ public static class SwaggerExtension
                 }
                 options.OAuthScopes(scopesToSelect.ToArray());
 
-                // Swagger UI adds X-Requested-With to the token request. The header needs a CORS preflight, and Pocket ID
-                // allows only Authorization, so the token request fails there. No receiver reads the header.
+                // Swagger UI adds X-Requested-With only to its token request. The header needs a CORS preflight, and
+                // Pocket ID allows only Authorization, so the token request fails there. The interceptor runs on each
+                // request, but only the token request has the header. No receiver reads it.
                 options.UseRequestInterceptor("(request) => { delete request.headers['X-Requested-With']; return request; }");
             }
 

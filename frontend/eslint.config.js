@@ -426,9 +426,92 @@ const specFileRules = [
   testOnlyRule,
 ]
 
+const failureTextOwner = 'Show failureText(error) from @/lib/request-failure. It gives the text for the kind of the failure: a refusal of the Server, no answer, a time limit, a fault of the Server, or a fault of the app.'
+const failureTextMessages = {
+  message: `Do not show the message of an error. It is for a developer, and it does not say why a request failed. ${failureTextOwner}`,
+  problemText: `Do not show the detail or the title of a problem. The title of a 5xx is the default of ASP.NET, and its detail is for a developer (#474). ${failureTextOwner}`,
+  newError: `Do not make an error to carry a text to the screen. Pass on the error that you caught. ${failureTextOwner} Write a title of your own next to it, such as "The invite did not load." Throw a new Error only for a fault in the code.`,
+  rootError: `The root error of a form shows a failed submit. Give it the message failureText(error) from @/lib/request-failure. Put a rule of the form on its field.`,
+}
+
+const failureTextRule = {
+  meta: { type: 'problem', schema: [], messages: failureTextMessages },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    const checker = services.program.getTypeChecker()
+    const isError = (type) => {
+      if (type.isTypeParameter())
+        return isError(checker.getBaseConstraintOfType(type) ?? checker.getUnknownType())
+      if (type.isUnion() || type.isIntersection())
+        return type.types.some(isError)
+      const declared = type.objectFlags & ts.ObjectFlags.Reference ? type.target : type
+      const symbol = declared.getSymbol()
+      if (symbol?.getName() === 'Error' && symbol.declarations?.some((d) => services.program.isSourceFileDefaultLibrary(d.getSourceFile())))
+        return true
+      return declared.isClassOrInterface() && checker.getBaseTypes(declared).some(isError)
+    }
+    const isRejection = (call) =>
+      call.callee.type === 'Identifier' ? call.callee.name === 'reject' : call.callee.object?.name === 'Promise' && call.callee.property?.name === 'reject'
+    const isThrown = (node) => {
+      let child = node
+      while (['ConditionalExpression', 'LogicalExpression', 'TSAsExpression', 'TSSatisfiesExpression'].includes(child.parent.type))
+        child = child.parent
+      return child.parent.type === 'ThrowStatement' || (child.parent.type === 'CallExpression' && child.parent.arguments.includes(child) && isRejection(child.parent))
+    }
+    const isProblemText = (symbol) =>
+      symbol?.declarations?.some((d) => /\/api\/generated[^/]*\/models\/types\/(validation-)?problem-details\.ts$/.test(d.getSourceFile().fileName))
+    const textOf = (node) =>
+      node?.type === 'Literal' ? node.value : node?.type === 'TemplateLiteral' && node.expressions.length === 0 ? node.quasis[0].value.cooked : undefined
+    return {
+      "MemberExpression[computed=false][property.name='message']"(node) {
+        if (isError(services.getTypeAtLocation(node.object)))
+          context.report({ node, messageId: 'message' })
+      },
+      "ObjectPattern > Property[key.name='message']"(node) {
+        const pattern = node.parent
+        const source = pattern.parent.type === 'VariableDeclarator' && pattern.parent.init ? pattern.parent.init : pattern
+        if (isError(services.getTypeAtLocation(source)))
+          context.report({ node, messageId: 'message' })
+      },
+      "BinaryExpression[operator='in'][left.value='message'], :matches(TSAsExpression, TSTypeAssertion) > TSTypeLiteral > TSPropertySignature[key.name='message']"(node) {
+        context.report({ node, messageId: 'message' })
+      },
+      "MemberExpression[property.name=/^(detail|title)$/], MemberExpression[property.value=/^(detail|title)$/]"(node) {
+        if (isProblemText(checker.getSymbolAtLocation(services.esTreeNodeToTSNodeMap.get(node.property))))
+          context.report({ node, messageId: 'problemText' })
+      },
+      "ObjectPattern > Property[key.name=/^(detail|title)$/]"(node) {
+        const pattern = node.parent
+        const source = pattern.parent.type === 'VariableDeclarator' && pattern.parent.init ? pattern.parent.init : pattern
+        if (isProblemText(services.getTypeAtLocation(source).getProperty(node.key.name)))
+          context.report({ node, messageId: 'problemText' })
+      },
+      ":matches(NewExpression, CallExpression)[callee.name='Error']"(node) {
+        if (!isThrown(node))
+          context.report({ node, messageId: 'newError' })
+      },
+      "CallExpression:matches([callee.name='setError'], [callee.property.name='setError'])"(node) {
+        const name = textOf(node.arguments[0])
+        if ((name !== 'root' && !name?.startsWith?.('root.')) || node.arguments[1]?.type !== 'ObjectExpression')
+          return
+        const message = node.arguments[1].properties.find((p) => p.type === 'Property' && (p.key.name ?? p.key.value) === 'message')
+        if (message && (message.value.type !== 'CallExpression' || message.value.callee.name !== 'failureText'))
+          context.report({ node: message.value, messageId: 'rootError' })
+      },
+    }
+  },
+}
+
 export default tseslint.config(
   // Kubb writes src/api/generated (and one sibling folder for each other API version). Run `pnpm generate:api` to change it.
   { ignores: ['dist', 'dist-functional', 'src/api/generated*'] },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/request-failure.ts', 'src/**/*.test.{ts,tsx}', 'src/test/**'],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    plugins: { messages: { rules: { 'failure-text': failureTextRule } } },
+    rules: { 'messages/failure-text': 'error' },
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

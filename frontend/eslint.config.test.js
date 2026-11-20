@@ -307,8 +307,12 @@ export function listKey(params: RecordListParams) {
 
 describe('words made from a code', () => {
   // The config of the app, so that a later block that replaces no-restricted-syntax for one of these files fails the test
+  // Most of these files are not on disk, so the TypeScript program of messages/failure-text does not have them.
   const messagesFor = async (code, filePath = 'src/zone.ts') => {
-    const eslint = new ESLint({ cwd: import.meta.dirname })
+    const eslint = new ESLint({
+      cwd: import.meta.dirname,
+      overrideConfig: { languageOptions: { parserOptions: { projectService: false } }, rules: { 'messages/failure-text': 'off' } },
+    })
     const [result] = await eslint.lintText(code, { filePath })
     return result.messages.map((message) => message.message)
   }
@@ -330,5 +334,76 @@ describe('words made from a code', () => {
 
   it('accepts a replace that does not make words from a code', async () => {
     expect(await messagesFor("export const slug = (text) => text.replaceAll(' ', '_')")).toEqual([])
+  })
+})
+
+describe('messages/failure-text', { timeout: 60_000 }, () => {
+  // The project service gives each file the text that the test lints, so the path must be a file of the app.
+  const fileThatTheExampleWipeKeeps = 'src/components/query-error.tsx'
+  const failureTextMessages = async (code, filePath = fileThatTheExampleWipeKeeps) => {
+    const eslint = new ESLint({ cwd: import.meta.dirname })
+    const [result] = await eslint.lintText(code, { filePath })
+    return result.messages.filter((message) => message.ruleId === 'messages/failure-text').map((message) => message.messageId)
+  }
+  const imports = "import { ProblemDetailsError } from '@/lib/problem-details'\nimport { failureText } from '@/lib/request-failure'\n"
+
+  it.each([
+    ['an error that a catch narrows', 'export const text = (error: unknown) => (error instanceof Error ? error.message : "Failed.")'],
+    ['an error of the Server', 'export const text = (error: ProblemDetailsError) => error?.message'],
+    ['a prop of the type Error', 'export const text = ({ error }: { error: Error | null }) => error?.message ?? ""'],
+    ['an error that a type parameter holds', 'export const text = <E extends Error>(error: E) => error.message'],
+    ['an error that a declaration takes apart', 'export function text(error: Error) {\n  const { message } = error\n  return message\n}'],
+    ['an error that a parameter takes apart', 'export const text = ({ message }: ProblemDetailsError) => message'],
+    ['a value that a check of its shape narrows', 'export const text = (error: unknown) => (error && typeof error === "object" && "message" in error ? String(error.message) : "")'],
+    ['a value that a cast gives a message', 'export const text = (error: unknown) => (error as { message: string }).message'],
+  ])('reports the message of %s', async (_, code) => {
+    expect(await failureTextMessages(imports + code)).toEqual(['message'])
+  })
+
+  it('accepts the message of a field error of a form, which is not an Error', async () => {
+    const code = 'export const text = (fieldState: { error?: { type: string; message?: string } }) => fieldState.error?.message'
+    expect(await failureTextMessages(code)).toEqual([])
+  })
+
+  it('reports the detail and the title of a problem, and accepts the title of another type', async () => {
+    const code = `${imports}import type { ValidationProblemDetails } from '@/api/generated/models/types/validation-problem-details'
+export const text = (error: ProblemDetailsError, refusal: ValidationProblemDetails, page: { title: string }) =>
+  error.problemDetails.detail ?? error.problemDetails.title ?? refusal.detail ?? error.problemDetails['title'] ?? page.title
+export function parts(error: ProblemDetailsError) {
+  const { detail, status } = error.problemDetails
+  return [detail, status]
+}`
+    expect(await failureTextMessages(code)).toEqual(['problemText', 'problemText', 'problemText', 'problemText', 'problemText'])
+  })
+
+  it('reports an error that carries a text to the screen, and accepts an error that the code throws', async () => {
+    const code = `${imports}export function show(error: unknown, onError: (error: unknown) => void, ok: boolean) {
+  onError(error instanceof ProblemDetailsError ? error : new Error('The invite was not created. Check your connection, then try again.'))
+  if (!ok) throw ok === false ? new Error('A fault in the code.') : error
+  if (ok) throw new Error('A fault in the code.') satisfies Error
+}
+export const later = () => setTimeout(() => show(Error('Check your connection.'), () => {}, true))
+export const fail = () => Promise.reject(new Error('A fault in the code.'))
+export const wait = () => new Promise((_, reject) => reject(new Error('A fault in the code.')))`
+    expect(await failureTextMessages(code)).toEqual(['newError', 'newError'])
+  })
+
+  it('reports a root error of a form with a text of its own, and accepts failureText', async () => {
+    const code = `${imports}type Form = { setError: (name: string, error: { message: string }) => void }
+export function show(form: Form, error: unknown) {
+  form.setError('root.server', { message: 'The tenant was not started. Check your connection, then try again.' })
+  form.setError('root.server', { message: failureText(error) })
+  form.setError('name', { message: 'Enter a name.' })
+}
+export function showOnItsOwn(setError: Form['setError']) {
+  setError(\`root.server\`, { message: 'Check your connection.' })
+  setError('root', { 'message': 'Check your connection.' })
+  setError('rootFolder', { message: 'Enter a folder.' })
+}`
+    expect(await failureTextMessages(code)).toEqual(['rootError', 'rootError', 'rootError'])
+  })
+
+  it('lets the owner read the message', async () => {
+    expect(await failureTextMessages('export const text = (error: Error) => error.message', 'src/lib/request-failure.ts')).toEqual([])
   })
 })

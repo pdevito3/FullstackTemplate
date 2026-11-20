@@ -11,8 +11,9 @@ public static class ObjectStorageRegistration
 
     /// <summary>
     /// Adds the S3 client, <see cref="ObjectStorage"/>, and <see cref="ObjectWriter"/>. With no endpoint, the client
-    /// calls S3 of AWS, and the SDK finds the region and the credentials in its default chain. An endpoint, such as Floci in a local run, gets path-style URLs, so
-    /// that the host of a URL is the endpoint host and not a subdomain with the bucket name.
+    /// calls S3 of AWS, and the SDK finds the region and the credentials in its default chain. An endpoint, such as
+    /// Floci in a local run, gets path-style URLs, so that the host of a URL is the endpoint host and not a subdomain
+    /// with the bucket name.
     /// </summary>
     [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
         Justification = "The registration makes the one S3 client of ObjectStorage and ObjectWriter.")]

@@ -16,6 +16,7 @@ public sealed class ObjectWriter(IAmazonS3 s3, IOptions<ObjectStorageOptions> op
             Key = key,
             InputStream = content,
             ContentType = contentType,
+            // The caller owns the stream
             AutoCloseStream = false,
         }, cancellationToken);
 }

@@ -10,8 +10,8 @@ public static class ObjectStorageRegistration
     private const string RegionKey = "AWS_DEFAULT_REGION";
 
     /// <summary>
-    /// Adds <see cref="ObjectStorage"/>. With no endpoint, the client calls S3 of AWS, and the SDK finds the region
-    /// and the credentials in its default chain. An endpoint, such as Floci in a local run, gets path-style URLs, so
+    /// Adds the S3 client, <see cref="ObjectStorage"/>, and <see cref="ObjectWriter"/>. With no endpoint, the client
+    /// calls S3 of AWS, and the SDK finds the region and the credentials in its default chain. An endpoint, such as Floci in a local run, gets path-style URLs, so
     /// that the host of a URL is the endpoint host and not a subdomain with the bucket name.
     /// </summary>
     [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",

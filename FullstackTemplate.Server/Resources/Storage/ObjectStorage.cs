@@ -5,13 +5,13 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 
-[SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
-    Justification = "ObjectStorage owns the lists, the deletes, and the signed URLs of the S3 client.")]
 public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> options)
 {
     private string BucketName => options.Value.BucketName;
 
     /// <summary>Deletes the object. S3 gives success for a key that does not exist, so a second delete is a no-op.</summary>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "A delete of one object. Only AttachmentStorage.AddAsync puts.")]
     public async Task DeleteAsync(string key, CancellationToken cancellationToken)
         => await s3.DeleteObjectAsync(new DeleteObjectRequest { BucketName = BucketName, Key = key }, cancellationToken);
 
@@ -19,6 +19,8 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
     /// Deletes the objects, at most 1000. S3 gives success for a key that does not exist, so a second delete is a no-op.
     /// </summary>
     /// <exception cref="DeleteObjectsException">A key failed to delete.</exception>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "A delete of a batch of objects. Only AttachmentStorage.AddAsync puts.")]
     public async Task DeleteAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken)
         => await s3.DeleteObjectsAsync(new DeleteObjectsRequest
         {
@@ -29,7 +31,7 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
 
     /// <summary>
     /// Deletes each object whose key starts with the prefix, one page of keys at a time, and gives the number of keys.
-    /// A key that fails to delete throws a <see cref="DeleteObjectsException"/>, and the keys of the pages after it stay.
+    /// A key that fails to delete throws a <c>DeleteObjectsException</c>, and the keys of the pages after it stay.
     /// </summary>
     public async Task<int> DeleteUnderAsync(string prefix, CancellationToken cancellationToken)
     {
@@ -51,6 +53,8 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
     /// One page of the objects whose key starts with the prefix, at most 1000, in the order of their keys. Give the
     /// <see cref="ObjectPage.NextToken"/> of a page to get the page after it.
     /// </summary>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "A list of one page of keys. Only AttachmentStorage.AddAsync puts.")]
     public async Task<ObjectPage> ListPageAsync(string prefix, string? continuationToken, CancellationToken cancellationToken)
     {
         var page = await s3.ListObjectsV2Async(new ListObjectsV2Request
@@ -69,6 +73,8 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
     /// Signs a GET URL. The signature is local work with no call to S3, so the URL does not prove that the object
     /// exists. Anyone with the URL can read the object until it expires, so sign only after an access check.
     /// </summary>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "A signed GET URL. Only AttachmentStorage.AddAsync puts.")]
     public Task<string> GetPresignedUrlAsync(PresignedGet get)
     {
         var request = new GetPreSignedUrlRequest

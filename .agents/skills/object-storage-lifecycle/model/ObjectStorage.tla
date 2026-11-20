@@ -118,7 +118,7 @@ StartAdd(a) ==
     /\ apc' = [apc EXCEPT ![a] = "put"]
     /\ UNCHANGED <<tenant, row, obj, shared, td, req, runVars, sweepVars, crashes>>
 
-\* AddAsync: storage.PutAsync. A put that throws can still have stored the object.
+\* AddAsync: writer.PutAsync. A put that throws can still have stored the object.
 Put(a) ==
     /\ apc[a] = "put"
     /\ \/ /\ obj' = [obj EXCEPT ![a] = TRUE]

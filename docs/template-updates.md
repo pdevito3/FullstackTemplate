@@ -163,6 +163,14 @@ A recurring job now deletes each object in storage that no live row names (see [
 - The sweep does not run while the database has a migration that the Server does not know. If the app deleted a migration that its database ran, for example with `scripts/remove-examples.cs`, delete the row of that migration from `__EFMigrationsHistory`. The Warning log `Skipped the sweep of the bucket` names each such migration.
 - `AttachmentStorage.AddAsync` now gives the save of the row a token, and stops the put and the save after `Attachments:AddTimeout`. The build fails at each add of an attachment entity of the app. Change `async () =>` to `async addToken =>`, and give `addToken` to `RootLock.Tenant.RunSharedAsync` in place of the token of the request.
 
+### The update that bans a put outside AttachmentStorage
+
+`AttachmentStorage.AddAsync` is now the one put of the Server, because the sweep of the bucket can delete the object of a put on another path before its row is saved (see [attachments.md](backend/attachments.md#the-sweep-of-the-bucket)). `ObjectStorage.PutAsync` is gone, and `ObjectWriter` has the put.
+
+- The build fails (RS0030) at each use of `ObjectWriter` and of the `Amazon.S3` namespace outside `AttachmentStorage.AddAsync`, `ObjectStorage`, `ObjectWriter`, and `ObjectStorageRegistration`.
+- Give the put of each attachment entity of the app to `AttachmentStorage.AddAsync`.
+- For a file that is not an attachment, such as an export, put it under a prefix other than `tenants/`. Suppress RS0030 on the method that puts it, with a justification, and add the file to the list of `BannedApiSuppressionTests`.
+
 ## Keep the next update small
 
 - When you find a fault in the template, report it as an issue of the template, and get the fix with the next update. A fix that you copy by hand gives a conflict when the fix of the template comes.

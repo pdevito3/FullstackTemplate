@@ -8,6 +8,7 @@ import { Notification } from '@/components/notification'
 import { apiClient, onUnauthorized } from '@/lib/api-client'
 import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
+import { failureText } from '@/lib/request-failure'
 
 vi.mock('@/components/notification', () => ({
   Notification: { error: vi.fn() },
@@ -149,7 +150,7 @@ describe('apiClient with a fault of the Server', () => {
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
-    expect((error as Error).message).toBe(serverFault)
+    expect(failureText(error)).toBe(serverFault)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
   })
 
@@ -165,7 +166,7 @@ describe('apiClient with a fault of the Server', () => {
 
     expect(error).toBeInstanceOf(Error)
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
-    expect((error as Error).message).toBe(serverFault)
+    expect(failureText(error)).toBe(serverFault)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
   })
 })
@@ -191,7 +192,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     const signInRejected =
       'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
-    expect((error as Error).message).toBe(signInRejected)
+    expect(failureText(error)).toBe(signInRejected)
     expect(checkSession).toHaveBeenCalledOnce()
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(signInRejected)
   })
@@ -213,7 +214,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     const noAnswer = 'The app could not reach the server. Check your connection, then try again.'
-    expect((error as Error).message).toBe(noAnswer)
+    expect(failureText(error)).toBe(noAnswer)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(noAnswer)
   })
   const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
@@ -223,7 +224,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
 
-    expect((error as Error).message).toBe(timedOut)
+    expect(failureText(error)).toBe(timedOut)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
   })
 
@@ -234,7 +235,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
 
-    expect((error as Error).message).toBe(timedOut)
+    expect(failureText(error)).toBe(timedOut)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
   })
 

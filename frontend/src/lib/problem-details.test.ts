@@ -39,36 +39,9 @@ describe('ProblemDetailsError', () => {
 
     expect(error.name).toBe('ProblemDetailsError')
     expect(error.status).toBe(404)
-    expect(error.title).toBe('The resource was not found.')
-    expect(error.detail).toBe('Tenant was not found.')
     expect(error.traceId).toBe('00-abc-def-00')
     expect(isProblemDetailsError(error)).toBe(true)
     expect(isProblemDetailsError(new Error('x'))).toBe(false)
-  })
-
-  it('uses the detail as the message', () => {
-    const error = new ProblemDetailsError(problem)
-
-    expect(error.message).toBe('Tenant was not found.')
-    expect(error.displayMessage).toBe('Tenant was not found.')
-  })
-
-  it('uses the title when the problem has no detail', () => {
-    const error = new ProblemDetailsError({ ...problem, detail: null })
-
-    expect(error.message).toBe('The resource was not found.')
-    expect(error.displayMessage).toBe('The resource was not found.')
-  })
-
-  it.each([
-    ['no detail and no title', { type: problem.type, status: 500 }],
-    ['the default title of ASP.NET', { type: problem.type, title: 'An error occurred while processing your request.', status: 500 }],
-    ['a detail for a developer', { type: problem.type, title: 'Error', status: 503, detail: 'Npgsql timeout' }],
-  ])('says what happened and what to do next for a fault of the Server with %s', (_, body) => {
-    const error = new ProblemDetailsError(body)
-
-    expect(error.message).toBe('The server could not complete the request. Try again in a moment.')
-    expect(error.displayMessage).toBe('The server could not complete the request. Try again in a moment.')
   })
 })
 

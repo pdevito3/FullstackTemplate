@@ -6,6 +6,7 @@ import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import { maximumOf, maxLengthOf, minimumOf } from '@/lib/api-contract'
 import { ProblemDetailsError, STALE_VERSION_PROBLEM_TYPE } from '@/lib/problem-details'
+import { answerError } from '@/lib/request-failure'
 
 import { WorkshopEditForm } from './workshop-edit-form'
 
@@ -143,7 +144,7 @@ test('after a stale save, keeps each edit that the latest save did not change, a
 })
 
 test('shows a failed read of the workshop once, in the stale alert after a stale save', async () => {
-  const refetchError = new Error('The server could not complete the request. Try again in a moment.')
+  const refetchError = answerError(500, '')
   const screen = await render(
     <WorkshopEditForm workshop={workshop} refetchError={refetchError} onSave={vi.fn().mockRejectedValue(stale)} onLoadLatest={vi.fn()} />,
   )

@@ -17,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
+import { failureText } from '@/lib/request-failure'
 import { cn } from '@/lib/utils'
 import { formatDate as formatDay } from '@/lib/zoned-time'
 import { PageHeading } from '@/components/page-heading'
@@ -157,11 +158,11 @@ function Index() {
         </Card>
 
         {/* Error Message */}
-        {currentError && (
+        {currentError !== null && (
           <div role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 mb-6">
             <p className="font-medium">Error loading weather data</p>
             <p className="text-sm mt-1">
-              {currentError instanceof Error ? currentError.message : 'Failed to fetch weather data'}
+              {failureText(currentError)}
             </p>
           </div>
         )}
@@ -169,7 +170,7 @@ function Index() {
         <ForecastDays
           days={displayData}
           isLoading={isLoading}
-          hasError={!!currentError}
+          hasError={currentError !== null}
           useCelsius={useCelsius}
           formatDate={formatDate}
           onRetry={handleRefresh}

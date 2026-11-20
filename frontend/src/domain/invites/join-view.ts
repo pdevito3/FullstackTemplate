@@ -3,6 +3,7 @@ import type { MutationStatus } from '@tanstack/react-query'
 import type { InvitePreviewDto } from '@/api/generated/models/types/invite-preview-dto'
 import type { Membership, StartTenantProfile } from '@/domain/membership/apis/get-membership'
 import { isRefusal } from '@/domain/membership/apis/get-membership'
+import { failureText } from '@/lib/request-failure'
 
 /** The text of `Invite.NotValidMessage` and `Invite.CallerHasTenantMessage` of the Server (section 6 of docs/specs/user-invites.md). */
 export const LINK_NOT_VALID = 'This invite link is not valid. Ask a tenant admin for a new invite.'
@@ -19,13 +20,13 @@ export type JoinView =
   | { kind: 'joining' }
   | { kind: 'member' }
   | { kind: 'link-refused'; message: string }
-  | { kind: 'preview-failed'; error: Error }
+  | { kind: 'preview-failed'; error: unknown }
   | { kind: 'claimable'; preview: InvitePreviewDto; profile: StartTenantProfile }
 
 interface JoinFacts {
   membership: Membership
   link: TabLink
-  preview: { data?: InvitePreviewDto; error: Error | null }
+  preview: { data?: InvitePreviewDto; error: unknown }
   /** The refusal of a claim that killed the link. */
   refusedLink: string | null
   claim: MutationStatus
@@ -45,7 +46,7 @@ export function joinViewOf({ membership, link, preview, refusedLink, claim }: Jo
   // A failed background read keeps the data of the last answer, and the form with the typed values. A refusal wins.
   if (preview.error && (isRefusal(preview.error) || !preview.data)) {
     return isRefusal(preview.error)
-      ? { kind: 'link-refused', message: preview.error.displayMessage }
+      ? { kind: 'link-refused', message: failureText(preview.error) }
       : { kind: 'preview-failed', error: preview.error }
   }
   return preview.data ? { kind: 'claimable', preview: preview.data, profile: membership.profile } : { kind: 'loading' }

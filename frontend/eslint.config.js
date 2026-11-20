@@ -468,6 +468,10 @@ const testFileRules = [
     selector: "Property[key.name='waitUntil'][value.value='commit']",
     message: 'A navigation that waits only for the commit leaves the load of the app to the next expect, and its 5 s are too short on a slow machine. To open a URL that goes to the login, call openAndWaitForLogin(page, url) from @tests/support/answers. It waits for the answer of the login.',
   },
+  {
+    selector: "CallExpression > ObjectExpression > Property[key.name='timeout']",
+    message: 'Do not set a timeout. A short one fails on a slow machine, and a long one guesses how slow the machine is. Wait for the event that ends the work: arm a wait for its answer before the action, or hold the answer with api.hold and answer it at the step that needs it.',
+  },
 ]
 
 const specFileRules = [

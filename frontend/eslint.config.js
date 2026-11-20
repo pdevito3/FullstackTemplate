@@ -408,6 +408,10 @@ const testFileRules = [
     selector: "CallExpression[callee.property.name='waitForTimeout']",
     message: 'Do not wait for a time. In the *.tasks.ts file of the feature, wait for the response of the request, or let an expect retry until the state shows.',
   },
+  {
+    selector: "Property[key.name='waitUntil'][value.value='commit']",
+    message: 'A navigation that waits only for the commit leaves the load of the app to the next expect, and its 5 s are too short on a slow machine. To open a URL that goes to the login, call openAndWaitForLogin(page, url) from @tests/support/answers. It waits for the answer of the login.',
+  },
 ]
 
 const specFileRules = [

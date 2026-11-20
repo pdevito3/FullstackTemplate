@@ -97,7 +97,9 @@ test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
 For an anonymous visitor, use `as.anonymous()`. Then `/bff/user` answers 204, and the SPA goes to the login before it shows a page. Thus a spec of a page needs a signed-in actor. The session spec (`tests/features/session/session.spec.ts`) covers the anonymous visitor and a failed check of the session.
 
-Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back. In a task, wait for the answer of `/bff/login`, and then assert the URL. Do not start with `toHaveURL` or `expect.poll`, because on a slow machine the server can take more than the 5 s of an assertion to serve the app before the SPA checks the session. Do not use `page.waitForURL` for the login, because in a development build React StrictMode starts the login twice, so the first navigation can abort, and `waitForURL` then fails. See `openLinkAndGoToLogin` in `tests/features/invites/invites.tasks.ts`.
+Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back. In a task, wait for the answer of `/bff/login`, and then assert the URL. Do not start with `toHaveURL` or `expect.poll`, because on a slow machine the server can take more than the 5 s of an assertion to serve the app before the SPA checks the session. Do not use `page.waitForURL` for the login, because in a development build React StrictMode starts the login twice, so the first navigation can abort, and `waitForURL` then fails. To open a URL that goes to the login, call `openAndWaitForLogin(page, url)` from `tests/support/answers.ts`. For a click that goes to the login, see `submitAndGoToLogin` in `tests/features/invites/invites.tasks.ts`.
+
+Check: `pnpm lint` fails on `waitUntil: 'commit'` in each file of `tests/`, because a navigation that waits only for the commit leaves the load of the app to the next expect.
 
 ### Builders
 

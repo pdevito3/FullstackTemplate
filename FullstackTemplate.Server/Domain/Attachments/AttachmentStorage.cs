@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Attachments;
 
+using System.Diagnostics.CodeAnalysis;
 using Databases;
 using Microsoft.Extensions.Options;
 using ObjectDeletes;
@@ -10,7 +11,7 @@ using Resources.Storage;
 /// download, so the object goes first on an add and last on a delete. An object with no row costs only its storage, and
 /// the sweep of the bucket deletes it.
 /// </summary>
-public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage storage, IOptions<AttachmentOptions> options)
+public sealed class AttachmentStorage(AppDbContext dbContext, ObjectWriter writer, IOptions<AttachmentOptions> options)
 {
     /// <summary>
     /// Puts the bytes of a new attachment in storage, then runs the save of its row. When the put or the save throws,
@@ -23,6 +24,8 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
     /// the save can run in a lock that runs its work again.</param>
     /// <param name="cancellationToken">Stops the put and the save.</param>
     /// <exception cref="TimeoutException">The put and the save took longer than <see cref="AttachmentOptions.AddTimeout"/>.</exception>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "AddAsync is the one put of the Server. It ends the put and the save within AddTimeout.")]
     public async Task AddAsync<TAttachment>(TAttachment attachment, ReceivedFile file, Func<CancellationToken, Task> saveRow,
         CancellationToken cancellationToken)
         where TAttachment : BaseEntity, IAttachment
@@ -35,7 +38,7 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
         add.CancelAfter(addTimeout);
         try
         {
-            await storage.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, add.Token);
+            await writer.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, add.Token);
             await saveRow(add.Token);
         }
         catch (OperationCanceledException exception)

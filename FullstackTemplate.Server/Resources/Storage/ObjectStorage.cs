@@ -1,23 +1,15 @@
 namespace FullstackTemplate.Server.Resources.Storage;
 
+using System.Diagnostics.CodeAnalysis;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 
+[SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+    Justification = "ObjectStorage owns the lists, the deletes, and the signed URLs of the S3 client.")]
 public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> options)
 {
     private string BucketName => options.Value.BucketName;
-
-    public async Task PutAsync(string key, Stream content, string contentType, CancellationToken cancellationToken)
-        => await s3.PutObjectAsync(new PutObjectRequest
-        {
-            BucketName = BucketName,
-            Key = key,
-            InputStream = content,
-            ContentType = contentType,
-            // The caller owns the stream
-            AutoCloseStream = false,
-        }, cancellationToken);
 
     /// <summary>Deletes the object. S3 gives success for a key that does not exist, so a second delete is a no-op.</summary>
     public async Task DeleteAsync(string key, CancellationToken cancellationToken)

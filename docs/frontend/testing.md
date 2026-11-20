@@ -180,4 +180,4 @@ Each functional test runs in the `pago-pago` project. A test tagged `@zone` also
 
 1. Write a builder for each new type, and an API file for each new area.
 2. Write the locators file, the tasks file, and a spec that opens the page.
-3. Run `pnpm test:e2e`. Run `pnpm test:e2e --repeat-each=10` before you push, to find a flaky test.
+3. Run `pnpm test:e2e`. Before you push, run `pnpm test:e2e --only-changed=main --repeat-each=10` to find a flaky test. It runs 10 times each spec that differs from `main`, and each spec that imports a file that differs.

@@ -5,8 +5,10 @@ import { invitesPaths } from '@tests/support/api/invites-api'
 import { tenantsPaths } from '@tests/support/api/tenants-api'
 import { invites, join } from './invites.locators'
 
-const answeredBy = (page: Page) => (method: string, path: string) =>
-  page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path)
+const answeredBy = (page: Page) => (method: string, path: string, nth = 1) => {
+  let answers = 0
+  return page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path && ++answers === nth)
+}
 
 async function pageOverflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
@@ -131,10 +133,7 @@ export function usersWithInvites(page: Page) {
 
     /** The network comes back, and TanStack Query reads the tenant again. A failure retries one time. */
     async readTheTenantAgainAfterAReconnect() {
-      const settled = (async () => {
-        await answered('GET', tenantsPaths.one('tnt_1'))
-        await answered('GET', tenantsPaths.one('tnt_1'))
-      })()
+      const settled = answered('GET', tenantsPaths.one('tnt_1'), 2)
       await page.context().setOffline(true)
       await page.context().setOffline(false)
       await settled
@@ -249,9 +248,7 @@ export function joinPage(page: Page) {
 
     /** The network comes back, and TanStack Query reads the preview again. A failure retries one time. */
     async readPreviewAgainAfterAReconnect(requests: number) {
-      const settled = (async () => {
-        for (let i = 0; i < requests; i++) await answered('POST', invitesPaths.preview)
-      })()
+      const settled = answered('POST', invitesPaths.preview, requests)
       await context.setOffline(true)
       await context.setOffline(false)
       await settled

@@ -64,6 +64,62 @@ export const noPageActionRule = {
   },
 }
 
+// docs/frontend/testing.md, section "Locators, tasks, and specs".
+const waitMethods = /^waitFor(Response|Request|Event)$/
+export const lateWaitMessage = 'This wait starts after the action before it, so it misses an answer or an event that came first. Arm the wait before the action, and await it after the action: `const answer = answered(...)`, then the action, then `await answer`.'
+
+export const armWaitFirstRule = {
+  meta: { type: 'problem', schema: [], messages: { late: lateWaitMessage } },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    const checker = services.program.getTypeChecker()
+    const isWaitMethod = (callee) => callee.type === 'MemberExpression' && waitMethods.test(callee.property.name)
+    const isAllOfWaits = (node) => {
+      const { callee, arguments: [list] } = node
+      return callee.type === 'MemberExpression' && callee.object.name === 'Promise' && callee.property.name === 'all'
+        && list?.type === 'ArrayExpression' && list.elements.length > 0 && list.elements.every(isWait)
+    }
+    const armsItsOwnWait = (callee) => {
+      let symbol = checker.getSymbolAtLocation(services.esTreeNodeToTSNodeMap.get(callee.type === 'MemberExpression' ? callee.property : callee))
+      if (symbol && symbol.flags & ts.SymbolFlags.Alias)
+        symbol = checker.getAliasedSymbol(symbol)
+      const declaration = symbol?.declarations?.[0]
+      const fn = declaration && ts.isVariableDeclaration(declaration) ? declaration.initializer : declaration
+      return Boolean(fn && ts.isFunctionLike(fn) && fn.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword))
+    }
+    const givesPlaywrightAnswer = (node) => {
+      const type = services.getTypeAtLocation(node)
+      const answer = checker.getAwaitedType(type)
+      return answer !== undefined && answer !== type && isPlaywright(answer, ['Response', 'Request'])
+    }
+    function isWait(node) {
+      if (node?.type !== 'CallExpression')
+        return false
+      if (isAllOfWaits(node) || isWaitMethod(node.callee))
+        return true
+      return !armsItsOwnWait(node.callee) && givesPlaywrightAnswer(node)
+    }
+    const awaitedByNextStatement = (declaration, name) => {
+      const body = declaration.parent.body
+      const next = Array.isArray(body) ? body[body.indexOf(declaration) + 1] : undefined
+      const value = next?.type === 'ExpressionStatement'
+        ? next.expression
+        : next?.type === 'VariableDeclaration' && next.declarations.length === 1 ? next.declarations[0].init : null
+      return value?.type === 'AwaitExpression' && value.argument.type === 'Identifier' && value.argument.name === name
+    }
+    return {
+      AwaitExpression(node) {
+        if (isWait(node.argument))
+          context.report({ node, messageId: 'late' })
+      },
+      'VariableDeclaration > VariableDeclarator'(node) {
+        if (node.id.type === 'Identifier' && isWait(node.init) && awaitedByNextStatement(node.parent, node.id.name))
+          context.report({ node, messageId: 'late' })
+      },
+    }
+  },
+}
+
 const within = (inner, outer) => inner.range[0] >= outer.range[0] && inner.range[1] <= outer.range[1]
 
 const referencesIn = (sourceCode, node) => {
@@ -501,7 +557,8 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: { project: './tsconfig.tests.json', tsconfigRootDir: import.meta.dirname },
     },
-    plugins: { playwright: { rules: { 'no-page-action': noPageActionRule } } },
+    plugins: { playwright: { rules: { 'no-page-action': noPageActionRule, 'arm-wait-first': armWaitFirstRule } } },
+    rules: { 'playwright/arm-wait-first': 'error' },
   },
   {
     files: ['tests/**/*.ts'],

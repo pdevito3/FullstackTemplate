@@ -72,4 +72,25 @@ The text of an MCP tool error starts with a code such as `permission_denied`, so
 
 ## In the SPA
 
-`apiClient` shows the `detail` of a problem in a toast (see [API client](frontend.md#api-client)). It shows the text of the Server only for a refusal, a 4xx. A 5xx has no text for a user: its `title` is the default of ASP.NET, and a `detail` is for a developer. So for a 5xx, and for an answer that is not a problem, the SPA shows `serverFaultMessage` of `lib/problem-details.ts`. For a 504 with no body, and for a request that reaches the time limit of the SPA, it shows `timedOutMessage`. For a request with no answer, it shows `noAnswerMessage`. The `message` of the error has the same text, so a form or a page that shows the error shows no text of the Server. A component that also shows the error must not repeat the same text. When the SPA writes its own text, such as a toast, a label, or an empty state, these rules also apply. The SPA has no check for them. The `verify-fullstack-template` skill reads each message on the screen.
+`failureText(error)` of `lib/request-failure.ts` gives the text of each failed request, query, and mutation. It is the one owner of this text. The toast of `apiClient`, `QueryError`, `useServerErrors`, the stale alert, and the forms and pages that show why a request failed show the text that it gives (see [API client](frontend.md#api-client)). The SPA knows only the kind of a failure, so a text that a component writes can name the wrong cause, such as "Check your connection" for a fault of the Server (#500). `failureText` gives one text for each kind:
+
+| Kind | Text |
+|------|------|
+| A refusal: a 4xx problem, such as a 403, a 404, a 409, or a 422 | The `detail` of the Server, or its `title`. `UserMessageAnalyzer` checks this text in the Server. |
+| A fault of the Server: a 5xx, or an answer that is not a problem | "The server could not complete the request. Try again in a moment." The `title` of a 5xx is the default of ASP.NET, and its `detail` is for a developer (#474). |
+| A time limit: a 504 with no body, or the time limit of the SPA | "The server did not answer in time. Reload the page to see the latest data, then try again." |
+| No answer | "The app could not reach the server. Check your connection, then try again." |
+| A 401 | "The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again." |
+| A fault of the app: an error that is not of a request, such as a bug | "The app has a fault. Reload the page, then try again." The `message` of the error is for a developer. |
+
+`Record<SpaTextKind, string>` holds the texts of the SPA, so a new kind does not build until it has a text. A component writes only a title that names what did not happen, such as "The invites did not load.", and shows `failureText(error)` with it. A component that also shows the error must not repeat the same text.
+
+Check: in `pnpm lint`, `messages/failure-text` in `frontend/eslint.config.js` fails outside `lib/request-failure.ts` on these forms. Its error names `failureText`.
+
+- The `message` of a value of the type `Error`, or of a subclass, such as `error.message` or `const { message } = error`. The rule reads the type.
+- A `message` that a check of the shape gives a value, such as `'message' in error` or `error as { message: string }`.
+- The `detail` or the `title` of a problem, such as `error.problemDetails.detail` or `const { detail } = error.problemDetails`.
+- A `new Error(...)` that the code does not throw or reject, such as `show(new Error('Check your connection.'))`.
+- A root error of a form with a text of its own, such as `setError('root.server', { message: '...' })`.
+
+The error of a query or a mutation has the type `unknown` (`Register` in `lib/request-failure.ts`), so the build fails on `query.error.message`. The lint does not see a text that a component writes in JSX for a failure, such as "The server is down." in an error branch. A reviewer reads it. When the SPA writes its own text, such as a toast, a label, or an empty state, the rules above also apply. The `verify-fullstack-template` skill reads each message on the screen.

@@ -1,5 +1,8 @@
 namespace FullstackTemplate.IntegrationTests.ObjectDeletes;
 
+using Amazon.Runtime;
+using Amazon.S3;
+using Amazon.S3.Model;
 using BackWave.Monitor;
 using BackWave.Storage;
 using FullstackTemplate.IntegrationTests.Jobs;
@@ -12,6 +15,7 @@ using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using Shouldly;
 using static ObjectDeleteTestServer;
@@ -98,6 +102,32 @@ public class SweepObjectsTests : TestBase
     }
 
     [Test]
+    public async Task a_key_that_storage_refuses_to_delete_fails_the_run_after_the_orphans_of_the_later_pages_go()
+    {
+        // Arrange
+        await using var bucket = await SweepBucket.CreateAsync();
+        var prefix = StoredFile.TenantPrefix(TestFixture.DefaultTenant.Id);
+        var refused = await bucket.PutAsync($"{prefix}files/a-refused");
+        await bucket.PutAsync($"{prefix}files/b-orphan");
+        var last = await bucket.PutAsync($"{prefix}files/c-orphan");
+        var client = new OneKeyPagesRefusingClient(refused.Key);
+
+        // Act
+        var (state, failures) = await bucket.RunSweepAsync(last.LastModified + Grace + TimeSpan.FromSeconds(1),
+            configure: services =>
+            {
+                services.RemoveAll<IAmazonS3>();
+                services.AddSingleton<IAmazonS3>(client);
+            });
+
+        // Assert
+        client.ListedPages.ShouldBe(3, "Each object is on a page of its own, so the refused key is alone on the first page.");
+        (await bucket.KeysAsync()).ShouldBe([refused.Key]);
+        state.ShouldNotBe(JobState.Succeeded);
+        failures.ShouldContain(f => f.Contains(refused.Key));
+    }
+
+    [Test]
     public async Task a_database_with_a_migration_that_the_server_does_not_have_skips_the_sweep()
     {
         // Arrange
@@ -146,6 +176,44 @@ public class SweepObjectsTests : TestBase
         dbContext.Tenants.Add(tenant);
         await dbContext.SaveChangesAsync();
         return tenant;
+    }
+
+    /// <summary>
+    /// An S3 client of the test store that lists one key for each page and refuses to delete one key, as Object Lock
+    /// or a deny policy does. It deletes the other keys of a batch, as S3 does.
+    /// </summary>
+    private sealed class OneKeyPagesRefusingClient(string refusedKey) : AmazonS3Client(
+        new BasicAWSCredentials("test", "test"),
+        new AmazonS3Config { ServiceURL = TestFixture.Storage.ServiceUrl, ForcePathStyle = true, AuthenticationRegion = "us-east-1" })
+    {
+        public int ListedPages { get; private set; }
+
+        public override Task<ListObjectsV2Response> ListObjectsV2Async(ListObjectsV2Request request,
+            CancellationToken cancellationToken = default)
+        {
+            ListedPages++;
+            request.MaxKeys = 1;
+            return base.ListObjectsV2Async(request, cancellationToken);
+        }
+
+        public override async Task<DeleteObjectsResponse> DeleteObjectsAsync(DeleteObjectsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var others = request.Objects.Where(o => o.Key != refusedKey).ToList();
+            var response = others.Count > 0
+                ? await base.DeleteObjectsAsync(new DeleteObjectsRequest
+                {
+                    BucketName = request.BucketName,
+                    Objects = others,
+                    Quiet = request.Quiet,
+                }, cancellationToken)
+                : new DeleteObjectsResponse();
+            if (others.Count == request.Objects.Count)
+                return response;
+
+            response.DeleteErrors = [new DeleteError { Key = refusedKey, Code = "AccessDenied", Message = "Access Denied" }];
+            throw new DeleteObjectsException(response);
+        }
     }
 
     private static async Task ExecuteAsync(string connectionString, string sql)

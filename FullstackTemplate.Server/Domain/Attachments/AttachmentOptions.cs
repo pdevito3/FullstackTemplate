@@ -5,6 +5,9 @@ public sealed record AttachmentOptions
 {
     public const string SectionName = "Attachments";
 
+    /// <summary>The longest <see cref="AddTimeout"/>. The grace of the sweep of the bucket grows with it.</summary>
+    public static readonly TimeSpan LongestAddTimeout = TimeSpan.FromHours(1);
+
     /// <summary>
     /// The longest time of one add, from the start of its put to the end of the save of its row. At this time the add
     /// stops its put or its save, and throws a <see cref="TimeoutException"/>.
@@ -15,8 +18,8 @@ public sealed record AttachmentOptions
     public static AttachmentOptions From(IConfiguration configuration)
     {
         var options = configuration.GetSection(SectionName).Get<AttachmentOptions>() ?? new AttachmentOptions();
-        if (options.AddTimeout <= TimeSpan.Zero)
-            throw new InvalidOperationException($"{SectionName}:AddTimeout must be over zero.");
+        if (options.AddTimeout <= TimeSpan.Zero || options.AddTimeout > LongestAddTimeout)
+            throw new InvalidOperationException($"{SectionName}:AddTimeout must be over zero and at most {LongestAddTimeout}.");
         return options;
     }
 }

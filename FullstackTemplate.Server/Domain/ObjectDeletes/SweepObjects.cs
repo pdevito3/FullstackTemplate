@@ -51,26 +51,30 @@ public sealed class SweepObjectsHandler(
 
         var activity = Activity.Current;
         var (listed, kept, ofUnknownTenants, deleted) = (0, 0, 0, 0);
+        var (refusedCount, someRefused) = (0, new List<string>());
         string? continuationToken = null;
         do
         {
             var page = await ObjectDeletes.InAttemptTimeAsync(deleteOptions.Value.AttemptTimeout,
                 attempt => storage.ListPageAsync(StoredFile.TenantsPrefix, continuationToken, attempt), cancellationToken);
             var decision = await DecideAsync(page.Objects, now, grace, cancellationToken);
-            if (decision.Orphans.Count > 0)
-            {
-                await ObjectDeletes.InAttemptTimeAsync(deleteOptions.Value.AttemptTimeout, async attempt =>
-                {
-                    await storage.DeleteAsync(decision.Orphans, attempt);
-                    return decision.Orphans.Count;
-                }, cancellationToken);
-                ObjectDeleteMetrics.Swept.Add(decision.Orphans.Count);
-            }
+            // A key that storage refuses to delete, as with Object Lock or a deny policy, does not stop the pages after it.
+            var refusedOfPage = decision.Orphans.Count > 0
+                ? await ObjectDeletes.InAttemptTimeAsync(deleteOptions.Value.AttemptTimeout,
+                    attempt => storage.DeleteAsync(decision.Orphans, attempt), cancellationToken)
+                : [];
+            if (refusedOfPage.Count > 0)
+                Logger.Here().Error(
+                    "Storage refused the delete of {RefusedCount} objects that no row names, such as {Keys}. The sweep goes on to the next page",
+                    refusedOfPage.Count, refusedOfPage.Take(10));
+            refusedCount += refusedOfPage.Count;
+            someRefused.AddRange(refusedOfPage.Take(10 - someRefused.Count));
+            ObjectDeleteMetrics.Swept.Add(decision.Orphans.Count - refusedOfPage.Count);
 
             listed += page.Objects.Count;
             kept += decision.Kept;
             ofUnknownTenants += decision.OfUnknownTenants;
-            deleted += decision.Orphans.Count;
+            deleted += decision.Orphans.Count - refusedOfPage.Count;
             activity?.SetTag("app.object_sweep.listed_count", listed);
             activity?.SetTag("app.object_sweep.kept_count", kept);
             activity?.SetTag("app.object_sweep.deleted_count", deleted);
@@ -84,6 +88,10 @@ public sealed class SweepObjectsHandler(
         Logger.Here().Information(
             "Swept the bucket: listed {ListedCount} objects, kept {KeptCount}, and deleted {DeletedCount} that no row names",
             listed, kept, deleted);
+        // The run fails, so BackWave runs it again, and the delete of a key that is gone succeeds.
+        if (refusedCount > 0)
+            throw new InvalidOperationException(
+                $"Storage refused the delete of {refusedCount} objects that no row names, such as {string.Join(", ", someRefused)}.");
     }
 
     private async Task<SweepPage> DecideAsync(IReadOnlyList<StoredObject> objects, DateTimeOffset now, TimeSpan grace,

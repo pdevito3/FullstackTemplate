@@ -96,3 +96,8 @@ M:System.Type.GetProperties(System.Reflection.BindingFlags);Check docs/backend/s
 // Resources/Jobs/JobWriter.cs writes the queued jobs of each save. Domain/ObjectDeletes/ObjectSweepSchedule.cs defines the
 // one schedule. Only these two files suppress this ban.
 T:BackWave.BackWaveClient;Queue a job with dbContext.QueueJob, so that it commits with the save.
+// The sweep of the bucket deletes an object with no row after Attachments:AddTimeout and a margin, and only
+// AttachmentStorage.AddAsync saves the row within that time. So AddAsync is the one put of the Server. AddAsync, the S3
+// members of ObjectStorage, ObjectWriter, and ObjectStorageRegistration.AddObjectStorage suppress these bans.
+T:FullstackTemplate.Server.Resources.Storage.ObjectWriter;Put an object with AttachmentStorage.AddAsync, so that the sweep of the bucket keeps it until its row is saved.
+N:Amazon.S3;The S3 client goes around ObjectStorage and AttachmentStorage. Put an object with AttachmentStorage.AddAsync. List, delete, and sign with ObjectStorage.

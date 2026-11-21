@@ -13,11 +13,13 @@ public class ObjectStorageTests : TestBase
         var prefix = $"tenants/{Guid.NewGuid():N}/";
         var outside = $"tenants/{Guid.NewGuid():N}/kept";
         var keys = Enumerable.Range(0, 1001).Select(i => $"{prefix}files/{i}").Append(outside).ToList();
-        var storage = new TestingServiceScope().GetService<ObjectStorage>();
+        var scope = new TestingServiceScope();
+        var storage = scope.GetService<ObjectStorage>();
+        var writer = scope.GetService<ObjectWriter>();
         await Parallel.ForEachAsync(keys, new ParallelOptions { MaxDegreeOfParallelism = 16 }, async (key, ct) =>
         {
             using var content = new MemoryStream([1]);
-            await storage.PutAsync(key, content, "application/octet-stream", ct);
+            await writer.PutAsync(key, content, "application/octet-stream", ct);
         });
         (await FirstPageUnderAsync(prefix)).IsTruncated.ShouldBe(true);
 

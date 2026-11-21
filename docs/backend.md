@@ -244,7 +244,7 @@ The server applies migrations at startup, with a Postgres advisory lock. Under t
 
 ## Object storage
 
-The Server keeps the bytes of files in one S3 bucket. The database keeps the metadata of each file and the key of its object. `Resources/Storage/ObjectStorage.cs` puts an object, lists the objects under a prefix, deletes objects or each object under a prefix, and signs a URL that reads an object. `Resources/Storage/ObjectStorageRegistration.cs` adds the S3 client.
+The Server keeps the bytes of files in one S3 bucket. The database keeps the metadata of each file and the key of its object. `Resources/Storage/ObjectStorage.cs` lists the objects under a prefix, deletes objects or each object under a prefix, and signs a URL that reads an object. `Resources/Storage/ObjectWriter.cs` puts an object. `Resources/Storage/ObjectStorageRegistration.cs` adds the S3 client. Only `AttachmentStorage.AddAsync` puts an object. The build bans each call to a member of `ObjectWriter` or of a type in the `Amazon.S3` namespace in each other place (RS0030).
 
 | Where | Storage |
 |-------|---------|

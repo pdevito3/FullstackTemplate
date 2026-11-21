@@ -284,7 +284,7 @@ Each object under `tenants/` must be the `StoredFile` of a row. An add can leave
 - Each run is a trace of its own. Its process span has the tags `app.object_sweep.listed_count`, `app.object_sweep.kept_count`, and `app.object_sweep.deleted_count`. The run ends with the Information log `Swept the bucket`, and the metric `app.objects.swept` counts the deleted objects.
 - One call to storage stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute). A failed run runs again with the policy of its worker group, and a run that deleted some objects does no harm when it runs again.
 
-Do not put an object under `tenants/` that no `StoredFile` of a row names, because the sweep deletes it. Put other files under another prefix.
+Do not put an object under `tenants/` that no `StoredFile` of a row names, because the sweep deletes it. `AttachmentStorage.AddAsync` is the one put of the Server. The build bans each call to a member of `ObjectWriter` or of a type in the `Amazon.S3` namespace in each other place (RS0030).
 
 ## Tenant isolation
 

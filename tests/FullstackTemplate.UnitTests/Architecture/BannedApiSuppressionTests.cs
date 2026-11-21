@@ -17,6 +17,7 @@ public class BannedApiSuppressionTests
         "FullstackTemplate.Server/Databases/ObjectDeleteRequestsDrain.cs",
         "FullstackTemplate.Server/Databases/PostgresCopy.cs",
         "FullstackTemplate.Server/Databases/RootLock.cs",
+        "FullstackTemplate.Server/Domain/Attachments/AttachmentStorage.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/DeleteExpiredDPoPProofs/DeleteExpiredDPoPProofs.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/RegisterDPoPProof/RegisterDPoPProof.cs",
         "FullstackTemplate.Server/Domain/ObjectDeletes/ObjectSweepSchedule.cs",
@@ -24,6 +25,9 @@ public class BannedApiSuppressionTests
         "FullstackTemplate.Server/Resources/Entrypoints/Http/EndpointDiscovery.cs",
         "FullstackTemplate.Server/Resources/Jobs/JobWriter.cs",
         "FullstackTemplate.Server/Resources/RequestValidationBehavior.cs",
+        "FullstackTemplate.Server/Resources/Storage/ObjectStorage.cs",
+        "FullstackTemplate.Server/Resources/Storage/ObjectStorageRegistration.cs",
+        "FullstackTemplate.Server/Resources/Storage/ObjectWriter.cs",
     ];
 
     private static readonly string[] SettingsExtensions = [".cs", ".csproj", ".props", ".editorconfig", ".globalconfig"];

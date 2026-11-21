@@ -1,6 +1,6 @@
 ---
 name: object-storage-lifecycle
-description: Model-checks the life of an attachment row, its object in the bucket, the BackWave jobs that delete objects, and the sweep of the objects that no row names, with TLA+ and TLC. Use when you change AttachmentStorage, an add or delete of an attachment, DeleteTenant, RootLock, AppDbContext.PrepareWrite, ObjectDeletes, the DeleteObject, DeleteTenantObjects, or SweepObjects job, ObjectDeleteOptions, ObjectSweepOptions, AttachmentOptions, or ObjectStorage, or when you ask whether an object can outlive its row or a row can lose its object.
+description: Model-checks the life of an attachment row, its object in the bucket, the BackWave jobs that delete objects, and the sweep of the objects that no row names, with TLA+ and TLC. Use when you change AttachmentStorage, an add or delete of an attachment, DeleteTenant, RootLock, AppDbContext.PrepareWrite, ObjectDeletes, the DeleteObject, DeleteTenantObjects, or SweepObjects job, ObjectDeleteOptions, ObjectSweepOptions, AttachmentOptions, ObjectStorage, or ObjectWriter, or when you ask whether an object can outlive its row or a row can lose its object.
 ---
 
 # Object storage lifecycle

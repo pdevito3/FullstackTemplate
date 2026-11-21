@@ -7,8 +7,6 @@ export interface MockRoute {
   status: number
   body?: unknown
   headers?: Record<string, string>
-  /** Holds the answer, so that a later request can overtake this one. */
-  delayMs?: number
   /** Holds the answer until the promise settles. `api.hold` makes one. */
   heldUntil?: Promise<void>
 }

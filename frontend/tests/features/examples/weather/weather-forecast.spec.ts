@@ -132,10 +132,8 @@ test.describe('a signed-in user', () => {
 })
 
 test.describe('the loading placeholders', () => {
-  const slowList = { ...weatherApi.listReturns(aForecast()), delayMs: 2_000 }
-
   test('hold still for a user who asks for reduced motion', async ({ page, api }) => {
-    api.mock(slowList)
+    api.hold(weatherApi.listReturns(aForecast()))
     const weather = weatherForecastPage(page)
 
     await weather.openWhileLoading()
@@ -147,7 +145,7 @@ test.describe('the loading placeholders', () => {
     test.use({ reducedMotion: 'no-preference' })
 
     test('pulse', async ({ page, api }) => {
-      api.mock(slowList)
+      api.hold(weatherApi.listReturns(aForecast()))
       const weather = weatherForecastPage(page)
 
       await weather.openWhileLoading()

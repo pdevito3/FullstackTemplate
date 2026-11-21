@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { openAndWaitForLogin } from '@tests/support/answers'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
@@ -25,11 +26,7 @@ export function sessionPage(page: Page) {
         }).observe(document, { childList: true, subtree: true })
       })
 
-      const login = answered(bffPaths.login)
-      // The SPA leaves the page as it loads, so the wait is for the commit and not for the load.
-      await page.goto(path, { waitUntil: 'commit' })
-      await login
-      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
+      await openAndWaitForLogin(page, path)
       return { rendered }
     },
 
@@ -37,12 +34,8 @@ export function sessionPage(page: Page) {
       await page.goto(blankPage)
     },
 
-    /** The Vite server can take more than the 5 s of an assertion to serve the app, so wait for the answer of the login first. */
     async openDeepLinkAndWaitForLogin(path: string) {
-      const login = answered(bffPaths.login)
-      await page.goto(path, { waitUntil: 'commit' })
-      await login
-      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
+      await openAndWaitForLogin(page, path)
       await page.waitForLoadState()
     },
 

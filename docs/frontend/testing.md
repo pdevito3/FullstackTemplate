@@ -75,7 +75,7 @@ A mock is a `MockRoute`: a plain object with a method, a full path, a status, an
 The `api` fixture applies to each test automatically:
 
 - It answers each request from the mocks of the test. A later mock wins over an earlier one, so a test can change an answer in the middle of a scenario.
-- `api.hold(...routes)` is `api.mock` with answers that wait until the test calls the function that it returns. Use it to act or assert while an answer is on the way. The test does not depend on a time, as it does with `delayMs`.
+- `api.hold(...routes)` is `api.mock` with answers that wait until the test calls the function that it returns. Use it to act or assert while an answer is on the way, so that the test does not depend on a time. A `MockRoute` has no delay.
 - `api.holdPageSource(file)` holds the source file of a page in the same way, so that the navigation to that page stays in progress. Call it after the first open of the app, because a hold before that open blocks the app until the 30 s timeout. The URL changes at the start of a navigation, and the old page stays on the screen until the source file of the next page loads. So a test that must be on the next page waits for something on that page, not for the URL.
 - `api.failPageSource(file)` aborts each request for the source file of a page, as a lost connection does, until the test calls the function that it returns. Match the chunk of the page component, such as `/\/assets\/about-[\w-]+\.js$/`. The build names each chunk after its module. A failure of this chunk stops the page, not the app. The router reloads the page once for a failed source file, so the test waits for the message of the app, not for the URL.
 - It records each request that it answers. Read a request back with `api.last(method, path)` or `api.all(method, path)`.
@@ -97,7 +97,9 @@ test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
 For an anonymous visitor, use `as.anonymous()`. Then `/bff/user` answers 204, and the SPA goes to the login before it shows a page. Thus a spec of a page needs a signed-in actor. The session spec (`tests/features/session/session.spec.ts`) covers the anonymous visitor and a failed check of the session.
 
-Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back. In a task, wait for the answer of `/bff/login`, and then assert the URL. Do not start with `toHaveURL` or `expect.poll`, because on a slow machine the server can take more than the 5 s of an assertion to serve the app before the SPA checks the session. Do not use `page.waitForURL` for the login, because in a development build React StrictMode starts the login twice, so the first navigation can abort, and `waitForURL` then fails. See `openLinkAndGoToLogin` in `tests/features/invites/invites.tasks.ts`.
+Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back. In a task, wait for the answer of `/bff/login`, and then assert the URL. Do not start with `toHaveURL` or `expect.poll`, because on a slow machine the server can take more than the 5 s of an assertion to serve the app before the SPA checks the session. Do not use `page.waitForURL` for the login, because in a development build React StrictMode starts the login twice, so the first navigation can abort, and `waitForURL` then fails. To open a URL that goes to the login, call `openAndWaitForLogin(page, url)` from `tests/support/answers.ts`. For a click that goes to the login, see `submitAndGoToLogin` in `tests/features/invites/invites.tasks.ts`.
+
+Check: `pnpm lint` fails on `waitUntil: 'commit'` in each file of `tests/`, because a navigation that waits only for the commit leaves the load of the app to the next expect.
 
 ### Builders
 
@@ -124,7 +126,7 @@ The workshop builder gives each status the actions that a caller with `manage_wo
 - Import `test` and `expect` from `@tests/support/fixtures`, not from `@playwright/test`.
 - Do not use `page.waitForTimeout`, retries, or `test.only`.
 
-Check: `pnpm lint` fails when a `*.spec.ts` file calls a selector (`locator`, `getByRole`, and the other `getBy` calls), a `page.waitFor` call, `setTimeout`, or `test.only` (also `test.describe.only`), or imports `test` or `expect` from `@playwright/test`. It fails on `waitForTimeout` in each file of `tests/`. The rules are in `frontend/eslint.config.js`. No check finds a wait in a locators file, and no check reads the three parts of a spec.
+Check: `pnpm lint` fails when a `*.spec.ts` file calls a selector (`locator`, `getByRole`, and the other `getBy` calls), a `page.waitFor` call, `setTimeout`, or `test.only` (also `test.describe.only`), or imports `test` or `expect` from `@playwright/test`. It fails on `waitForTimeout` and on a `timeout` option, such as `toBeVisible({ timeout: 2000 })`, in each file of `tests/`. In each file of `tests/` and `e2e/`, it fails on a wait that starts after the action: an `await` of `waitForResponse`, `waitForRequest`, `waitForEvent`, or a function that is not async and gives a Playwright `Response` or `Request`, such as `answered(...)`, and such a wait in a `const` that the next statement awaits. To count each answer of a read that runs again, give the number of the answer to one wait, as `answered` in `invites.tasks.ts` does, and do not await one wait after the other. The rules are in `frontend/eslint.config.js`. No check finds a wait in a locators file, and no check reads the three parts of a spec.
 
 ### Selectors
 
@@ -178,4 +180,4 @@ Each functional test runs in the `pago-pago` project. A test tagged `@zone` also
 
 1. Write a builder for each new type, and an API file for each new area.
 2. Write the locators file, the tasks file, and a spec that opens the page.
-3. Run `pnpm test:e2e`. Run `pnpm test:e2e --repeat-each=10` before you push, to find a flaky test.
+3. Run `pnpm test:e2e`. Before you push, run `pnpm test:e2e --only-changed=main --repeat-each=10` to find a flaky test. It runs 10 times each spec that differs from `main`, and each spec that imports a file that differs.

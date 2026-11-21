@@ -369,16 +369,12 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
 
     // Step 5: Login at the IDP
     await popup.waitForLoadState('networkidle', { timeout: 15000 })
+    const closed = popup.waitForEvent('close', { timeout: 30000 }).then(() => true, () => false)
     await loginAtIdp(popup, currentIdp)
 
     // Step 6: Wait for popup to close
-    try {
-      await popup.waitForEvent('close', { timeout: 30000 })
-    } catch {
-      // Popup might have already closed or redirected
-      if (!popup.isClosed()) {
-        await popup.close()
-      }
+    if (!(await closed) && !popup.isClosed()) {
+      await popup.close()
     }
 
     // Step 7: Close the modal

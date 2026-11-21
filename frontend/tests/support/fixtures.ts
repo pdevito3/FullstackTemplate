@@ -67,7 +67,6 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
           }
 
           served.add(match.method, url, new Headers(await request.allHeaders()), postBody(request))
-          if (match.delayMs) await new Promise((resolve) => setTimeout(resolve, match.delayMs))
           await match.heldUntil
           await route.fulfill({
             status: match.status,

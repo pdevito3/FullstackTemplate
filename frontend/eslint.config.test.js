@@ -1,7 +1,7 @@
 import { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
-import { codeToWordsRules, noPageActionRule, serverStatePlugin, stringSelectorMessage } from './eslint.config.js'
+import { armWaitFirstRule, codeToWordsRules, lateWaitMessage, noPageActionRule, serverStatePlugin, stringSelectorMessage } from './eslint.config.js'
 
 const pageAction = "import type { Page } from '@playwright/test'\nexport const save = (page: Page) => page.click('#save')\n"
 
@@ -37,6 +37,68 @@ describe('playwright/no-page-action', { timeout: 60_000 }, () => {
 
   it('reports a selector string with the locator message when the rule has no option', async () => {
     expect(await messagesOf('error')).toEqual([stringSelectorMessage])
+  })
+})
+
+async function lateWaitLines(body) {
+  const eslint = new ESLint({
+    cwd: import.meta.dirname,
+    overrideConfigFile: true,
+    overrideConfig: {
+      files: ['tests/**/*.ts'],
+      languageOptions: {
+        parser: tseslint.parser,
+        parserOptions: { project: './tsconfig.tests.json', tsconfigRootDir: import.meta.dirname, disallowAutomaticSingleRunInference: true },
+      },
+      plugins: { playwright: { rules: { 'arm-wait-first': armWaitFirstRule } } },
+      rules: { 'playwright/arm-wait-first': 'error' },
+    },
+  })
+  const code = `import type { Page, Request } from '@playwright/test'
+export async function task(page: Page) {
+  const answered = (path: string) => page.waitForResponse((r) => new URL(r.url()).pathname === path)
+  const follow = async (): Promise<Request> => {
+    const sent = page.waitForRequest('**/next')
+    await page.click('#next')
+    return sent
+  }
+${body}
+}
+`
+  const [result] = await eslint.lintText(code, { filePath: 'tests/support/fixtures.ts' })
+  expect(result.messages.every((message) => message.message === lateWaitMessage)).toBe(true)
+  return result.messages.map((message) => message.line - 8)
+}
+
+describe('playwright/arm-wait-first', { timeout: 60_000 }, () => {
+  it('reports a wait that starts after the action', async () => {
+    const lines = await lateWaitLines(`  await page.reload()
+  await page.waitForResponse('**/api')
+  await answered('/api')
+  await page.waitForEvent('load')
+  await Promise.all([answered('/a'), answered('/b')])`)
+
+    expect(lines).toEqual([2, 3, 4, 5])
+  })
+
+  it('reports a wait that the next statement awaits, with no action between', async () => {
+    const lines = await lateWaitLines(`  const answer = answered('/api')
+  await answer
+  const loaded = page.waitForEvent('load')
+  const page2 = await loaded`)
+
+    expect(lines).toEqual([1, 3])
+  })
+
+  it('takes a wait armed before the action, a wait in a Promise.all with the action, an async action, and a goto', async () => {
+    const lines = await lateWaitLines(`  const answer = answered('/api')
+  await page.reload()
+  await answer
+  await Promise.all([answered('/api'), page.reload()])
+  await follow()
+  await page.goto('/')`)
+
+    expect(lines).toEqual([])
   })
 })
 

@@ -81,7 +81,7 @@ Read `docs/frontend/testing.md` before you write one. Then do these steps:
 3. In `frontend/tests/features/<feature>/`, add or extend three files: `*.locators.ts`, `*.tasks.ts`, and `*.spec.ts`.
 4. Mock each call before the action that causes it. For each value that the page sends (a query parameter, a header, or a body field), read the request back with `api.last`.
 5. If a test needs a signed-in user, add `test.use({ actor: as.user('Name') })`.
-6. Run `pnpm test:e2e --repeat-each=10`. All runs must pass.
+6. Run `pnpm test:e2e`. Then run `pnpm test:e2e --only-changed=main --repeat-each=10`. It runs 10 times each spec that differs from `main`, and each spec that imports a file that differs. All runs must pass. A flaky wait can pass one run, and no lint finds each one.
 7. Make the test fail once on purpose. Remove the code that the test protects, and make sure that the test fails. Then put the code back.
 
 Obey these rules:

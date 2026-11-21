@@ -188,13 +188,15 @@ test.describe('the invites of a tenant admin', () => {
   })
 
   test('creates one invite when the second Enter comes before a render of the first', { tag: '@INV-2' }, async ({ page, api }) => {
-    api.mock(invitesApi.listReturns([]), { ...invitesApi.creates(anInvite(), token), delayMs: 300 })
+    api.mock(invitesApi.listReturns([]))
+    const answer = api.hold(invitesApi.creates(anInvite(), token))
     const users = usersWithInvites(page)
     await users.openWithList()
     await users.openDialog()
     await users.at.emailField.fill('new@example.com')
 
     await users.pressEnterTwiceBeforeARender()
+    answer()
 
     await expect(users.at.linkField).toBeVisible()
     expect(api.all('post', invitesPaths.list)).toHaveLength(1)
@@ -232,9 +234,9 @@ test.describe('the invites of a tenant admin', () => {
     const users = usersWithInvites(page)
     await users.openWithList()
     await users.openDialog()
-    api.mock({ ...invitesApi.listReturns([anInvite()]), delayMs: 3000 })
+    const list = api.hold(invitesApi.listReturns([anInvite()]))
 
-    await users.createInviteAndSeeTheLinkBeforeTheList()
+    await users.createInviteAndSeeTheLinkBeforeTheList(list)
 
     await expect(users.at.linkField).toBeVisible()
   })
@@ -266,13 +268,13 @@ test.describe('the invites of a tenant admin', () => {
       usersApi.roleChanges(demoted),
       usersApi.oneIs(demoted),
       membershipApi.userIsNow(demoted),
-      { ...tenantsApi.oneIs(aTenant()), delayMs: 300 },
       invitesApi.listFails(aProblem().forbidden('You cannot manage users.')),
     )
+    const tenant = api.hold(tenantsApi.oneIs(aTenant()))
     await people.confirmRole(id)
     const invitesReads = api.all('get', invitesPaths.list).length
 
-    expect(await users.goToUsersAndCountTheButtonsBeforeTheTenantAnswers()).toBe(0)
+    expect(await users.goToUsersAndCountTheButtonsBeforeTheTenantAnswers(tenant)).toBe(0)
 
     await expect(users.at.usersGrid).toBeVisible()
     await expect(users.at.inviteButton).toHaveCount(0)

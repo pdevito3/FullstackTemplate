@@ -403,7 +403,12 @@ describe('messages/failure-text', { timeout: 60_000 }, () => {
   // The project service gives each file the text that the test lints, so the path must be a file of the app.
   const fileThatTheExampleWipeKeeps = 'src/components/query-error.tsx'
   const failureTextMessages = async (code, filePath = fileThatTheExampleWipeKeeps) => {
-    const eslint = new ESLint({ cwd: import.meta.dirname })
+    // With CI=true, typescript-eslint infers a single run. It then takes each lint of a path after the first for a --fix
+    // pass and gives it a program with no types. Each test lints the same path.
+    const eslint = new ESLint({
+      cwd: import.meta.dirname,
+      overrideConfig: { languageOptions: { parserOptions: { disallowAutomaticSingleRunInference: true } } },
+    })
     const [result] = await eslint.lintText(code, { filePath })
     return result.messages.filter((message) => message.ruleId === 'messages/failure-text').map((message) => message.messageId)
   }

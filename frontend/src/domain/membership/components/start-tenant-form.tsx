@@ -10,7 +10,8 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { stringWithMaxLengthOf } from '@/lib/api-contract'
-import { isProblemDetailsError } from '@/lib/problem-details'
+import { validationErrorsOf } from '@/lib/problem-details'
+import { failureText } from '@/lib/request-failure'
 
 import type { StartTenantProfile } from '../apis/get-membership'
 
@@ -39,12 +40,7 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
   const { errors } = form.formState
 
   const showRefusal = (error: unknown) => {
-    if (!isProblemDetailsError(error)) {
-      // apiClient gives each failed request the text for the user.
-      form.setError('root.server', { message: error instanceof Error && error.message ? error.message : 'The tenant was not started. Try again.' })
-      return
-    }
-    const fieldErrors = (error.problemDetails.errors ?? {}) as Record<string, string[]>
+    const fieldErrors = validationErrorsOf(error)
     let shownOnField = false
     for (const name of FIELD_NAMES) {
       const message = fieldErrors[name]?.[0]
@@ -53,7 +49,7 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
         shownOnField = true
       }
     }
-    if (!shownOnField) form.setError('root.server', { message: error.displayMessage })
+    if (!shownOnField) form.setError('root.server', { message: failureText(error) })
   }
 
   const handleSubmit = form.handleSubmit(async (values) => {

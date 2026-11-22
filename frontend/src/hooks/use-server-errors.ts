@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FieldValues, Path, UseFormReturn } from 'react-hook-form'
 
 import { isStaleVersionError, validationErrorsOf } from '@/lib/problem-details'
+import { failureText } from '@/lib/request-failure'
 
 import type { SaveProblem } from '@/components/refused-save-alert'
 
@@ -25,7 +26,7 @@ export function refusalOf<F extends string>(error: unknown, fields: readonly F[]
     }
   }
   if (other.length === 0 && Object.keys(byField).length === 0) {
-    other.push(error instanceof Error && error.message ? error.message : 'The save failed. Try again.')
+    other.push(failureText(error))
   }
   return { byField, problem: other.length > 0 ? { kind: 'refused', messages: other } : null }
 }

@@ -50,7 +50,7 @@ frontend/src/
 │   └── theme-toggle.tsx   # Light, dark, and system toggle
 ├── routes/                 # TanStack Router file routes
 ├── hooks/                  # Shared React hooks
-├── lib/                    # api-client.ts, pagination.ts, problem-details.ts, utils.ts
+├── lib/                    # api-client.ts, pagination.ts, problem-details.ts, request-failure.ts, utils.ts
 └── main.tsx               # App entry point
 ```
 
@@ -65,7 +65,7 @@ Wrap the `cva` call of a `*-variants.ts` file in `withMergedClasses` from `@/lib
 - `withCredentials: true` sends the BFF cookie.
 - The `X-CSRF: 1` header is necessary for the BFF CSRF protection.
 - An error response that has problem details becomes a `ProblemDetailsError`. The client shows it as a toast by default. To stop the toast, send `{ suppressErrorToast: true }` with the request.
-- The `message` of each error that the client throws is the text for the user, so a toast, a form, and a page show the same text. A refusal (a 4xx problem) gives the `detail` of the Server, or its `title`. A 5xx, an answer with no problem details, a request that reaches its time limit, and a request with no answer give the text of the SPA in `lib/problem-details.ts`. See [In the SPA](messages.md#in-the-spa).
+- `failureText(error)` of `lib/request-failure.ts` gives the text for the user of each error that the client throws, so a toast, a form, and a page show the same text. A refusal (a 4xx problem) gives the `detail` of the Server, or its `title`. A 5xx, an answer with no problem details, a request that reaches its time limit, and a request with no answer give the text of the SPA. The `message` of the error is for a developer. See [In the SPA](messages.md#in-the-spa).
 
 The generated API clients send each request through `apiClient`. `main.tsx` imports `lib/api-client.ts` to connect them before the first request. Use `apiClient` directly only for endpoints that are not in the OpenAPI document, such as `/bff/user`.
 
@@ -181,7 +181,7 @@ The app does not poll the session. It finds an ended BFF session, for example af
 | The check gives | `apiClient` |
 |---|---|
 | `null` | Shows no toast. The root route goes to the login. |
-| Claims | Shows "The Server did not accept your sign-in for this request." unless the call sets `suppressErrorToast`. The page stays. |
+| Claims | Shows "The server did not accept your sign-in for this request." unless the call sets `suppressErrorToast`. The page stays. |
 | An error | Shows the same toast as for claims. The root route keeps the last answer. |
 
 A 401 of `/bff/user` is a failed check. It does not start a check again.

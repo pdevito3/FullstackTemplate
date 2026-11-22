@@ -1,6 +1,9 @@
+import { AxiosError } from 'axios'
 import { expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
+
+import { requestError } from '@/lib/request-failure'
 
 import { LatestLoadedNote, StaleVersionAlert } from './stale-version-alert'
 
@@ -9,7 +12,7 @@ const labels = { name: 'Name', capacity: 'Capacity' }
 test('says what happened to the record and what to do, and loads the latest on the button', async () => {
   // Arrange
   const onLoadLatest = vi.fn()
-  const screen = await render(<StaleVersionAlert noun="room" problem={{ kind: 'stale' }} isLoadingLatest={false} loadFailure={null} onLoadLatest={onLoadLatest} />)
+  const screen = await render(<StaleVersionAlert noun="room" problem={{ kind: 'stale' }} isLoadingLatest={false} loadError={null} onLoadLatest={onLoadLatest} />)
 
   // Act
   await userEvent.click(screen.getByRole('button', { name: 'Load the latest' }))
@@ -19,14 +22,14 @@ test('says what happened to the record and what to do, and loads the latest on t
   expect(onLoadLatest).toHaveBeenCalledOnce()
 })
 
-test('says that the latest did not load, with the message of the read', async () => {
+test('says that the latest did not load, with the text of the failure of the read', async () => {
   // Arrange and Act
   const screen = await render(
     <StaleVersionAlert
       noun="room"
       problem={{ kind: 'stale' }}
       isLoadingLatest={false}
-      loadFailure="The app could not reach the server. Check your connection, then try again."
+      loadError={requestError(new AxiosError('Network Error', AxiosError.ERR_NETWORK))}
       onLoadLatest={vi.fn()}
     />,
   )
@@ -41,7 +44,7 @@ test('says that the latest did not load, with the message of the read', async ()
 test('shows no alert for a save that the Server refused for another reason', async () => {
   // Arrange and Act
   const screen = await render(
-    <StaleVersionAlert noun="room" problem={{ kind: 'refused', messages: ['No.'] }} isLoadingLatest={false} loadFailure={null} onLoadLatest={vi.fn()} />,
+    <StaleVersionAlert noun="room" problem={{ kind: 'refused', messages: ['No.'] }} isLoadingLatest={false} loadError={null} onLoadLatest={vi.fn()} />,
   )
 
   // Assert

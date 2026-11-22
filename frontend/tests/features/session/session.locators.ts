@@ -11,5 +11,5 @@ export const session = (page: Page) => ({
   signInAgain: page.getByRole('button', { name: 'Sign in again', exact: true }),
   signOutAgain: page.getByRole('button', { name: 'Sign out again', exact: true }),
   toasts: page.getByRole('alertdialog'),
-  rejectedSignInToast: page.getByRole('alertdialog').filter({ hasText: 'The Server did not accept your sign-in for this request.' }),
+  rejectedSignInToast: page.getByRole('alertdialog').filter({ hasText: 'The server did not accept your sign-in for this request.' }),
 })

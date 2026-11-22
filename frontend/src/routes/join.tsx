@@ -23,6 +23,7 @@ import type { Membership } from '@/domain/membership/apis/get-membership'
 import { ROLE_LABELS } from '@/domain/users/components/user-role'
 import { maxLengthOf } from '@/lib/api-contract'
 import { isProblemDetailsError } from '@/lib/problem-details'
+import { failureText } from '@/lib/request-failure'
 
 export const Route = createFileRoute('/join')({
   component: JoinPage,
@@ -72,7 +73,7 @@ function Join({ membership, headingRef }: { membership: Membership; headingRef: 
       const status = isProblemDetailsError(error) ? error.status : undefined
       if (isProblemDetailsError(error) && (status === 404 || status === 410)) {
         forgetInviteToken()
-        setRefusedLink(error.displayMessage)
+        setRefusedLink(failureText(error))
       }
       // These refusals replace the form, and the focus must not fall to the body.
       if (status === 404 || status === 409 || status === 410) headingRef.current?.focus()

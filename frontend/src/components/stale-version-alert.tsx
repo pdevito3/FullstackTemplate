@@ -1,16 +1,17 @@
 import { Button } from '@/components/ui/button'
 import type { SaveProblem } from '@/components/refused-save-alert'
+import { failureText } from '@/lib/request-failure'
 
 interface StaleVersionAlertProps {
   /** The name of the record in the text, such as `room`. */
   noun: string
   problem: SaveProblem | null
   isLoadingLatest: boolean
-  loadFailure: string | null
+  loadError: unknown
   onLoadLatest: () => void
 }
 
-export function StaleVersionAlert({ noun, problem, isLoadingLatest, loadFailure, onLoadLatest }: StaleVersionAlertProps) {
+export function StaleVersionAlert({ noun, problem, isLoadingLatest, loadError, onLoadLatest }: StaleVersionAlertProps) {
   if (problem?.kind !== 'stale') {
     return null
   }
@@ -22,9 +23,9 @@ export function StaleVersionAlert({ noun, problem, isLoadingLatest, loadFailure,
         Your edits are still in the form, and they are not saved. Load the latest to see what changed. The form keeps
         your edits to each field that the latest save did not change.
       </p>
-      {loadFailure !== null && (
+      {loadError !== null && (
         <p className="text-destructive wrap-anywhere">
-          The latest {noun} did not load. {loadFailure}
+          The latest {noun} did not load. {failureText(loadError)}
         </p>
       )}
       <Button variant="outline" className="self-start" onPress={onLoadLatest} isPending={isLoadingLatest}>

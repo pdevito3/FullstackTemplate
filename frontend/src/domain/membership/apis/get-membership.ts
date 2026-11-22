@@ -6,7 +6,8 @@ import type { InitiateUserAndTenantDto } from '@/api/generated/models/types/init
 import type { UserDto } from '@/api/generated/models/types/user-dto'
 import { authClaimsQuery } from '@/domain/auth/apis/get-user'
 import type { BffClaim } from '@/domain/auth/types'
-import { isProblemDetails, isProblemDetailsError, ProblemDetailsError } from '@/lib/problem-details'
+import { isProblemDetailsError, type ProblemDetailsError } from '@/lib/problem-details'
+import { answerError, failureText } from '@/lib/request-failure'
 
 import { MembershipKeys } from './membership.keys'
 
@@ -51,9 +52,7 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
   })
   if (result.status === 200) return result.data
   if (result.status === 404) return null
-  throw isProblemDetails(result.error)
-    ? new ProblemDetailsError(result.error)
-    : new Error(`The membership check failed with status ${result.status}.`)
+  throw answerError(result.status, result.error)
 }
 
 /** A refusal of the Server does not change on an immediate retry. */
@@ -91,7 +90,7 @@ export function useMembership(): Membership {
     if (user.errorUpdateCount === 0 || lastError === null) return { status: 'loading' }
     return {
       status: 'error',
-      message: isRefusal(lastError) ? lastError.displayMessage : CHECK_FAILED,
+      message: isRefusal(lastError) ? failureText(lastError) : CHECK_FAILED,
       isRetrying: user.isFetching,
       retry: () => void user.refetch(),
     }

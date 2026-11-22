@@ -51,7 +51,7 @@ function SignedInUser() {
     return <Skeleton className="h-5 w-48" aria-label="Loading your user" />
   }
   if (!user) {
-    return <p className="text-sm text-destructive">The Server could not load your user.</p>
+    return <p className="text-sm text-destructive">Your user did not load. Reload the page.</p>
   }
   return (
     <p className="min-w-0 text-sm wrap-anywhere">

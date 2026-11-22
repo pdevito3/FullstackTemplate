@@ -1,7 +1,10 @@
+import { AxiosError } from 'axios'
 import { useForm } from 'react-hook-form'
 import { expect, test } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
+
+import { requestError } from '@/lib/request-failure'
 
 import { useLoadLatest } from './use-load-latest'
 
@@ -66,7 +69,7 @@ test('names no field and focuses the first field when the latest save changed no
 
 test('keeps each edit when the read fails', async () => {
   // Arrange
-  const screen = await render(<RoomForm latest={new Error('The app could not reach the server.')} />)
+  const screen = await render(<RoomForm latest={requestError(new AxiosError('Network Error', AxiosError.ERR_NETWORK))} />)
   const name = screen.getByRole('textbox', { name: 'Name' })
   await userEvent.fill(name, 'Green Room')
 

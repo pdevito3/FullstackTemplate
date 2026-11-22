@@ -45,7 +45,9 @@ public static class BackgroundJobsRegistration
         // A worker group that stops on a fault of the store makes the Server unhealthy, so that a person sees it
         if (role.RunsJobs())
             services.AddHealthChecks().AddCheck<BackWaveHealthCheck>("backwave");
-        services.AddBackWavePro(configuration["BackWave:ProLicense"]);
+        // Only the jobs tools of MCP use BackWave Pro, so a process without them does not take on its license
+        if (jobsMcp is not null)
+            services.AddBackWavePro(configuration["BackWave:ProLicense"]);
         services.AddSingleton<IJobWriter, JobWriter>();
         services.AddScoped<JobScope>();
         services.Configure<BackgroundJobsOptions>(configuration.GetSection(BackgroundJobsOptions.SectionName));

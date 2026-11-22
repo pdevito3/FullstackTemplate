@@ -148,7 +148,7 @@ BackWave Pro adds its MCP tools to the MCP server of the app, so an agent reads 
 - The audit record of a requeue or a cancel names the client, for example `client:my-ops-agent`.
 - Only a process that serves requests adds the tools.
 
-`BackWave:ProLicense` holds the license key of BackWave Pro. BackWave Pro is free for a company with less than $1M of annual revenue. Above that, buy a license and set the key. The tests run with no key.
+`BackWave:ProLicense` holds the license key of BackWave Pro. Only a process that adds the jobs tools of MCP adds BackWave Pro, so a Worker process and the integration tests run without it. BackWave Pro is free for a company with less than $1M of annual revenue. Above that, buy a license and set the key. The tests run with no key.
 
 ## Telemetry
 

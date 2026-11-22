@@ -53,6 +53,8 @@
     <PackageReference Include="BackWave.Hosting" />
     <PackageReference Include="BackWave.OpenTelemetry" />
     <PackageReference Include="BackWave.Postgres" />
+    <PackageReference Include="BackWave.Pro" />
+    <PackageReference Include="BackWave.Pro.Mcp" />
     <PackageReference Include="DistributedLock.Postgres" />
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="FluentValidation" />

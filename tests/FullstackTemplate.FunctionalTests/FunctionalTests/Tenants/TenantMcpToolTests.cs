@@ -1,6 +1,7 @@
 namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 
 using System.Net;
+using System.Reflection;
 using System.Text;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
@@ -40,6 +41,7 @@ public class TenantMcpToolTests : TestBase
         yield return () => ("manage-all client",
         [
             "add_tenant", "get_tenant", "list_tenants", "update_tenant",
+            .. BackWaveToolsOfAnAllTenantsManager,
             // example:start
             "cancel_workshop", "list_workshops",
             // example:end
@@ -90,6 +92,14 @@ public class TenantMcpToolTests : TestBase
         tools.Select(t => t.Name).Where(name => !ToolsOfGeneratedFeatures.Contains(name)).ShouldBe(expected, ignoreOrder: true);
     }
 
+    private static readonly string[] BackWaveToolsOfAnAllTenantsManager =
+    [
+        "cancel_job", "cancel_workflow", "count_jobs", "get_job", "get_job_dependencies", "get_job_history",
+        "get_observer_lag", "get_queue_depths", "get_queue_settings", "get_tag_facet", "get_workflow",
+        "list_audit_records", "list_observer_dead_letters", "list_schedules", "list_wire_names", "list_workflows",
+        "requeue_job", "search_jobs",
+    ];
+
     // The tools of a feature that scripts/new-feature.cs adds. Its McpToolTests check the list of each caller.
     private static readonly HashSet<string> ToolsOfGeneratedFeatures =
     [
@@ -107,8 +117,9 @@ public class TenantMcpToolTests : TestBase
         var tools = await client.ListToolsAsync();
 
         // Assert
+        // BackWave sets the hints of its own tools, and McpToolHints.Validate checks them at startup
         var hints = tools
-            .Where(t => !ToolsOfGeneratedFeatures.Contains(t.Name))
+            .Where(t => !ToolsOfGeneratedFeatures.Contains(t.Name) && !BackWaveToolsOfAnAllTenantsManager.Contains(t.Name))
             .ToDictionary(t => t.Name, t => t.ProtocolTool.Annotations is { } a
                 ? (a.ReadOnlyHint, a.DestructiveHint, a.IdempotentHint, a.OpenWorldHint)
                 : default);
@@ -123,6 +134,93 @@ public class TenantMcpToolTests : TestBase
             ["list_workshops"] = (true, null, null, false),
             // example:end
         }, ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task all_tenants_manager_sees_the_job_reads_and_the_requeue_and_cancel_but_no_other_job_write()
+    {
+        // Arrange
+        await SignInAsync("manage-all client");
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var names = (await client.ListToolsAsync()).Select(t => t.Name).ToList();
+
+        // Assert
+        names.ShouldContain("search_jobs");
+        names.ShouldContain("requeue_job");
+        names.ShouldContain("cancel_job");
+        names.ShouldNotContain("pause_queue");
+        names.ShouldNotContain("resume_queue");
+        names.ShouldNotContain("trigger_schedule");
+        names.ShouldNotContain("set_concurrency_limit");
+        names.ShouldNotContain("get_job_payload");
+        names.ShouldNotContain("get_job_output");
+    }
+
+    [Test]
+    public async Task all_tenants_manager_can_read_the_queue_depths()
+    {
+        // Arrange
+        await SignInAsync("manage-all client");
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("get_queue_depths", new Dictionary<string, object?>());
+
+        // Assert
+        result.IsError.ShouldNotBe(true);
+        result.StructuredContent.ShouldNotBeNull();
+    }
+
+    [Test]
+    public async Task all_tenants_manager_can_requeue_and_the_store_answers()
+    {
+        // Arrange
+        await SignInAsync("manage-all client");
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("requeue_job",
+            new Dictionary<string, object?> { ["job_id"] = Guid.NewGuid().ToString() });
+
+        // Assert
+        // The gate passed and BackWave resolved the actor, so the store answered. No job has this ID.
+        result.IsError.ShouldNotBe(true);
+        result.StructuredContent.ShouldNotBeNull().GetProperty("status").GetString().ShouldBe("NotRequeueable");
+    }
+
+    [Test]
+    public async Task all_tenants_manager_cannot_pause_a_queue()
+    {
+        // Arrange
+        await SignInAsync("manage-all client");
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("pause_queue",
+            new Dictionary<string, object?> { ["queue"] = "object-deletes" });
+
+        // Assert
+        result.IsError.ShouldBe(true);
+    }
+
+    [Test]
+    [Arguments("admin")]
+    [Arguments("admin through a delegated agent granted manage_tenant")]
+    public async Task caller_of_one_tenant_cannot_search_the_jobs(string caller)
+    {
+        // Arrange
+        await SignInAsync(caller);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("search_jobs", new Dictionary<string, object?>());
+
+        // Assert
+        result.ShouldBeToolError("permission_denied");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString()
+            .ShouldBe("Only a client that can manage all tenants can do this.");
     }
 
     [Test]
@@ -600,6 +698,24 @@ public class TenantMcpToolTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
         result.Headers.Contains("Mcp-Session-Id").ShouldBeFalse();
         options.Stateless.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// AddMcp of BackWave names the server BackWave. The app sets no name, so the SDK gives the name of the entry
+    /// assembly: the Server in a deploy, and the test project here.
+    /// </summary>
+    [Test]
+    public async Task the_server_keeps_the_name_of_the_app()
+    {
+        // Arrange
+        await SignInAsync("member");
+
+        // Act
+        await using var client = await CreateMcpClientAsync();
+
+        // Assert
+        client.ServerInfo.Name.ShouldBe(Assembly.GetEntryAssembly().ShouldNotBeNull().GetName().Name);
+        client.ServerInfo.Title.ShouldBeNull();
     }
 
     [Test]

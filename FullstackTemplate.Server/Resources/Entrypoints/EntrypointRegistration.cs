@@ -44,15 +44,21 @@ public static class EntrypointRegistration
         // HttpContext, the caller, and the tenant scope are the ones of that request.
         builder.Services.AddMcpServer()
             .WithHttpTransport(options => options.Stateless = true)
-            .WithToolsFromAssembly(typeof(EntrypointRegistration).Assembly)
-            .WithRequestFilters(filters =>
-            {
-                filters.AddListToolsFilter(McpToolAccess.ListFilter);
-                // The first call filter is the outermost, so a denial of the access filter becomes a tool error.
-                filters.AddCallToolFilter(McpCallTelemetry.Filter);
-                filters.AddCallToolFilter(McpDomainErrors.Filter);
-                filters.AddCallToolFilter(McpToolAccess.CallFilter);
-            });
+            .WithToolsFromAssembly(typeof(EntrypointRegistration).Assembly);
+        builder.Services.Configure<McpServerOptions>(options =>
+        {
+            // AddMcp of BackWave (JobsMcp) names the whole server BackWave. With no name, the SDK gives the name and
+            // version of the app.
+            options.ServerInfo = null;
+            // The first filter is the outermost. AddMcp of BackWave also adds filters, so the filters of the app go
+            // before them: each call gets the telemetry and the tool errors of the app, and a denial of the access
+            // filter becomes a permission_denied tool error.
+            var filters = options.Filters.Request;
+            filters.ListToolsFilters.Insert(0, McpToolAccess.ListFilter);
+            filters.CallToolFilters.Insert(0, McpToolAccess.CallFilter);
+            filters.CallToolFilters.Insert(0, McpDomainErrors.Filter);
+            filters.CallToolFilters.Insert(0, McpCallTelemetry.Filter);
+        });
         // ReadFrom.Services in HostExtensions adds each ILogEventFilter of the services to the logger
         builder.Services.AddSingleton<ILogEventFilter, McpProtocolErrorLogFilter>();
 

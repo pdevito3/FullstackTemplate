@@ -137,6 +137,19 @@ The BackWave dashboard is at `/backwave` of the app. The BFF sends the page to t
 
 Only a process that serves requests serves the dashboard. The metrics panel of the dashboard shows the jobs that the process of the page ran, not the jobs of all processes. An Api process runs no job, so its panel shows no job metrics. For a deploy with more than one process, read the `backwave.*` metrics in the telemetry backend.
 
+## The jobs tools on MCP
+
+BackWave Pro adds its MCP tools to the MCP server of the app, so an agent reads and acts on the jobs at `/mcp`. `JobsMcp` sets which tools are on. See [MCP](endpoints.md#mcp).
+
+- Only a client that can manage all tenants sees and calls the tools, because they show the jobs of all tenants. The dashboard is for operators, and an operator is never an agent.
+- An agent can read the jobs, the queues, the schedules, the workflows, and the audit records, requeue a job, and cancel a job or a workflow.
+- The tools refuse a pause of a queue, a trigger of a schedule, and a change of a concurrency limit, for the same reasons as the dashboard. A low concurrency limit holds the jobs of all tenants, as a pause does.
+- The tools do not give the payload, the output, or the stack of a failure of a job, so that no secret or personal data goes into the context of a model. They do give the message of the exception that failed a job, so a job handler must not put personal data in an exception message.
+- The audit record of a requeue or a cancel names the client, for example `client:my-ops-agent`.
+- Only a process that serves requests adds the tools.
+
+`BackWave:ProLicense` holds the license key of BackWave Pro. BackWave Pro is free for a company with less than $1M of annual revenue. Above that, buy a license and set the key. The tests run with no key.
+
 ## Telemetry
 
 - Each attempt is a trace of its own. Its root is the `process {queue}` span of BackWave. The span links to the `send {queue}` span of the save that queued the job, which has the `code.*` tags of the `QueueJob` call.

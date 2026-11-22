@@ -182,6 +182,15 @@ The attribute repeats the permission of the handler. If the two differ, the resu
 In the workshop example, `list_workshops` is a read tool ([`GetWorkshopListTool`](../../FullstackTemplate.Server/Examples/Workshops/Features/GetWorkshopList/GetWorkshopList.Mcp.cs)), and `cancel_workshop` names the permission of its handler ([`CancelWorkshopTool`](../../FullstackTemplate.Server/Examples/Workshops/Features/CancelWorkshop/CancelWorkshop.Mcp.cs)).
 <!-- example:end -->
 
+### The BackWave tools
+
+`AddMcp` of BackWave Pro adds the tools of the jobs to the same MCP server, so they are on `/mcp` too. There is one MCP server for each process. `AddMcp` must be in the one `AddBackWave` block of the core, so `Program` gives `JobsMcp.Configure` to `ConfigureServices`, only for a process that serves requests. See [The jobs tools on MCP](background-jobs.md#the-jobs-tools-on-mcp).
+
+- The BackWave tools have no `[ToolAccess]`. `McpToolAccess` gives each tool of the `BackWave.Pro.Mcp` assembly the rule of `ToolAccessKind.ManageAllTenants`, so only a client that can manage all tenants sees and calls them. A tool of another assembly with no `[ToolAccess]` still stops startup.
+- BackWave has its own gates in `JobsMcp`. The view gate of BackWave covers the whole server, also the tools of the app, so it allows each request. The requeue and cancel gates also ask for a caller that can manage all tenants. The gates of a pause, a trigger of a schedule, a concurrency limit, and the payload and output of a job deny each request, so these tools are not in `tools/list`.
+- BackWave adds its own filters. `AddEntrypoints` puts the filters of the app before them, so that each call to a BackWave tool gets the telemetry and the tool errors of the app.
+- `AddMcp` names the server `BackWave`. `AddEntrypoints` removes the name, so the server keeps the name and the version of the app.
+
 ### MCP versions
 
 MCP has no version segment. The contract of a tool is its name and its input schema.

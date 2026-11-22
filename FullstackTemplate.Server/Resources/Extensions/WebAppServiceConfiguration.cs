@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
+using BackWave.Pro.Mcp;
 using Databases;
 using Databases.DataProtection;
 using Domain.Attachments;
@@ -16,12 +17,15 @@ using ZiggyCreatures.Caching.Fusion;
 public static class WebAppServiceConfiguration
 {
     /// <summary>
-    /// Adds the core services: the database, the Data Protection key ring, the background jobs, the email sender, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
+    /// Adds the core services: the database, the Data Protection key ring, the background jobs, the email sender, the domain event handlers, MediatR, the caches, and the tenant scope.
     /// The integration tests call only this method. <c>AddEntrypoints</c> adds HTTP, gRPC, and MCP.
     /// The core has no caller until <c>AddEntrypoints</c> replaces <see cref="NoPrincipalAccessor"/>. The worker groups
-    /// that run the jobs are added only when the <paramref name="role"/> runs jobs.
+    /// that run the jobs are added only when the <paramref name="role"/> runs jobs. The one transport that it can add is
+    /// the BackWave tools of MCP, because BackWave registers them in its own block. <c>Program</c> gives
+    /// <paramref name="jobsMcp"/>, the gates of the entrypoint, only to a process that serves requests.
     /// </summary>
-    public static void ConfigureServices(this WebApplicationBuilder builder, ServerRole role)
+    public static void ConfigureServices(this WebApplicationBuilder builder, ServerRole role,
+        Action<BackWaveProMcpOptions>? jobsMcp = null)
     {
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddFusionCache()
@@ -71,7 +75,7 @@ public static class WebAppServiceConfiguration
         });
         builder.EnrichNpgsqlDbContext<AppDbContext>();
         builder.AddDataProtectionKeyRing();
-        builder.Services.AddBackgroundJobs(builder.Configuration, role);
+        builder.Services.AddBackgroundJobs(builder.Configuration, role, jobsMcp);
         builder.Services.AddSingleton<IEmailSender, LogEmailSender>();
 
         builder.Services.AddDomainEvents(typeof(Program).Assembly);

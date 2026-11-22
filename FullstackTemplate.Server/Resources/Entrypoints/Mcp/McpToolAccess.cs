@@ -1,5 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 
+using System.Reflection;
+using BackWave.Pro.Mcp;
 using Domain.Users;
 using Exceptions;
 using ModelContextProtocol.Protocol;
@@ -11,6 +13,8 @@ using ModelContextProtocol.Server;
 /// </summary>
 public static class McpToolAccess
 {
+    private static readonly Assembly BackWaveToolAssembly = typeof(BackWaveProMcpOptions).Assembly;
+
     /// <summary>Hides each tool that the caller cannot use. It loads the caller once for the list.</summary>
     public static McpRequestHandler<ListToolsRequestParams, ListToolsResult> ListFilter(
         McpRequestHandler<ListToolsRequestParams, ListToolsResult> next) =>
@@ -51,7 +55,7 @@ public static class McpToolAccess
 
     /// <summary>
     /// Stops startup when a tool has no <see cref="ToolAccessAttribute"/>, a kind that is not defined, or a permission
-    /// that does not exist.
+    /// that does not exist. A tool of BackWave needs no attribute.
     /// </summary>
     /// <exception cref="InvalidOperationException">A tool has no valid declaration. The message names each one.</exception>
     public static void Validate(IEnumerable<McpServerTool> tools)
@@ -72,6 +76,8 @@ public static class McpToolAccess
                 => new ToolRequirement.Needs(Permission.Of(permission)),
             { Kind: ToolAccessKind.Read } => new ToolRequirement.Read(),
             { Kind: ToolAccessKind.ManageAllTenants } => new ToolRequirement.ManageAllTenants(),
+            null when tool.Metadata.OfType<MethodInfo>().FirstOrDefault()?.DeclaringType?.Assembly == BackWaveToolAssembly
+                => new ToolRequirement.ManageAllTenants(),
             _ => null,
         };
 

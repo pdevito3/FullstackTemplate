@@ -3,6 +3,7 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
+using FullstackTemplate.Server.Resources.Entrypoints.Jobs;
 using FullstackTemplate.Server.Resources.Extensions;
 using Serilog;
 using Serilog.Events;
@@ -25,7 +26,7 @@ try
     var role = ServerRoles.From(builder.Configuration);
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
-    builder.ConfigureServices(role);
+    builder.ConfigureServices(role, role.ServesRequests() ? JobsMcp.Configure : null);
     if (role.ServesRequests())
         builder.AddEntrypoints();
     builder.Services.AddHostedService<MigrationHostedService>();

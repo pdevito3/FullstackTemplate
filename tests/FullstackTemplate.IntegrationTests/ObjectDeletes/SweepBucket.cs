@@ -44,20 +44,29 @@ public sealed class SweepBucket : IAsyncDisposable
             configure?.Invoke(services);
         }, connectionString));
 
-    /// <summary>Runs one sweep on a Server of this bucket whose clock reads <paramref name="now"/>.</summary>
-    public async Task SweepAsync(DateTimeOffset now, string? connectionString = null)
+    /// <summary>Runs one sweep on a Server of this bucket whose clock reads <paramref name="now"/>, and checks that it succeeded.</summary>
+    public async Task SweepAsync(DateTimeOffset now, string? connectionString = null, Action<IServiceCollection>? configure = null)
+    {
+        var (state, failures) = await RunSweepAsync(now, connectionString, configure);
+        state.ShouldBe(JobState.Succeeded, string.Join('\n', failures));
+    }
+
+    /// <summary>Runs one attempt of the sweep on a Server of this bucket whose clock reads <paramref name="now"/>.</summary>
+    public async Task<(JobState State, List<string> Failures)> RunSweepAsync(DateTimeOffset now, string? connectionString = null,
+        Action<IServiceCollection>? configure = null)
     {
         var sweeper = Track(TestFixture.BuildServiceProvider(services =>
         {
             services.AddSingleton(Options.Create(new ObjectStorageOptions { BucketName = Name }));
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(new FixedClock(now)));
+            configure?.Invoke(services);
         }, connectionString));
         await using var harness = new JobHarness(sweeper, new RetryPolicy { MaxAttempts = 1 });
 
         var jobId = await harness.EnqueueAsync(new SweepObjects());
         await harness.RunDueAsync();
 
-        (await harness.JobAsync(jobId)).State.ShouldBe(JobState.Succeeded, string.Join('\n', await harness.FailuresOfAsync(jobId)));
+        return ((await harness.JobAsync(jobId)).State, await harness.FailuresOfAsync(jobId));
     }
 
     public async Task<StoredObject> PutAsync(string key)

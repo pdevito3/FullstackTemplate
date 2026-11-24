@@ -7,6 +7,7 @@ using Databases;
 using Databases.EntityConfigurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Resources;
 
 /// <summary>
 /// The keys that the live rows name in each <see cref="StoredFile"/> column. The columns come from the EF model, so a
@@ -51,7 +52,18 @@ internal sealed class NamedStorageKeys
             column.PathToKey.Aggregate((Expression)row, Expression.MakeMemberAccess), row);
         var operationName = $"object_sweep.load_named_{column.EntityType.GetTableName() ?? column.EntityType.ClrType.Name}"
             + $".{column.StorageKey.GetColumnName()}";
-        return (dbContext, keys, cancellationToken) => dbContext.Set<TEntity>()
+        // Only the soft delete and the tenant scope decide which rows name a key. Another filter, such as one that
+        // hides archived rows, hides live rows, and the sweep would delete their objects. The names come from the whole
+        // model, because a tenant filter through a navigation joins the owner with the filters of the owner.
+        string[] otherFilters = [.. column.EntityType.Model.GetEntityTypes()
+            .SelectMany(entityType => entityType.GetDeclaredQueryFilters())
+            .Select(filter => filter.Key)
+            .OfType<string>()
+            .Where(key => key is not (QueryFilterNames.SoftDelete or QueryFilterNames.Tenant))
+            .Distinct(StringComparer.Ordinal)];
+        return (dbContext, keys, cancellationToken) => (otherFilters.Length > 0
+                ? dbContext.Set<TEntity>().IgnoreQueryFilters(otherFilters)
+                : dbContext.Set<TEntity>())
             .TagWithOperationCallSite(operationName)
             .Select(keyOf)
             .Where(key => keys.Contains(key))

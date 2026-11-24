@@ -16,12 +16,29 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
         => await s3.DeleteObjectAsync(new DeleteObjectRequest { BucketName = BucketName, Key = key }, cancellationToken);
 
     /// <summary>
-    /// Deletes the objects, at most 1000. S3 gives success for a key that does not exist, so a second delete is a no-op.
+    /// Deletes the objects, at most 1000, and gives the keys that storage refused to delete, as with Object Lock or a
+    /// deny policy. The other keys of the batch go. S3 gives success for a key that does not exist, so a second delete
+    /// is a no-op.
     /// </summary>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "Reads the keys of a failed batch delete. Only AttachmentStorage.AddAsync puts.")]
+    public async Task<IReadOnlyList<string>> DeleteAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await DeleteBatchAsync(keys, cancellationToken);
+            return [];
+        }
+        catch (DeleteObjectsException exception)
+        {
+            return [.. exception.Response.DeleteErrors.Select(e => e.Key)];
+        }
+    }
+
     /// <exception cref="DeleteObjectsException">A key failed to delete.</exception>
     [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
         Justification = "A delete of a batch of objects. Only AttachmentStorage.AddAsync puts.")]
-    public async Task DeleteAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken)
+    private async Task DeleteBatchAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken)
         => await s3.DeleteObjectsAsync(new DeleteObjectsRequest
         {
             BucketName = BucketName,
@@ -41,7 +58,7 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
         {
             var page = await ListPageAsync(prefix, continuationToken, cancellationToken);
             if (page.Objects.Count > 0)
-                await DeleteAsync([.. page.Objects.Select(o => o.Key)], cancellationToken);
+                await DeleteBatchAsync([.. page.Objects.Select(o => o.Key)], cancellationToken);
             deleted += page.Objects.Count;
             continuationToken = page.NextToken;
         } while (continuationToken is not null);

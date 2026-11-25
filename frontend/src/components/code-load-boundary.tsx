@@ -7,13 +7,17 @@ interface CodeLoadBoundaryProps {
   fallback: ReactNode
 }
 
+interface CodeLoadBoundaryState {
+  caught?: { error: unknown }
+}
+
 /**
  * Catches a failed load of the code of a lazy component, so that only the children show the error. Another error
  * goes on to the next boundary, such as the page error of the route. React.lazy keeps a failed load, so to load the
  * code again, render a new lazy component under a new boundary.
  */
-export class CodeLoadBoundary extends Component<CodeLoadBoundaryProps, { caught?: { error: unknown } }> {
-  state: { caught?: { error: unknown } } = {}
+export class CodeLoadBoundary extends Component<CodeLoadBoundaryProps, CodeLoadBoundaryState> {
+  state: CodeLoadBoundaryState = {}
 
   static getDerivedStateFromError(error: unknown) {
     return { caught: { error } }

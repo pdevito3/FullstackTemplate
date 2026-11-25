@@ -1,10 +1,10 @@
 import { AxiosError } from 'axios'
 import { describe, expect, it } from 'vitest'
 
-import { ProblemDetailsError } from '@/lib/problem-details'
+import { ProblemDetailsError, type ProblemDetails } from '@/lib/problem-details'
 import { answerError, failureText, requestError } from '@/lib/request-failure'
 
-const problem = (body: Record<string, unknown>) => new ProblemDetailsError({ type: 'urn:test', title: 'Title', ...body })
+const problem = (body: ProblemDetails) => new ProblemDetailsError({ type: 'urn:test', title: 'Title', ...body })
 
 const serverFault = 'The server could not complete the request. Try again in a moment.'
 const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'

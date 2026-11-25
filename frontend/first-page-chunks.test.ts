@@ -5,10 +5,14 @@ import { firstPageChunks } from './first-page-chunks'
 
 type ChunkInput = { isEntry?: boolean; imports?: string[]; dynamicImports?: string[]; bytes?: number; code?: string }
 
+// The fields of each output that firstPageChunks reads
+type OutputInput =
+  | Pick<Rollup.OutputAsset, 'type' | 'fileName' | 'source'>
+  | Pick<Rollup.OutputChunk, 'type' | 'fileName' | 'isEntry' | 'imports' | 'dynamicImports' | 'code'>
+
 function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
-  const outputs: Record<string, unknown> = {
-    'index.css': { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) },
-  }
+  const outputs: Record<string, OutputInput> = {}
+  outputs['index.css'] = { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) }
 
   for (const [fileName, chunk] of Object.entries(chunks)) {
     outputs[fileName] = {

@@ -67,7 +67,7 @@ const plans: PlanDefinition[] = [
 ]
 
 // The key rotation module of the config plan needs a second login, with the new keys
-const flowOverrides: Record<string, Flow> = { 'oidcc-client-test-signing-key-rotation': 'login-twice' }
+const flowOverrides = new Map<string, Flow>([['oidcc-client-test-signing-key-rotation', 'login-twice']])
 
 /** The configuration of a test plan of the suite, as `POST api/plan` takes it. */
 interface PlanConfig {
@@ -335,7 +335,7 @@ async function runPlan(api: APIRequestContext, browser: Browser, bff: string, pl
       const started = await moduleInfo(api, result.id)
 
       if (healthy && started.status === 'WAITING') {
-        await drive(browser, bff, flowOverrides[testModule] ?? plan.flow, join(planDir, `${testModule}.png`), result.steps)
+        await drive(browser, bff, flowOverrides.get(testModule) ?? plan.flow, join(planDir, `${testModule}.png`), result.steps)
       } else {
         result.steps.push(`no browser steps (module ${started.status})`)
       }

@@ -33,15 +33,15 @@ class UnexplainedFailureError extends Error {
   }
 }
 
-const kindOfEmptyAnswer: Partial<Record<number, UnexplainedKind>> = {
-  401: 'sign-in-rejected',
-  504: 'timed-out',
-}
+const kindOfEmptyAnswer = new Map<number, UnexplainedKind>([
+  [401, 'sign-in-rejected'],
+  [504, 'timed-out'],
+])
 
 export function answerError(status: number, body: unknown): ProblemDetailsError | UnexplainedFailureError {
   if (isProblemDetails(body)) return new ProblemDetailsError(body)
 
-  return new UnexplainedFailureError(kindOfEmptyAnswer[status] ?? 'server-fault', `The answer has status ${status} and no problem details.`)
+  return new UnexplainedFailureError(kindOfEmptyAnswer.get(status) ?? 'server-fault', `The answer has status ${status} and no problem details.`)
 }
 
 export function requestError(error: AxiosError): ProblemDetailsError | UnexplainedFailureError {

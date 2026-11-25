@@ -21,7 +21,7 @@ export type TimeZone = string & { readonly __brand: 'TimeZone' }
  * Throws a `RangeError` for a zone that the browser does not know.
  */
 export function parseTimeZone(value: string): TimeZone {
-  const zone = PLACE_OF_SYSTEM_V_ID[value.toUpperCase()] ?? value
+  const zone = PLACE_OF_SYSTEM_V_ID.get(value.toUpperCase()) ?? value
   const resolved = new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone
 
   return (resolved.toLowerCase() === zone.toLowerCase() ? resolved : zone) as TimeZone
@@ -34,12 +34,12 @@ export function parseTimeZone(value: string): TimeZone {
  * the IDs, but WebKit 27.2 throws a `RangeError` for them, and Chromium names them by a bare offset, for example
  * "GMT-05:00". So a time before 1967 can show with another offset than the Server gives.
  */
-const PLACE_OF_SYSTEM_V_ID: Partial<Record<string, string>> = {
-  EST5EDT: 'America/New_York',
-  CST6CDT: 'America/Chicago',
-  MST7MDT: 'America/Denver',
-  PST8PDT: 'America/Los_Angeles',
-}
+const PLACE_OF_SYSTEM_V_ID = new Map([
+  ['EST5EDT', 'America/New_York'],
+  ['CST6CDT', 'America/Chicago'],
+  ['MST7MDT', 'America/Denver'],
+  ['PST8PDT', 'America/Los_Angeles'],
+])
 
 /** The zone of the browser. Use it only for a time that belongs to the user, not to a place. */
 export function browserTimeZone(): TimeZone {
@@ -61,7 +61,7 @@ export function timeZoneLabel(zone: TimeZone): string {
 
   const name = names.find(isWordName) ?? names[names.length - 1]
 
-  return CLEAR_NAME_OF_ZONE[name] ?? name
+  return CLEAR_NAME_OF_ZONE.get(name) ?? name
 }
 
 /**
@@ -70,13 +70,13 @@ export function timeZoneLabel(zone: TimeZone): string {
  * These are the only such names in a scan of 597 zones. Other Chromium names come from a current ID, as "Sao Paulo Time".
  * "DumontDUrville Time" is the exact tail of its ID, which rule 1 of docs/messages.md refuses.
  */
-const CLEAR_NAME_OF_ZONE: Partial<Record<string, string>> = {
-  'Godthab Time': 'Nuuk Time',
-  'Truk Time': 'Chuuk Time',
-  'Ponape Time': 'Pohnpei Time',
-  'Enderbury Time': 'Canton Island Time',
-  'DumontDUrville Time': "Dumont d'Urville Time",
-}
+const CLEAR_NAME_OF_ZONE = new Map([
+  ['Godthab Time', 'Nuuk Time'],
+  ['Truk Time', 'Chuuk Time'],
+  ['Ponape Time', 'Pohnpei Time'],
+  ['Enderbury Time', 'Canton Island Time'],
+  ['DumontDUrville Time', "Dumont d'Urville Time"],
+])
 
 /**
  * The message for a typed time that the clocks skip in a spring gap, as `instantAt` gives null for it. With no zone, the

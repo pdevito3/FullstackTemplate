@@ -9,11 +9,11 @@ import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/m
 
 /**
  * The problem details of the contract, with the member that ASP.NET adds to each body (`traceId`)
- * and the members of a subtype (for example, `errors` on a validation problem).
+ * and the field errors of a validation problem. `validationErrorsOf` parses the errors.
  */
 export type ProblemDetails = ContractProblemDetails & {
   traceId?: string
-  [key: string]: unknown
+  errors?: unknown
 }
 
 /**
@@ -53,16 +53,15 @@ export function isProblemDetailsError(error: unknown): error is ProblemDetailsEr
  * Type guard to check if an object is a Problem Details response
  */
 export function isProblemDetails(obj: unknown): obj is ProblemDetails {
-  if (typeof obj !== 'object' || obj === null) {
-    return false
-  }
-
-  const pd = obj as Record<string, unknown>
-
   return (
-    typeof pd.type === 'string' &&
-    typeof pd.title === 'string' &&
-    typeof pd.status === 'number'
+    typeof obj === 'object' &&
+    obj !== null &&
+    'type' in obj &&
+    typeof obj.type === 'string' &&
+    'title' in obj &&
+    typeof obj.title === 'string' &&
+    'status' in obj &&
+    typeof obj.status === 'number'
   )
 }
 

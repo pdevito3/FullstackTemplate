@@ -23,9 +23,17 @@ const alreadyMember = 'Your account already belongs to a tenant.'
 const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
 
 /** `inviteExpiry` of the builder in each zone of the suite. */
-const expiryIn: Record<string, string> = {
-  'Pacific/Kiritimati': 'Jan 16, 2099, 2:00 AM',
-  'Pacific/Pago_Pago': 'Jan 15, 2099, 1:00 AM',
+const expiryIn = new Map([
+  ['Pacific/Kiritimati', 'Jan 16, 2099, 2:00 AM'],
+  ['Pacific/Pago_Pago', 'Jan 15, 2099, 1:00 AM'],
+])
+
+function expiryInBrowserZone(): string {
+  const expiry = expiryIn.get(browserZone())
+
+  if (expiry === undefined) throw new Error(`The suite has no invite expiry for the zone ${browserZone()}.`)
+
+  return expiry
 }
 
 test.describe('a visitor with no session opens an invite link', () => {
@@ -74,7 +82,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
 
     await expect(join.at.detail('Acme')).toBeVisible()
     await expect(join.at.detail('Admin')).toBeVisible()
-    await expect(join.at.detail(expiryIn[browserZone()])).toBeVisible()
+    await expect(join.at.detail(expiryInBrowserZone())).toBeVisible()
     await expect(join.at.form).toBeVisible()
   })
 

@@ -133,6 +133,9 @@ export function canAddToGroup(
   return resultingDepth <= MAX_NESTING_DEPTH
 }
 
+/** Whether the selected filters can make a group, and the reason when they cannot. */
+export type GroupCheck = { canCreate: true } | { canCreate: false; reason: string }
+
 /**
  * Check if creating a new group from selected filters would exceed max depth
  * @param state - Current filter state
@@ -141,7 +144,7 @@ export function canAddToGroup(
 export function canCreateGroup(
   state: FilterState,
   filterIds: string[]
-): { canCreate: boolean; reason?: string } {
+): GroupCheck {
   if (filterIds.length < 2) {
     return { canCreate: false, reason: 'Need at least 2 filters to create a group' }
   }

@@ -244,18 +244,18 @@ interface WeatherCardProps {
 }
 
 // The server picks the summary from the temperature, so the icon goes from cold to hot.
-const SUMMARY_ICONS: Record<string, typeof CloudIcon> = {
-  Freezing: SnowIcon,
-  Bracing: CloudSnowIcon,
-  Chilly: CloudFastWindIcon,
-  Cool: CloudIcon,
-  Mild: SunCloud02Icon,
-  Warm: Sun03Icon,
-  Balmy: Sun03Icon,
-  Hot: Sun01Icon,
-  Sweltering: Sun01Icon,
-  Scorching: FireIcon,
-}
+const SUMMARY_ICONS = new Map([
+  ['Freezing', SnowIcon],
+  ['Bracing', CloudSnowIcon],
+  ['Chilly', CloudFastWindIcon],
+  ['Cool', CloudIcon],
+  ['Mild', SunCloud02Icon],
+  ['Warm', Sun03Icon],
+  ['Balmy', Sun03Icon],
+  ['Hot', Sun01Icon],
+  ['Sweltering', Sun01Icon],
+  ['Scorching', FireIcon],
+])
 
 function WeatherCard({ forecast, useCelsius, formatDate }: WeatherCardProps) {
   return (
@@ -268,7 +268,7 @@ function WeatherCard({ forecast, useCelsius, formatDate }: WeatherCardProps) {
             </p>
             <CardTitle className="mt-1">{forecast.summary}</CardTitle>
           </div>
-          <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 shrink-0 text-muted-foreground" />
+          <HugeiconsIcon icon={SUMMARY_ICONS.get(forecast.summary ?? "") ?? CloudIcon} className="w-6 h-6 shrink-0 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>

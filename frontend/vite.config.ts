@@ -25,23 +25,21 @@ import { firstPageChunks } from './first-page-chunks'
 // Rollup also puts the dependencies of a library in its chunk. If the entry
 // imports one of them, the full chunk loads on the first page. After you add a
 // group, look at the modulepreload links in dist/index.html.
-const vendorChunks: Record<string, string[]> = {
+const vendorChunks = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
   query: ['@tanstack/react-query', '@tanstack/query-core'],
   motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
   // The router does not split validateSearch, so a route that checks its search with zod loads zod on the first page
   zod: ['zod'],
-}
+} satisfies Record<string, string[]>
 
 function vendorChunk(id: string): string | undefined {
   const match = id.match(/.*\/node_modules\/((?:@[^/]+\/)?[^/]+)\//)
 
   if (!match) return undefined
 
-  return Object.keys(vendorChunks).find((chunk) =>
-    vendorChunks[chunk].includes(match[1]),
-  )
+  return Object.entries(vendorChunks).find(([, packages]) => packages.includes(match[1]))?.[0]
 }
 
 const firstPageBudgetKb = 950

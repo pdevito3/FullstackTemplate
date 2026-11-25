@@ -453,7 +453,7 @@ function ControlledFrameworkCombobox({
 } & Pick<ComboBoxProps<object>, 'menuTrigger' | 'onBlur' | 'onOpenChange'>) {
   const [value, setValue] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
-  const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+  const names = new Map([['vue', 'Vue'], ['vue-router', 'Vue Router']])
 
   return (
     <div style={{ height: '300vh' }}>
@@ -463,7 +463,7 @@ function ControlledFrameworkCombobox({
         onChange={(key) => {
           onChange(key)
           setValue(key)
-          setInputValue(key == null ? '' : names[String(key)])
+          setInputValue(key == null ? '' : (names.get(String(key)) ?? ''))
         }}
         inputValue={inputValue}
         onInputChange={setInputValue}
@@ -603,7 +603,7 @@ test.each(closedLists)('Tab picks one time in a list that %s closed, %s, with co
 function SelectedKeyFrameworkCombobox({ onChange }: { onChange: (key: unknown) => void }) {
   const [selectedKey, setSelectedKey] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
-  const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+  const names = new Map([['vue', 'Vue'], ['vue-router', 'Vue Router']])
 
   return (
     <div style={{ height: '300vh' }}>
@@ -612,7 +612,7 @@ function SelectedKeyFrameworkCombobox({ onChange }: { onChange: (key: unknown) =
         onSelectionChange={(key) => {
           onChange(key)
           setSelectedKey(key)
-          setInputValue(key == null ? '' : names[String(key)])
+          setInputValue(key == null ? '' : (names.get(String(key)) ?? ''))
         }}
         inputValue={inputValue}
         onInputChange={setInputValue}

@@ -1,4 +1,5 @@
 import { CalendarDate, getDayOfWeek } from "@internationalized/date"
+import type { RangeValue } from "react-aria-components"
 
 import { todayAt, type TimeZone } from "@/lib/zoned-time"
 
@@ -12,7 +13,7 @@ function getPresetDate(zone: TimeZone, daysOffset: number): CalendarDate {
 }
 
 // Helper to get week range (Sunday-based)
-function getWeekRange(zone: TimeZone, weeksOffset: number): { start: CalendarDate; end: CalendarDate } {
+function getWeekRange(zone: TimeZone, weeksOffset: number): RangeValue<CalendarDate> {
   const targetWeekStart = todayAt(zone, new Date()).add({ weeks: weeksOffset })
   const weekStart = targetWeekStart.subtract({ days: getDayOfWeek(targetWeekStart, "en-US") })
   const weekEnd = weekStart.add({ days: 6 })
@@ -21,7 +22,7 @@ function getWeekRange(zone: TimeZone, weeksOffset: number): { start: CalendarDat
 }
 
 // Helper to get month range
-function getMonthRange(zone: TimeZone, monthsOffset: number): { start: CalendarDate; end: CalendarDate } {
+function getMonthRange(zone: TimeZone, monthsOffset: number): RangeValue<CalendarDate> {
   const targetMonth = todayAt(zone, new Date()).add({ months: monthsOffset })
   const monthStart = new CalendarDate(targetMonth.year, targetMonth.month, 1)
   const monthEnd = monthStart.add({ months: 1 }).subtract({ days: 1 })
@@ -30,7 +31,7 @@ function getMonthRange(zone: TimeZone, monthsOffset: number): { start: CalendarD
 }
 
 // Helper to get year range
-function getYearRange(zone: TimeZone, yearsOffset: number): { start: CalendarDate; end: CalendarDate } {
+function getYearRange(zone: TimeZone, yearsOffset: number): RangeValue<CalendarDate> {
   const targetYear = todayAt(zone, new Date()).year + yearsOffset
   const yearStart = new CalendarDate(targetYear, 1, 1)
   const yearEnd = new CalendarDate(targetYear, 12, 31)

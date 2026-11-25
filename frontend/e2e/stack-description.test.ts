@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { checkStack, type DescribeRun } from './stack-description.ts'
+import { checkStack, type DescribeRun, type StackResource } from './stack-description.ts'
 
 const appHost = '../FullstackTemplate.AppHost'
 const startCommand = 'dotnet aspire start --isolated --non-interactive --apphost ../FullstackTemplate.AppHost'
 
-function resource(displayName: string, overrides: Record<string, unknown> = {}) {
+function resource(displayName: string, overrides: Partial<StackResource> = {}) {
   return { displayName, state: 'Running', healthStatus: 'Healthy', urls: [], environment: {}, ...overrides }
 }
 

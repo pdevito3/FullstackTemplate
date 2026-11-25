@@ -169,13 +169,15 @@ function convertBooleanFilter(propertyKey: string, operator: string, value: bool
   return `${propertyKey} ${operator} ${value}`
 }
 
+export interface FilterStateValidation {
+  valid: boolean
+  errors: string[]
+}
+
 /**
  * Validate that a filter state can be converted to QueryKit
  */
-export function validateFilterState(state: FilterState): {
-  valid: boolean
-  errors: string[]
-} {
+export function validateFilterState(state: FilterState): FilterStateValidation {
   const errors: string[] = []
 
   function validateItem(item: Filter | FilterGroup, path: string = 'root'): void {

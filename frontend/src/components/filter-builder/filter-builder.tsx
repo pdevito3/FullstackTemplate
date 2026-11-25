@@ -115,10 +115,10 @@ export function FilterBuilder({
 
   const handleCreateGroup = () => {
     const ids = Array.from(selectedIds)
-    const { canCreate, reason } = canCreateGroup(state, ids)
+    const check = canCreateGroup(state, ids)
 
-    if (!canCreate) {
-      alert(reason || 'Cannot create group')
+    if (!check.canCreate) {
+      alert(check.reason)
 
       return
     }

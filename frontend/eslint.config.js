@@ -579,6 +579,7 @@ export const antiSlopRules = {
   'anti-slop/no-reflect-apply': 'error',
   'anti-slop/no-reflect-get': 'error',
   'anti-slop/no-shape-in-symbol-names': 'error',
+  'anti-slop/no-unknown-returns': 'error',
   'anti-slop/no-unknown-type-aliases': 'error',
   'anti-slop/no-widen-then-assert': 'error',
   'anti-slop/require-readable-spacing': 'error',

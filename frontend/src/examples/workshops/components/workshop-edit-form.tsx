@@ -35,7 +35,7 @@ function valuesOf(workshop: WorkshopDto) {
 interface WorkshopEditFormProps {
   workshop: WorkshopDto
   refetchError: unknown
-  onSave: (body: WorkshopForUpdateDto) => Promise<unknown>
+  onSave: (body: WorkshopForUpdateDto) => Promise<void>
   onLoadLatest: () => Promise<WorkshopDto>
 }
 

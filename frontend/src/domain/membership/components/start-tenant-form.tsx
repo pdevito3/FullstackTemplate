@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 
 import type { InitiateUserAndTenantDto } from '@/api/generated/models/types/initiate-user-and-tenant-dto'
+import type { InitiateUserAndTenantResponseDto } from '@/api/generated/models/types/initiate-user-and-tenant-response-dto'
 import { initiateUserAndTenantDtoSchema } from '@/api/generated/models/zod/initiate-user-and-tenant-dto'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -31,7 +32,7 @@ const FIELD_NAMES = Object.keys(schema.shape) as (keyof StartTenantValues)[]
 
 interface StartTenantFormProps {
   profile: StartTenantProfile
-  onStart: (body: InitiateUserAndTenantDto) => Promise<unknown>
+  onStart: (body: InitiateUserAndTenantDto) => Promise<InitiateUserAndTenantResponseDto>
 }
 
 export function StartTenantForm({ profile: { identifier, ...names }, onStart }: StartTenantFormProps) {

@@ -23,7 +23,7 @@ const FIELD_NAMES = ['venueId', ...WORKSHOP_FIELD_NAMES] as const
 
 interface WorkshopCreateFormProps {
   venueId?: string
-  onSave: (body: WorkshopForCreationDto) => Promise<unknown>
+  onSave: (body: WorkshopForCreationDto) => Promise<void>
 }
 
 export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormProps) {

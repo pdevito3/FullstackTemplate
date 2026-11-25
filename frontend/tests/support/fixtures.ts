@@ -1,8 +1,9 @@
 import { test as base, expect, type Request } from '@playwright/test'
+import * as z from 'zod'
 import { bffApi } from './api/bff-api'
 import { membershipApi } from './api/membership-api'
 import { usersApi } from './api/users-api'
-import { isMockedPath, requestRecorder, type HttpMethod, type MockRoute, type ServedRequest } from './api/mock-route'
+import { isMockedPath, requestRecorder, type HttpMethod, type MockRoute, type RequestBody, type ServedRequest } from './api/mock-route'
 import { as, type Identity } from './auth/actors'
 
 export interface Api {
@@ -22,9 +23,9 @@ export interface Api {
 
 // `postDataJSON` throws on a body that is not JSON. That leaves the route unfulfilled and the test
 // times out, so a recorder must not let it throw.
-function postBody(request: Request): unknown {
+function postBody(request: Request): RequestBody {
   try {
-    return request.postDataJSON()
+    return z.json().parse(request.postDataJSON())
   } catch {
     return request.postData() ?? undefined
   }

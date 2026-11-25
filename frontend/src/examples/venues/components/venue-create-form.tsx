@@ -23,7 +23,7 @@ const schema = venueForCreationDtoSchema.extend({
 const FIELD_NAMES = ['name', 'timeZone'] as const
 
 interface VenueCreateFormProps {
-  onSave: (body: VenueForCreationDto) => Promise<unknown>
+  onSave: (body: VenueForCreationDto) => Promise<void>
 }
 
 export function VenueCreateForm({ onSave }: VenueCreateFormProps) {

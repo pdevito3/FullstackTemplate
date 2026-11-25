@@ -24,11 +24,6 @@ export const Route = createFileRoute('/(examples)/filter-demo')({
   staticData: { breadcrumb: 'Filter Builder' },
 })
 
-/** The state card shows a wall clock time as text, not as the fields of its object. */
-function wallClockAsText(_key: string, value: unknown): unknown {
-  return value instanceof CalendarDateTime ? value.toString() : value
-}
-
 function FilterDemoPage() {
   const [filterState, setFilterState] = useState<FilterState>({
     filters: [],
@@ -444,7 +439,8 @@ function FilterDemoPage() {
         </CardHeader>
         <CardContent>
           <div className="bg-muted p-4 rounded-md font-mono text-xs max-h-96 overflow-auto">
-            <pre>{JSON.stringify(filterState, wallClockAsText, 2)}</pre>
+            {/* A wall clock time shows as text, not as the fields of its object. */}
+            <pre>{JSON.stringify(filterState, (_key, value) => (value instanceof CalendarDateTime ? value.toString() : value), 2)}</pre>
           </div>
         </CardContent>
       </Card>

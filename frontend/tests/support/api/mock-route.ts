@@ -1,3 +1,5 @@
+import type * as z from 'zod'
+
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete'
 
 export interface MockRoute {
@@ -17,16 +19,19 @@ const mockedPrefixes = ['/api/', '/bff/', '/backwave']
 
 export const isMockedPath = (pathname: string) => mockedPrefixes.some((prefix) => pathname.startsWith(prefix))
 
+/** The body of a served request: its JSON, or its text when it is not JSON. */
+export type RequestBody = z.core.util.JSONType | string | undefined
+
 export interface ServedRequest {
   query: URLSearchParams
   headers: Headers
-  body: unknown
+  body: RequestBody
 }
 
 // A mock matches on method and path alone. Only a test that reads the request back can prove
 // what the application put on the wire.
 export function requestRecorder() {
-  const served: { method: HttpMethod; url: URL; headers: Headers; body: unknown }[] = []
+  const served: { method: HttpMethod; url: URL; headers: Headers; body: RequestBody }[] = []
 
   const all = (method: HttpMethod, path: string): ServedRequest[] =>
     served.flatMap((r) =>
@@ -36,7 +41,7 @@ export function requestRecorder() {
     )
 
   return {
-    add(method: HttpMethod, url: URL, headers: Headers, body: unknown) {
+    add(method: HttpMethod, url: URL, headers: Headers, body: RequestBody) {
       served.push({ method, url, headers, body })
     },
     all,

@@ -4,7 +4,6 @@ import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
 declare global {
-  /** The functions that `page.exposeFunction` adds to the page of a task below. */
   interface Window {
     reportRender: () => void
     reportToast: () => void

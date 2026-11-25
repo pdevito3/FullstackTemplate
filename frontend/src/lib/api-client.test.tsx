@@ -11,7 +11,6 @@ import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 import { failureText } from '@/lib/request-failure'
 
-/** The toasts that the Toaster shows. */
 const shownToasts = () => toastQueue.visibleToasts.map(({ content }) => content)
 
 const tenantId = '0b9d5d8e-2f8a-4a43-9d36-5c3f6f4f0a11'

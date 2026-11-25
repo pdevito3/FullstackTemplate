@@ -11,7 +11,6 @@ import { DateFilter } from './date-filter'
 
 const pagoPago = parseTimeZone('Pacific/Pago_Pago')
 
-/** The date value of the last filter that the control submitted. */
 function submittedDate(onSubmit: Mock<FilterControlProps['onSubmit']>): DateValue {
   const value = onSubmit.mock.lastCall?.[0].value
 

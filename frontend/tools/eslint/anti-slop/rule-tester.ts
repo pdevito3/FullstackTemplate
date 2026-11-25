@@ -12,12 +12,10 @@ EslintRuleTester.itOnly = it.only;
 
 type Tests = Parameters<EslintRuleTester["run"]>[2];
 
-/** The upstream tests run on the Oxlint RuleTester. This one runs them on ESLint with the parser of the repo. */
 export class RuleTester {
   readonly #tester = new EslintRuleTester({ languageOptions: { parser: tseslint.parser } });
 
-  /** Takes the Oxlint options of the upstream tests. The parser of the repo reads TypeScript, so they change nothing. */
-  constructor(_oxlintConfig?: { languageOptions: { parserOptions: { lang: "ts" } } }) {}
+  constructor(_ignoredOxlintConfig?: { languageOptions: { parserOptions: { lang: "ts" } } }) {}
 
   run(name: string, rule: Rule, tests: Tests): void {
     // SAFETY: eslintCompatPlugin in index.ts gave this rule object an ESLint `create` method. The Oxlint and ESLint

@@ -19,7 +19,6 @@ const mockedPrefixes = ['/api/', '/bff/', '/backwave']
 
 export const isMockedPath = (pathname: string) => mockedPrefixes.some((prefix) => pathname.startsWith(prefix))
 
-/** The body of a served request: its JSON, or its text when it is not JSON. */
 export type RequestBody = z.core.util.JSONType | string | undefined
 
 export interface ServedRequest {

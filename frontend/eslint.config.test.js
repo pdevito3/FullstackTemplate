@@ -475,7 +475,8 @@ export function showOnItsOwn(setError: Form['setError']) {
   })
 })
 
-// One violation for each anti-slop rule. conformance/ has no type-aware block, so the lint of the real config is fast.
+const SEED_PATH_WITHOUT_TYPE_INFO = 'conformance/seed.ts'
+
 const antiSlopSeeds = {
   'anti-slop/no-accumulating-spread': 'export const all = [1, 2].reduce((acc: number[], n) => [...acc, n], [])\n',
   'anti-slop/no-array-filter-map': 'const xs: number[] = [1, 2]\nexport const ys = xs.filter((x) => x > 1).map((x) => x * 2)\n',
@@ -500,7 +501,7 @@ const antiSlopSeeds = {
 
 async function antiSlopRulesOf(code) {
   const eslint = new ESLint({ cwd: import.meta.dirname })
-  const [result] = await eslint.lintText(code, { filePath: 'conformance/seed.ts' })
+  const [result] = await eslint.lintText(code, { filePath: SEED_PATH_WITHOUT_TYPE_INFO })
   return result.messages.map((message) => message.ruleId)
 }
 

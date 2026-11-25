@@ -38,7 +38,6 @@ const kindOfEmptyAnswer = new Map<number, UnexplainedKind>([
   [504, 'timed-out'],
 ])
 
-/** The error of an answer that failed. Pass the problem details of the body, or null when the body has none. */
 export function answerError(status: number, problem: ProblemDetails | null): ProblemDetailsError | UnexplainedFailureError {
   if (problem) return new ProblemDetailsError(problem)
 

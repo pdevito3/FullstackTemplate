@@ -7,7 +7,6 @@ import * as z from 'zod'
 
 const repoRoot = resolve(import.meta.dirname, '..')
 
-// The fields of .claude/settings.json that the test reads
 const settingsSchema = z.object({
   hooks: z.object({ PreToolUse: z.array(z.object({ matcher: z.string(), hooks: z.array(z.object({ command: z.string() })) })) }),
 })

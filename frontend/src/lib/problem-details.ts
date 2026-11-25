@@ -11,7 +11,7 @@ import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/m
 
 /**
  * The problem details of the contract, with the member that ASP.NET adds to each body (`traceId`)
- * and the field errors of a validation problem. `validationErrorsOf` parses the errors.
+ * and the field errors of a validation problem.
  */
 export type ProblemDetails = ContractProblemDetails & {
   traceId?: string
@@ -76,7 +76,6 @@ export function isStaleVersionError(cause: unknown): boolean {
 const errorsSchema = z.record(z.string(), z.unknown())
 const messagesSchema = z.array(z.string())
 
-/** The messages of each field of a validation problem. A field whose messages are not a list of text is left out. */
 export function validationErrorsOf(cause: unknown): Record<string, string[]> {
   if (!isProblemDetailsError(cause)) {
     return {}

@@ -1,4 +1,4 @@
-import { createServer } from 'node:net'
+import { createServer, type AddressInfo } from 'node:net'
 import { defineConfig, devices } from '@playwright/test'
 
 /**
@@ -17,7 +17,7 @@ async function freePort(): Promise<number> {
     server.once('error', reject)
     server.listen(0, () => {
       // SAFETY: a server that listens on a TCP port, not on a pipe, gives an AddressInfo once it listens.
-      const { port } = server.address() as { port: number }
+      const { port } = server.address() as AddressInfo
       server.close(() => resolve(port))
     })
   })

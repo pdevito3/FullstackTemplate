@@ -12,8 +12,7 @@ export function createRouterLink<
   THost extends React.ComponentType<RouterLinkHostProps>,
 >(Host: THost): LinkComponent<THost> {
   // The returned type checks the props of each caller. The props go on to
-  // createLink as they are, with the router options added. The host type has
-  // no `routerOptions`, so they go in with the spread.
+  // createLink as they are, with the router options added.
   const RouterLink = createLink(Host)
 
   return (props) => {

@@ -33,7 +33,6 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
 }
 
-/** Whether the filter value of the search column is text. The search input sets it to the text that it holds. */
 function isSearchText(filterValue: unknown): filterValue is string {
   return typeof filterValue === "string"
 }

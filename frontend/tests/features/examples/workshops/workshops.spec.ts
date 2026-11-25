@@ -11,7 +11,6 @@ import { startTenantPage } from '@tests/features/start-tenant/start-tenant.tasks
 import { useDefaultFontSize } from '@tests/support/screen'
 import { workshopsPage } from './workshops.tasks'
 
-// The start of the workshop that the form sent. The other fields stay, so that a test can match them.
 const sentWorkshop = z.looseObject({ startsAt: z.string() })
 
 test.describe('the search of the workshops while the membership check fails', () => {

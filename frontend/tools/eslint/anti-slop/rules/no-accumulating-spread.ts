@@ -47,7 +47,6 @@ function insideLoop(node: ESTree.Node): boolean {
   return false;
 }
 
-/** The ESLint form of `oxc/no-accumulating-spread`: a spread of the accumulator copies it on each step. */
 export const noAccumulatingSpreadRule = defineRule({
   meta: {
     type: "problem",

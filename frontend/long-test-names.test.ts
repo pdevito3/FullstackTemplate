@@ -6,7 +6,6 @@ import { join } from 'node:path'
 import { expect, test } from 'vitest'
 import * as z from 'zod'
 
-// The fields of the JSON report of Vitest that the test reads
 const jsonReportSchema = z.object({
   testResults: z.array(
     z.object({

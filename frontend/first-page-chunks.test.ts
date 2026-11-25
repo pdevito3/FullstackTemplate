@@ -5,7 +5,6 @@ import { firstPageChunks, type BundleFields } from './first-page-chunks'
 
 type ChunkInput = { isEntry?: boolean; imports?: string[]; dynamicImports?: string[]; bytes?: number; code?: string }
 
-// The fields of each output that firstPageChunks reads
 type OutputInput =
   | Pick<Rollup.OutputAsset, 'type' | 'fileName' | 'source'>
   | Pick<Rollup.OutputChunk, 'type' | 'fileName' | 'isEntry' | 'imports' | 'dynamicImports' | 'code'>

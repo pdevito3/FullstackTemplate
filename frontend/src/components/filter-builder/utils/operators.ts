@@ -364,19 +364,16 @@ export function operatorSupportsCaseSensitivity(operator: OperatorType): boolean
   return `${operator}*` in OPERATORS
 }
 
-/** Whether a string is the symbol of an operator. */
 function isOperatorType(symbol: string): symbol is OperatorType {
   return Object.values(OPERATORS).some((op) => op.symbol === symbol)
 }
 
-/** The case-insensitive variant of a base operator (`@=` gives `@=*`), or undefined when it has none. */
 export function caseInsensitiveOperator(operator: OperatorType): OperatorType | undefined {
   const variant = `${operator}*`
 
   return isOperatorType(variant) ? variant : undefined
 }
 
-/** The base operator of a case-insensitive operator (`@=*` gives `@=`). Each other operator gives itself. */
 export function baseOperator(operator: OperatorType): OperatorType {
   const base = operator.endsWith('*') ? operator.slice(0, -1) : operator
 

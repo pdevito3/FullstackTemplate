@@ -81,13 +81,12 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
   }
 }
 
+const spansSchema = z.array(z.looseObject({ timestamp: z.string(), attributes: z.record(z.string(), z.unknown()) }))
+
 /**
  * The number of server spans of the current user call with a DPoP proof since `startedAt`. The server tags the span
  * of a request with `app.auth.scheme=DPoP` after it checked the proof and the binding of the token.
  */
-// The fields of each span of `dotnet aspire otel spans` that the DPoP test reads
-const spansSchema = z.array(z.looseObject({ timestamp: z.string(), attributes: z.record(z.string(), z.unknown()) }))
-
 function dpopSpansOfCurrentUserSince(startedAt: number): number {
   const output = execFileSync(
     'dotnet',
@@ -477,7 +476,6 @@ test.describe(`Provider discovery - ${currentIdp.name}`, () => {
   })
 })
 
-// The members of the discovery document that the tests read
 const discoverySchema = z.object({
   authorization_endpoint: z.string(),
   token_endpoint: z.string(),
@@ -503,8 +501,7 @@ function requiredEnv(name: string): string {
 
 /**
  * Calls the identity provider with Node fetch, not the request fixture of Playwright, so that the tokens and the admin
- * credentials stay out of the trace. Returns the status and the JSON body. The caller parses the body after it checks
- * the status.
+ * credentials stay out of the trace. Returns the status and the JSON body.
  */
 async function callIdp(url: string, init: RequestInit = {}): Promise<{ status: number; body: z.core.util.JSONType }> {
   const response = await fetch(url, init)
@@ -525,10 +522,8 @@ async function bffUserStatus(page: Page): Promise<number> {
   return page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
 }
 
-// The BFF gives bff:session_expires_in as a number, and each other claim as text.
 const bffClaimsSchema = z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]) }))
 
-// The value of a claim of the BFF session of the page, or undefined when the session has no such claim
 async function bffClaim(page: Page, type: string): Promise<string | undefined> {
   const answer: unknown = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json())
   const value = bffClaimsSchema.parse(answer).find((claim) => claim.type === type)?.value
@@ -616,7 +611,6 @@ test.describe(`Back-channel logout - ${currentIdp.name}`, () => {
   })
 })
 
-// The members of a token answer that the tests read. An error answer has `error`.
 const tokenAnswerSchema = z.object({ refresh_token: z.string().optional(), error: z.string().optional() })
 
 function base64Url(bytes: Buffer): string {
@@ -688,7 +682,6 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
   })
 })
 
-// The claims of a JWT payload that the tests read
 const jwtPayloadSchema = z.object({ iat: z.number() })
 
 // The payload of a JWT, read with no signature check. The caller reads only claims, never prints the token.

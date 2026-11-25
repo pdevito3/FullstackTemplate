@@ -70,7 +70,6 @@ const plans: PlanDefinition[] = [
 // The key rotation module of the config plan needs a second login, with the new keys
 const flowOverrides = new Map<string, Flow>([['oidcc-client-test-signing-key-rotation', 'login-twice']])
 
-/** The configuration of a test plan of the suite, as `POST api/plan` takes it. */
 interface PlanConfig {
   alias: string
   description: string
@@ -99,7 +98,6 @@ interface ModuleResult {
   steps: string[]
 }
 
-// The fields of `dotnet aspire describe` that bffUrls reads. e2e/stack-description.ts reads the same output.
 const describedSchema = z.object({
   resources: z.array(
     z.looseObject({
@@ -118,10 +116,8 @@ const moduleSchema = z.object({ id: z.string() })
 
 const moduleInfoSchema = z.object({ status: z.string(), result: z.string().nullish() })
 
-// The BFF gives bff:session_expires_in as a number, and each other claim as text.
 const claimsSchema = z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]) }))
 
-/** The first line of the message of an error that a step threw. */
 function firstLineOf(cause: unknown): string {
   return (cause instanceof Error ? cause.message : String(cause)).split('\n')[0] ?? ''
 }

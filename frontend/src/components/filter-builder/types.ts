@@ -145,27 +145,22 @@ export function isFilterGroup(item: Filter | FilterGroup): item is FilterGroup {
   return 'type' in item && item.type === 'group'
 }
 
-/** Whether the value of a filter is a date value, not text, a number, a boolean, or a list. */
 export function isDateValue(value: Filter['value'] | undefined): value is DateValue {
   return typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Whether the value of a filter is the text of a text filter. */
 export function isTextValue(value: Filter['value'] | undefined): value is string {
   return typeof value === 'string'
 }
 
-/** Whether the value of a filter is the list of option values of a multiselect filter. */
 export function isListValue(value: Filter['value'] | undefined): value is string[] {
   return Array.isArray(value)
 }
 
-/** Whether the value of a filter is the number of a number filter. */
 export function isNumberValue(value: Filter['value'] | undefined): value is number {
   return typeof value === 'number'
 }
 
-/** Whether the value of a filter is the value of a boolean filter. */
 export function isBooleanValue(value: Filter['value'] | undefined): value is boolean {
   return typeof value === 'boolean'
 }

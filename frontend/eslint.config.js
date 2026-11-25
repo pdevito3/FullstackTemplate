@@ -567,7 +567,6 @@ const failureTextRule = {
   },
 }
 
-// docs/frontend/code-style.md, section "Lint guards". The rules come from tools/eslint/anti-slop (see its UPSTREAM.md).
 export const antiSlopRules = {
   'anti-slop/no-accumulating-spread': 'error',
   'anti-slop/no-array-filter-map': 'error',

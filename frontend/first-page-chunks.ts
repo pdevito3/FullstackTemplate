@@ -4,7 +4,6 @@ export type ChunkSize = { fileName: string; sizeKb: number }
 
 type ChunkFields = Pick<Rollup.OutputChunk, 'type' | 'fileName' | 'isEntry' | 'imports' | 'code'>
 
-/** The fields of each output of a bundle that firstPageChunks reads. A `Rollup.OutputBundle` has them. */
 export type BundleFields = Record<string, Pick<Rollup.OutputAsset, 'type'> | ChunkFields>
 
 export function firstPageChunks(bundle: BundleFields): ChunkSize[] {

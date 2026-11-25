@@ -133,7 +133,6 @@ export function canAddToGroup(
   return resultingDepth <= MAX_NESTING_DEPTH
 }
 
-/** Whether the selected filters can make a group, and the reason when they cannot. */
 export type GroupCheck = { canCreate: true } | { canCreate: false; reason: string }
 
 /**

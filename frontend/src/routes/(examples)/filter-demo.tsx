@@ -439,7 +439,6 @@ function FilterDemoPage() {
         </CardHeader>
         <CardContent>
           <div className="bg-muted p-4 rounded-md font-mono text-xs max-h-96 overflow-auto">
-            {/* A wall clock time shows as text, not as the fields of its object. */}
             <pre>{JSON.stringify(filterState, (_key, value) => (value instanceof CalendarDateTime ? value.toString() : value), 2)}</pre>
           </div>
         </CardContent>

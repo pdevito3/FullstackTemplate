@@ -45,7 +45,8 @@ const PLACE_OF_SYSTEM_V_ID = new Map([
 
 /** The zone of the browser. Use it only for a time that belongs to the user, not to a place. */
 export function browserTimeZone(): TimeZone {
-  // SAFETY: getLocalTimeZone gives the zone that Intl resolved for the browser, so the browser knows it.
+  // SAFETY: getLocalTimeZone gives the timeZone of Intl.DateTimeFormat().resolvedOptions(), so the browser knows it. No
+  // code calls setLocalTimeZone, which could put another string there.
   return getLocalTimeZone() as TimeZone
 }
 

@@ -1,3 +1,4 @@
+import * as z from 'zod'
 import { membershipApi, membershipPaths } from '@tests/support/api/membership-api'
 import { actorSubject, as } from '@tests/support/auth/actors'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
@@ -9,6 +10,9 @@ import { appShellPage } from '@tests/features/app-shell/app-shell.tasks'
 import { startTenantPage } from '@tests/features/start-tenant/start-tenant.tasks'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { workshopsPage } from './workshops.tasks'
+
+// The start of the workshop that the form sent. The other fields stay, so that a test can match them.
+const sentWorkshop = z.looseObject({ startsAt: z.string() })
 
 test.describe('the search of the workshops while the membership check fails', () => {
   test.use({ actor: as.user('Ana Admin') })
@@ -233,7 +237,7 @@ test.describe('the workshops', () => {
     await workshops.addAndOpenDetail(id, harbor.build().id)
 
     await expect(workshops.at.detailHeading('Intro to Kubb')).toBeVisible()
-    const body = api.last('post', workshopPaths.list)?.body as { startsAt: string }
+    const body = sentWorkshop.parse(api.last('post', workshopPaths.list)?.body)
     expect(body).toMatchObject({ venueId: harbor.build().id, title: 'Intro to Kubb', capacity: 12 })
     expect(new Date(body.startsAt).getTime()).toBe(Date.UTC(2026, 7, 16, 20, 30))
   })
@@ -280,7 +284,7 @@ test.describe('the workshops', () => {
     await workshops.setEditHour('9')
     await workshops.saveAndOpenDetail(id, harbor.build().id)
 
-    const body = api.last('put', workshopPaths.one(id))?.body as { startsAt: string }
+    const body = sentWorkshop.parse(api.last('put', workshopPaths.one(id))?.body)
     expect(new Date(body.startsAt).getTime()).toBe(Date.UTC(2026, 7, 16, 8, 0))
   })
 

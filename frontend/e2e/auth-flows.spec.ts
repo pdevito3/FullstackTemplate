@@ -85,6 +85,9 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
  * The number of server spans of the current user call with a DPoP proof since `startedAt`. The server tags the span
  * of a request with `app.auth.scheme=DPoP` after it checked the proof and the binding of the token.
  */
+// The fields of each span of `dotnet aspire otel spans` that the DPoP test reads
+const spansSchema = z.array(z.looseObject({ timestamp: z.string(), attributes: z.record(z.string(), z.unknown()) }))
+
 function dpopSpansOfCurrentUserSince(startedAt: number): number {
   const output = execFileSync(
     'dotnet',
@@ -93,7 +96,7 @@ function dpopSpansOfCurrentUserSince(startedAt: number): number {
   )
 
   const json = output.split('\n').find((line) => line.startsWith('[{') || line === '[]')
-  const spans = JSON.parse(json ?? '[]') as { timestamp: string; attributes: Record<string, string> }[]
+  const spans = spansSchema.parse(JSON.parse(json ?? '[]'))
 
   return spans.filter(
     (span) =>
@@ -522,13 +525,20 @@ async function bffUserStatus(page: Page): Promise<number> {
   return page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
 }
 
+// The BFF gives bff:session_expires_in as a number, and each other claim as text.
+const bffClaimsSchema = z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]) }))
+
+// The value of a claim of the BFF session of the page, or undefined when the session has no such claim
+async function bffClaim(page: Page, type: string): Promise<string | undefined> {
+  const answer: unknown = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json())
+  const value = bffClaimsSchema.parse(answer).find((claim) => claim.type === type)?.value
+
+  return value === undefined ? undefined : String(value)
+}
+
 // The sid claim of the BFF session, the id of the session at the identity provider
 async function bffSessionId(page: Page): Promise<string> {
-  const claims = await page.evaluate(
-    async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
-  )
-
-  const sid = claims.find((claim) => claim.type === 'sid')?.value
+  const sid = await bffClaim(page, 'sid')
   expect(sid, 'the sid claim of the BFF session').toBeTruthy()
 
   return sid!
@@ -719,13 +729,10 @@ test.describe(`BFF refresh - ${currentIdp.name}`, () => {
     expect(await bffApiStatus(page, '/api/v1/users/me'), 'the second API call, with the rotated refresh token').toBe(200)
     expect(await bffUserStatus(page), 'the BFF session after the refreshes').toBe(200)
 
-    const claims = await page.evaluate(
-      async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
-    )
-
-    const logoutUrl = claims.find((claim) => claim.type === 'bff:logout_url')?.value
+    const logoutUrl = await bffClaim(page, 'bff:logout_url')
     expect(logoutUrl, 'the bff:logout_url claim').toBeTruthy()
-    const endSession = page.waitForRequest((request) => request.url().startsWith(discovery.end_session_endpoint as string), { timeout: 30000 })
+    const endSessionEndpoint = z.string().parse(discovery.end_session_endpoint)
+    const endSession = page.waitForRequest((request) => request.url().startsWith(endSessionEndpoint), { timeout: 30000 })
     await page.goto(logoutUrl!)
     const idTokenHint = new URL((await endSession).url()).searchParams.get('id_token_hint')
     expect(idTokenHint, 'the id_token_hint of the logout').toBeTruthy()

@@ -4,13 +4,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { expect, test } from 'vitest'
+import * as z from 'zod'
 
-interface JsonReport {
-  testResults: {
-    message: string
-    assertionResults: { title: string; status: string; failureMessages: string[] }[]
-  }[]
-}
+// The fields of the JSON report of Vitest that the test reads
+const jsonReportSchema = z.object({
+  testResults: z.array(
+    z.object({
+      message: z.string(),
+      assertionResults: z.array(z.object({ title: z.string(), status: z.string(), failureMessages: z.array(z.string()).nullable() })),
+    }),
+  ),
+})
 
 const attachments = join(import.meta.dirname, 'node_modules/.vite-long-test-names/attachments')
 
@@ -37,7 +41,7 @@ test('a component test file with test names longer than a file name reports each
 
     const output = `${run.stdout}${run.stderr}`
     expect(run.error, output).toBeUndefined()
-    const [file] = (JSON.parse(readFileSync(report, 'utf8')) as JsonReport).testResults
+    const [file] = jsonReportSchema.parse(JSON.parse(readFileSync(report, 'utf8'))).testResults
 
     expect(output).not.toContain('ENAMETOOLONG')
     expect(file.message).toBe('')
@@ -46,7 +50,7 @@ test('a component test file with test names longer than a file name reports each
       ['passes and', 'passed'],
       ['runs after', 'passed'],
     ])
-    expect(file.assertionResults[0].failureMessages.join()).toContain('expected 1 to be 2')
+    expect(file.assertionResults[0].failureMessages?.join()).toContain('expected 1 to be 2')
     const kept = readdirSync(attachments, { recursive: true, encoding: 'utf8' })
     expect(kept.filter((path) => path.endsWith('.zip'))).toHaveLength(1)
     expect(kept.filter((path) => path.startsWith('failure-screenshots') && path.endsWith('.png'))).toHaveLength(1)

@@ -3,62 +3,63 @@
  * lowercase. To delete a provider, delete its file and its folder in the AppHost.
  */
 import { readdirSync, readFileSync } from 'node:fs'
+import * as z from 'zod'
 
-export interface IdpConfig {
-  name: string
-  // The Aspire resource of the IdP. A provider outside the stack, such as the Duende demo, has none.
-  resource?: string
-  email?: string
-  username?: string
-  // A passwordless IdP, such as 0factor, has no password and no password field
-  password?: string
-  // Selectors for login form (vary by IDP)
-  usernameSelector: string
-  passwordSelector?: string
-  submitSelector: string
-  // Some IDPs need special handling
-  needsOtpSkip?: boolean
-  // Authentik uses a two-step login (username first, then password)
-  twoStepLogin?: boolean
-  // Second step submit selector for two-step login (if different from submitSelector)
-  secondStepSubmitSelector?: string
-  // The provider features that the e2e tests expect (section 6 of docs/specs/home-rolled-bff.md)
-  capabilities: IdpCapabilities
-  // The provider features that discovery does not show
-  sessionFeatures: IdpSessionFeatures
-}
-
-/**
- * A feature test runs only for a provider that has the feature. For the other providers, a test proves the fallback.
- */
-export interface IdpCapabilities {
+const idpCapabilitiesSchema = z.object({
   // Discovery lists revocation_endpoint (RFC 7009)
-  revocation: boolean
+  revocation: z.boolean(),
   // Discovery lists authorization_response_iss_parameter_supported (RFC 9207)
-  issuerParameter: boolean
+  issuerParameter: z.boolean(),
   // Discovery lists backchannel_logout_supported. The Duende Demo lists it, but it cannot reach the BFF.
-  backChannelLogout: boolean
+  backChannelLogout: z.boolean(),
   // Discovery lists end_session_endpoint
-  endSession: boolean
+  endSession: z.boolean(),
   // Discovery lists pushed_authorization_request_endpoint, so the BFF pushes the authorize request (RFC 9126)
-  pushedAuthorization: boolean
+  pushedAuthorization: z.boolean(),
   // Discovery lists dpop_signing_alg_values_supported, so the BFF can bind the tokens to its key (RFC 9449). Keycloak
   // lists it because the AppHost starts it with --features=dpop. FusionAuth and Authentik list it too, but the AppHost
   // runs DPoP only with a provider that sets TestedWithDPoP, so the DPoP tests do not run against them.
-  dpop: boolean
-}
+  dpop: z.boolean(),
+})
 
-/**
- * The provider features that discovery does not show (section 6 of docs/specs/home-rolled-bff.md).
- */
-export interface IdpSessionFeatures {
+const idpSessionFeaturesSchema = z.object({
   // The provider sends the back-channel logout token to the BFF. The Duende Demo cannot reach the BFF. FusionAuth
   // does not send it, and Cognito and ZeroFactor do not support it.
-  backChannelLogoutReachesBff: boolean
+  backChannelLogoutReachesBff: z.boolean(),
   // Each refresh gives a new refresh token, and a reuse of the old one gets invalid_grant. Cognito gives no new
   // refresh token. ZeroFactor gives a new one, but its refresh tokens are stateless, so the old one still works.
-  refreshRotation: boolean
-}
+  refreshRotation: z.boolean(),
+})
+
+const idpConfigSchema = z.object({
+  name: z.string(),
+  // The Aspire resource of the IdP. A provider outside the stack, such as the Duende demo, has none.
+  resource: z.string().optional(),
+  email: z.string().optional(),
+  username: z.string().optional(),
+  // A passwordless IdP, such as 0factor, has no password and no password field
+  password: z.string().optional(),
+  // Selectors for login form (vary by IDP)
+  usernameSelector: z.string(),
+  passwordSelector: z.string().optional(),
+  submitSelector: z.string(),
+  // Some IDPs need special handling
+  needsOtpSkip: z.boolean().optional(),
+  // Authentik uses a two-step login (username first, then password)
+  twoStepLogin: z.boolean().optional(),
+  // Second step submit selector for two-step login (if different from submitSelector)
+  secondStepSubmitSelector: z.string().optional(),
+  // The provider features that the e2e tests expect (section 6 of docs/specs/home-rolled-bff.md)
+  capabilities: idpCapabilitiesSchema,
+  // The provider features that discovery does not show
+  sessionFeatures: idpSessionFeaturesSchema,
+})
+
+export type IdpConfig = z.infer<typeof idpConfigSchema>
+
+export type IdpCapabilities = z.infer<typeof idpCapabilitiesSchema>
+
+export type IdpSessionFeatures = z.infer<typeof idpSessionFeaturesSchema>
 
 const idpsDir = new URL('./idps/', import.meta.url)
 
@@ -79,5 +80,5 @@ export function loadIdp(name: string | undefined): IdpConfig {
     throw new Error(`IDP '${name}' has no file in e2e/idps/. Use one of these: ${idpNames().join(', ')}.`)
   }
 
-  return JSON.parse(readFileSync(new URL(`${key}.json`, idpsDir), 'utf8')) as IdpConfig
+  return idpConfigSchema.parse(JSON.parse(readFileSync(new URL(`${key}.json`, idpsDir), 'utf8')))
 }

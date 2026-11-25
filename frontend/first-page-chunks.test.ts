@@ -1,7 +1,7 @@
 import type { Rollup } from 'vite'
 import { describe, expect, it } from 'vitest'
 
-import { firstPageChunks } from './first-page-chunks'
+import { firstPageChunks, type BundleFields } from './first-page-chunks'
 
 type ChunkInput = { isEntry?: boolean; imports?: string[]; dynamicImports?: string[]; bytes?: number; code?: string }
 
@@ -10,7 +10,7 @@ type OutputInput =
   | Pick<Rollup.OutputAsset, 'type' | 'fileName' | 'source'>
   | Pick<Rollup.OutputChunk, 'type' | 'fileName' | 'isEntry' | 'imports' | 'dynamicImports' | 'code'>
 
-function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
+function bundleOf(chunks: Record<string, ChunkInput>): BundleFields {
   const outputs: Record<string, OutputInput> = {}
   outputs['index.css'] = { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) }
 
@@ -25,10 +25,10 @@ function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
     }
   }
 
-  return outputs as Rollup.OutputBundle
+  return outputs
 }
 
-const namesOf = (bundle: Rollup.OutputBundle) => firstPageChunks(bundle).map((chunk) => chunk.fileName).sort()
+const namesOf = (bundle: BundleFields) => firstPageChunks(bundle).map((chunk) => chunk.fileName).sort()
 
 describe('firstPageChunks', () => {
   it('counts the entry and each chunk that it imports, also through another chunk', () => {

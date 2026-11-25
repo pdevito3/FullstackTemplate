@@ -23,6 +23,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileS
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, request, type APIRequestContext, type Browser } from '@playwright/test'
+import * as z from 'zod'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const apphost = join(here, '..', '..', 'FullstackTemplate.AppHost')
@@ -83,12 +84,9 @@ interface PlanConfig {
   }
 }
 
-interface AcceptedResult {
-  plan: string
-  module: string
-  result: string
-  reason: string
-}
+const acceptedResultsSchema = z.array(z.object({ plan: z.string(), module: z.string(), result: z.string(), reason: z.string() }))
+
+type AcceptedResult = z.infer<typeof acceptedResultsSchema>[number]
 
 interface ModuleResult {
   plan: string
@@ -101,9 +99,31 @@ interface ModuleResult {
   steps: string[]
 }
 
-interface DescribedResource {
-  displayName: string
-  urls?: { name: string; url: string }[]
+// The fields of `dotnet aspire describe` that bffUrls reads. e2e/stack-description.ts reads the same output.
+const describedSchema = z.object({
+  resources: z.array(
+    z.looseObject({
+      displayName: z.string(),
+      urls: z.array(z.looseObject({ name: z.string().nullish(), url: z.string().nullish() })).nullish(),
+    }),
+  ),
+})
+
+const planSchema = z.object({
+  id: z.string(),
+  modules: z.array(z.object({ testModule: z.string(), variant: z.record(z.string(), z.string()) })),
+})
+
+const moduleSchema = z.object({ id: z.string() })
+
+const moduleInfoSchema = z.object({ status: z.string(), result: z.string().nullish() })
+
+// The BFF gives bff:session_expires_in as a number, and each other claim as text.
+const claimsSchema = z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]) }))
+
+/** The first line of the message of an error that a step threw. */
+function firstLineOf(cause: unknown): string {
+  return (cause instanceof Error ? cause.message : String(cause)).split('\n')[0] ?? ''
 }
 
 function aspire(...args: string[]) {
@@ -111,12 +131,14 @@ function aspire(...args: string[]) {
 }
 
 function bffUrls(): { https: string } | undefined {
-  const described = JSON.parse(
-    execFileSync('dotnet', ['aspire', 'describe', '--format', 'Json', '--apphost', apphost], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'inherit'],
-    }),
-  ) as { resources: DescribedResource[] }
+  const described = describedSchema.parse(
+    JSON.parse(
+      execFileSync('dotnet', ['aspire', 'describe', '--format', 'Json', '--apphost', apphost], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'inherit'],
+      }),
+    ),
+  )
 
   const https = described.resources.find((r) => r.displayName === 'bff')?.urls?.find((u) => u.name === 'https')?.url
 
@@ -188,7 +210,7 @@ async function createPlan(api: APIRequestContext, plan: PlanDefinition, config: 
 
   if (response.status() !== 201) throw new Error(`Could not create the plan ${plan.name}: ${await response.text()}`)
 
-  return (await response.json()) as { id: string; modules: { testModule: string; variant: Record<string, string> }[] }
+  return planSchema.parse(await response.json())
 }
 
 async function createModule(api: APIRequestContext, planId: string, module: string, variant: Record<string, string>) {
@@ -196,11 +218,11 @@ async function createModule(api: APIRequestContext, planId: string, module: stri
 
   if (response.status() !== 201) throw new Error(`Could not create the module ${module}: ${await response.text()}`)
 
-  return ((await response.json()) as { id: string }).id
+  return moduleSchema.parse(await response.json()).id
 }
 
 async function moduleInfo(api: APIRequestContext, id: string) {
-  return (await (await api.get(`api/info/${id}`)).json()) as { status: string; result: string | null }
+  return moduleInfoSchema.parse(await (await api.get(`api/info/${id}`)).json())
 }
 
 async function waitForStatus(api: APIRequestContext, id: string, statuses: string[], timeoutMs: number) {
@@ -252,7 +274,7 @@ async function drive(browser: Browser, bff: string, flow: Flow, screenshot: stri
     try {
       steps.push(`${name}: ${await action()}`)
     } catch (error) {
-      steps.push(`${name}: ${(error as Error).message.split('\n')[0]}`)
+      steps.push(`${name}: ${firstLineOf(error)}`)
     }
   }
 
@@ -266,7 +288,7 @@ async function drive(browser: Browser, bff: string, flow: Flow, screenshot: stri
   const user = async () => {
     const response = await context.request.get(`${bff}/bff/user`, { headers: { 'X-CSRF': '1' } })
 
-    return { status: response.status(), claims: response.status() === 200 ? ((await response.json()) as { type: string; value: string }[]) : [] }
+    return { status: response.status(), claims: response.status() === 200 ? claimsSchema.parse(await response.json()) : [] }
   }
 
   await step('login', login)
@@ -348,7 +370,7 @@ async function runPlan(api: APIRequestContext, browser: Browser, bff: string, pl
 
       if (info.status !== 'FINISHED') await api.delete(`api/runner/${result.id}`)
     } catch (error) {
-      result.steps.push(`error: ${(error as Error).message.split('\n')[0]}`)
+      result.steps.push(`error: ${firstLineOf(error)}`)
     }
 
     if (!finishedResults.includes(result.result)) {
@@ -422,7 +444,7 @@ async function main() {
   const unknown = selected.filter((name) => !plans.some((p) => p.name === name))
 
   if (unknown.length > 0) throw new Error(`Unknown plans: ${unknown.join(', ')}. Use ${plans.map((p) => p.name).join(', ')}.`)
-  const accepted = JSON.parse(readFileSync(join(here, 'accepted-results.json'), 'utf8')) as AcceptedResult[]
+  const accepted = acceptedResultsSchema.parse(JSON.parse(readFileSync(join(here, 'accepted-results.json'), 'utf8')))
 
   if (existsSync(resultsDir)) rmSync(resultsDir, { recursive: true })
   mkdirSync(resultsDir, { recursive: true })

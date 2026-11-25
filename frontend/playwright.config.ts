@@ -16,6 +16,7 @@ async function freePort(): Promise<number> {
     const server = createServer()
     server.once('error', reject)
     server.listen(0, () => {
+      // SAFETY: a server that listens on a TCP port, not on a pipe, gives an AddressInfo once it listens.
       const { port } = server.address() as { port: number }
       server.close(() => resolve(port))
     })

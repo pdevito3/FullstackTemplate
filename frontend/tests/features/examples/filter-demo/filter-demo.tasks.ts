@@ -169,6 +169,7 @@ export function filterDemoPage(page: Page) {
       await page.evaluate(async (toasts) => {
         // vite.functional.config.ts builds the module of the toast queue of the page to this path.
         const notificationModule: string = '/test/notification.js'
+        // SAFETY: vite.functional.config.ts builds src/components/notification to this path, so the module exports its Notification.
         const { Notification } = (await import(/* @vite-ignore */ notificationModule)) as { Notification: typeof AppNotification }
 
         for (const { message, description } of toasts) Notification.error(message, { description })
@@ -404,7 +405,7 @@ export function filterDemoPage(page: Page) {
           const lines: { top: number; text: string }[] = []
           const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
 
-          for (let text = walker.nextNode() as Text | null; text; text = walker.nextNode() as Text | null) {
+          for (let text = walker.nextNode(); text instanceof Text; text = walker.nextNode()) {
             for (let index = 0; index < text.length; index++) {
               range.setStart(text, index)
               range.setEnd(text, index + 1)

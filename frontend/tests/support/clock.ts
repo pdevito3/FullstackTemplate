@@ -23,6 +23,7 @@ export async function shortenRequestTimeLimit(page: Page, path: string, limitMs:
     ({ path, limitMs }) => {
       const pathOf = new WeakMap<XMLHttpRequest, string>()
       const open = XMLHttpRequest.prototype.open
+      // SAFETY: the wrapper gives open each argument of the call unchanged, so it takes each overload that open takes.
       XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, ...args: Parameters<typeof open>) {
         pathOf.set(this, new URL(args[1], location.href).pathname)
         open.apply(this, args)

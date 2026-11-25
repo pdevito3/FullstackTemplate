@@ -34,9 +34,10 @@ function fail(message: string): never {
   process.exit(1)
 }
 
-function environmentOf(resource: string): Record<string, string> {
-  return (described.resources.find((r) => r.displayName === resource) as { environment?: Record<string, string> } | undefined)
-    ?.environment ?? {}
+function environmentOf(resource: string): Record<string, string | undefined> {
+  const environment = described.resources.find((r) => r.displayName === resource)?.environment ?? {}
+
+  return Object.fromEntries(Object.entries(environment).map(([name, value]) => [name, value ?? undefined]))
 }
 
 // The authority of the BFF

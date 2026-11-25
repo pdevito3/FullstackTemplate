@@ -36,7 +36,11 @@ export function workshopsPage(page: Page) {
     },
 
     async segmentsCutIn(field: Locator, segments: Locator) {
-      const box = await field.evaluate((node) => node.getBoundingClientRect().toJSON() as DOMRect)
+      const box = await field.evaluate((node) => {
+        const { top, bottom, left, right } = node.getBoundingClientRect()
+
+        return { top, bottom, left, right }
+      })
 
       return segments.evaluateAll(
         (nodes, box) =>

@@ -10,6 +10,7 @@ const resourceSchema = z.looseObject({
   state: z.string().nullish(),
   healthStatus: z.string().nullish(),
   urls: z.array(z.looseObject({ name: z.string().nullish(), url: z.string().nullish() })).nullish(),
+  environment: z.record(z.string(), z.string().nullish()).nullish(),
 })
 
 const descriptionSchema = z.object({ resources: z.array(resourceSchema) })

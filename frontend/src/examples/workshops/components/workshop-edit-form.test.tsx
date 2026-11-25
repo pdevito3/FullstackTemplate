@@ -149,7 +149,7 @@ test('after a stale save, keeps each edit that the latest save did not change, a
 })
 
 test('shows a failed read of the workshop once, in the stale alert after a stale save', async () => {
-  const refetchError = answerError(500, '')
+  const refetchError = answerError(500, null)
 
   const screen = await render(
     <WorkshopEditForm workshop={workshop} refetchError={refetchError} onSave={vi.fn().mockRejectedValue(stale)} onLoadLatest={vi.fn()} />,

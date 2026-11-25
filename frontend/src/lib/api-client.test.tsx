@@ -1,5 +1,6 @@
 import { AxiosError, AxiosHeaders, CanceledError, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as z from 'zod'
 
 import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
@@ -26,7 +27,7 @@ const validationProblem = {
 function respond(
   config: InternalAxiosRequestConfig,
   status: number,
-  data: unknown,
+  data: z.core.util.JSONType,
   headers: Record<string, string> = {},
 ): Promise<AxiosResponse> {
   const response: AxiosResponse = {
@@ -75,7 +76,7 @@ describe('apiClient with a generated client', () => {
   it('shows the detail of a 422 in a toast and rejects with a ProblemDetailsError', async () => {
     adapter.mockImplementation((config) => respond(config, 422, validationProblem))
 
-    const error = await addTenant({ body: { name: '' } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: '' } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect((error as ProblemDetailsError).status).toBe(422)
@@ -86,7 +87,7 @@ describe('apiClient with a generated client', () => {
   it('does not show a toast when suppressErrorToast is true', async () => {
     adapter.mockImplementation((config) => respond(config, 422, validationProblem))
 
-    const error = await addTenant({ body: { name: '' }, options: { suppressErrorToast: true } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: '' }, options: { suppressErrorToast: true } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect(shownToasts()).toEqual([])
@@ -96,7 +97,7 @@ describe('apiClient with a generated client', () => {
     // A real adapter rejects with a CanceledError when the signal aborts, for example when TanStack Query drops an old query
     adapter.mockImplementation((config) => Promise.reject(new CanceledError(undefined, undefined, config)))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(AxiosError)
     expect((error as AxiosError).code).toBe(AxiosError.ERR_CANCELED)
@@ -151,7 +152,7 @@ describe('apiClient with a fault of the Server', () => {
   ])('shows the text of the SPA, not %s, for a 5xx problem', async (_, problem) => {
     adapter.mockImplementation((config) => respond(config, problem.status, problem))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect(failureText(error)).toBe(serverFault)
@@ -166,7 +167,7 @@ describe('apiClient with a fault of the Server', () => {
   ])('shows the text of the SPA for an answer with %s and no problem', async (_, status, body) => {
     adapter.mockImplementation((config) => respond(config, status, body))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(Error)
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
@@ -181,7 +182,7 @@ describe('apiClient with a 401 or with no answer', () => {
     checkSession.mockResolvedValue(true)
     adapter.mockImplementation((config) => respond(config, 401, ''))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     expect(checkSession).toHaveBeenCalledOnce()
@@ -192,7 +193,7 @@ describe('apiClient with a 401 or with no answer', () => {
     checkSession.mockResolvedValue(false)
     adapter.mockImplementation((config) => respond(config, 401, ''))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     const signInRejected =
       'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
@@ -215,7 +216,7 @@ describe('apiClient with a 401 or with no answer', () => {
       Promise.reject(new AxiosError('Network Error', AxiosError.ERR_NETWORK, config)),
     )
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     const noAnswer = 'The app could not reach the server. Check your connection, then try again.'
@@ -227,7 +228,7 @@ describe('apiClient with a 401 or with no answer', () => {
   it('says that the server did not answer in time for a 504 of the BFF', async () => {
     adapter.mockImplementation((config) => respond(config, 504, ''))
 
-    const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: 'Acme' } }).catch((cause: unknown) => cause)
 
     expect(failureText(error)).toBe(timedOut)
     expect(shownToasts()).toEqual([{ type: 'error', message: timedOut }])
@@ -238,7 +239,7 @@ describe('apiClient with a 401 or with no answer', () => {
       Promise.reject(new AxiosError(`timeout of ${config.timeout}ms exceeded`, AxiosError.ETIMEDOUT, config)),
     )
 
-    const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: 'Acme' } }).catch((cause: unknown) => cause)
 
     expect(failureText(error)).toBe(timedOut)
     expect(shownToasts()).toEqual([{ type: 'error', message: timedOut }])

@@ -4,7 +4,7 @@ import { quoteText } from '@/lib/querykit-text'
 import { browserTimeZone, offsetAt, wallClockAt } from '@/lib/zoned-time'
 
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
-import { isFilter } from '../types'
+import { isDateValue, isFilter } from '../types'
 import { LogicalOperators } from './operators'
 
 /**
@@ -202,8 +202,8 @@ export function validateFilterState(state: FilterState): FilterStateValidation {
         }
       }
 
-      if (item.controlType === 'date' && typeof item.value === 'object') {
-        const dateValue = item.value as DateValue
+      if (item.controlType === 'date' && isDateValue(item.value)) {
+        const dateValue = item.value
 
         if (!dateValue.startDate) {
           errors.push(`${path}: Date filter missing startDate`)

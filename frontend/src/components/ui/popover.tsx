@@ -7,6 +7,7 @@ import {
   type PopoverProps as PopoverPrimitiveProps,
 } from "@animate-ui/react/primitives/react-aria"
 import { cn } from "@/lib/utils"
+import { isRefCallback } from "@/components/ui/prop-guards"
 
 function PopoverTrigger({ children, ...props }: DialogTriggerProps) {
   return (
@@ -67,7 +68,7 @@ function Popover({
 }
 
 function setRef<T>(ref: React.Ref<T> | undefined, value: T | null): (() => void) | void {
-  if (typeof ref === "function") return ref(value)
+  if (isRefCallback(ref)) return ref(value)
 
   if (ref) ref.current = value
 }

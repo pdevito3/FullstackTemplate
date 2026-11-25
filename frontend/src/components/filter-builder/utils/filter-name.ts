@@ -2,7 +2,7 @@ import { toCalendarDate, type CalendarDateTime } from '@internationalized/date'
 
 import { browserTimeZone, formatDate as formatCalendarDate, formatInstant } from '@/lib/zoned-time'
 
-import type { DateValue, Filter } from '../types'
+import { isDateValue, type DateValue, type Filter } from '../types'
 import { getOperatorLabel } from './operators'
 
 /**
@@ -38,21 +38,8 @@ function formatValue(
     return `${value.length} selected`
   }
 
-  if (typeof value === 'boolean') {
-    return value ? 'True' : 'False'
-  }
-
-  if (typeof value === 'number') {
-    return value.toString()
-  }
-
-  if (typeof value === 'string') {
-    return value
-  }
-
-  // DateValue
-  if (typeof value === 'object' && 'mode' in value) {
-    const dateValue = value as DateValue
+  if (isDateValue(value)) {
+    const dateValue = value
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 
     const formatDate = (date: Date | CalendarDateTime) =>
@@ -82,5 +69,9 @@ function formatValue(
     }
   }
 
-  return 'Unknown'
+  if (value === true) return 'True'
+
+  if (value === false) return 'False'
+
+  return String(value)
 }

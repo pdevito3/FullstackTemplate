@@ -23,6 +23,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SearchIcon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 
 import {
   Dialog,
@@ -257,7 +258,7 @@ function CommandItem<T extends object>({
         )
       )}
       textValue={
-        textValue || (typeof children === "string" ? children : undefined)
+        textValue || (isText(children) ? children : undefined)
       }
     >
       {composeRenderProps(children, (children) => (

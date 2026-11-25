@@ -6,7 +6,7 @@ import type { InitiateUserAndTenantDto } from '@/api/generated/models/types/init
 import type { UserDto } from '@/api/generated/models/types/user-dto'
 import { authClaimsQuery } from '@/domain/auth/apis/get-user'
 import type { BffClaim } from '@/domain/auth/types'
-import { isProblemDetailsError, type ProblemDetailsError } from '@/lib/problem-details'
+import { isProblemDetails, isProblemDetailsError, type ProblemDetailsError } from '@/lib/problem-details'
 import { answerError, failureText } from '@/lib/request-failure'
 
 import { MembershipKeys } from './membership.keys'
@@ -56,7 +56,7 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
   if (result.status === 200) return result.data
 
   if (result.status === 404) return null
-  throw answerError(result.status, result.error)
+  throw answerError(result.status, isProblemDetails(result.error) ? result.error : null)
 }
 
 /** A refusal of the Server does not change on an immediate retry. */

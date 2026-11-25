@@ -664,12 +664,12 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
     const issued = await tokenRequest({ grant_type: 'authorization_code', code: code!, redirect_uri: redirectUri, code_verifier: codeVerifier })
     expect(issued.status, 'the code exchange').toBe(200)
     const firstRefreshToken = issued.body.refresh_token
-    expect(typeof firstRefreshToken, 'the first refresh token').toBe('string')
+    expect(firstRefreshToken, 'the first refresh token').toEqual(expect.any(String))
 
     const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: firstRefreshToken! })
     expect(refreshed.status, 'the first refresh').toBe(200)
     const secondRefreshToken = refreshed.body.refresh_token
-    expect(typeof secondRefreshToken, 'the rotated refresh token').toBe('string')
+    expect(secondRefreshToken, 'the rotated refresh token').toEqual(expect.any(String))
     // Compare without the values, so that a failure does not print a token
     expect(secondRefreshToken !== firstRefreshToken, 'the refresh gives a new refresh token').toBe(true)
 

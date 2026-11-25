@@ -19,8 +19,8 @@ interface CodeLoadBoundaryState {
 export class CodeLoadBoundary extends Component<CodeLoadBoundaryProps, CodeLoadBoundaryState> {
   state: CodeLoadBoundaryState = {}
 
-  static getDerivedStateFromError(error: unknown) {
-    return { caught: { error } }
+  static getDerivedStateFromError(cause: unknown) {
+    return { caught: { error: cause } }
   }
 
   render() {

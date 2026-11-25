@@ -447,7 +447,7 @@ function ControlledFrameworkCombobox({
   outsideText,
   ...props
 }: {
-  onChange: (key: unknown) => void
+  onChange: (key: Key | null) => void
   showClear?: boolean
   outsideText?: string
 } & Pick<ComboBoxProps<object>, 'menuTrigger' | 'onBlur' | 'onOpenChange'>) {
@@ -600,7 +600,7 @@ test.each(closedLists)('Tab picks one time in a list that %s closed, %s, with co
   expect(opens(onOpenChange)).toEqual([])
 })
 
-function SelectedKeyFrameworkCombobox({ onChange }: { onChange: (key: unknown) => void }) {
+function SelectedKeyFrameworkCombobox({ onChange }: { onChange: (key: Key | null) => void }) {
   const [selectedKey, setSelectedKey] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
   const names = new Map([['vue', 'Vue'], ['vue-router', 'Vue Router']])
@@ -752,7 +752,7 @@ function LateTextFrameworkCombobox({
   onOpenChange,
   setTextLater,
 }: {
-  onChange: (key: unknown) => void
+  onChange: (key: Key | null) => void
   onOpenChange: (isOpen: boolean) => void
   setTextLater: (setText: () => void) => void
 }) {
@@ -1303,7 +1303,7 @@ function ControlledFailedLoadMoreList({
   onLoadMore,
   onOpenChange,
 }: {
-  onChange: (key: unknown) => void
+  onChange: (key: Key | null) => void
   onLoadMore: () => void
   onOpenChange: (isOpen: boolean) => void
 }) {

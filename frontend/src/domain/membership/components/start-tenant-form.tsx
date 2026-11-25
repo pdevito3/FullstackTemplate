@@ -44,8 +44,8 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
   const id = useId()
   const { errors } = form.formState
 
-  const showRefusal = (error: unknown) => {
-    const fieldErrors = validationErrorsOf(error)
+  const showRefusal = (cause: unknown) => {
+    const fieldErrors = validationErrorsOf(cause)
     let shownOnField = false
 
     for (const name of FIELD_NAMES) {
@@ -57,7 +57,7 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
       }
     }
 
-    if (!shownOnField) form.setError('root.server', { message: failureText(error) })
+    if (!shownOnField) form.setError('root.server', { message: failureText(cause) })
   }
 
   const handleSubmit = form.handleSubmit(async (values) => {

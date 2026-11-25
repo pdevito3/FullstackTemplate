@@ -144,3 +144,8 @@ export function isFilter(item: Filter | FilterGroup): item is Filter {
 export function isFilterGroup(item: Filter | FilterGroup): item is FilterGroup {
   return 'type' in item && item.type === 'group'
 }
+
+/** Whether the value of a filter is a date value, not text, a number, a boolean, or a list. */
+export function isDateValue(value: Filter['value']): value is DateValue {
+  return typeof value === 'object' && !Array.isArray(value)
+}

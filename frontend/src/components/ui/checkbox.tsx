@@ -11,6 +11,7 @@ import {
 } from "@animate-ui/react/primitives/react-aria"
 
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 import { Label } from "@/components/ui/label"
 
 const labelVariants =
@@ -106,7 +107,7 @@ function CheckboxGroupWithLabel({
           )}
           {errorMessage && (
             <Text className="text-sm text-destructive" slot="errorMessage">
-              {typeof errorMessage === "function" ? "" : errorMessage}
+              {isText(errorMessage) ? errorMessage : ""}
             </Text>
           )}
         </>

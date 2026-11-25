@@ -5,6 +5,8 @@
  * This is the standard error response format from .NET APIs with Problem Details enabled.
  */
 
+import * as z from 'zod'
+
 import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
 
 /**
@@ -67,24 +69,30 @@ export function isProblemDetails(obj: unknown): obj is ProblemDetails {
 
 export const STALE_VERSION_PROBLEM_TYPE = 'urn:fullstacktemplate:problem:stale-version'
 
-export function isStaleVersionError(error: unknown): boolean {
-  return isProblemDetailsError(error) && error.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
+export function isStaleVersionError(cause: unknown): boolean {
+  return isProblemDetailsError(cause) && cause.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
 }
 
-export function validationErrorsOf(error: unknown): Record<string, string[]> {
-  if (!isProblemDetailsError(error)) {
+const errorsSchema = z.record(z.string(), z.unknown())
+const messagesSchema = z.array(z.string())
+
+/** The messages of each field of a validation problem. A field whose messages are not a list of text is left out. */
+export function validationErrorsOf(cause: unknown): Record<string, string[]> {
+  if (!isProblemDetailsError(cause)) {
     return {}
   }
 
-  const { errors } = error.problemDetails
+  const errors = errorsSchema.safeParse(cause.problemDetails.errors)
 
-  if (typeof errors !== 'object' || errors === null) {
+  if (!errors.success) {
     return {}
   }
 
   return Object.fromEntries(
-    Object.entries(errors).filter(
-      (entry): entry is [string, string[]] => Array.isArray(entry[1]) && entry[1].every((m) => typeof m === 'string'),
-    ),
+    Object.entries(errors.data).flatMap(([field, value]): [string, string[]][] => {
+      const messages = messagesSchema.safeParse(value)
+
+      return messages.success ? [[field, messages.data]] : []
+    }),
   )
 }

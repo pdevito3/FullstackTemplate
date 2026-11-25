@@ -34,6 +34,7 @@ import { announce } from "@react-aria/live-announcer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -440,7 +441,7 @@ function ComboboxItem<T extends object>({
   return (
     <ListBoxItemPrimitive
       data-slot="combobox-item"
-      textValue={textValue ?? (typeof children === "string" ? children : undefined)}
+      textValue={textValue ?? (isText(children) ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         cn(
           "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm wrap-anywhere outline-hidden select-none group-not-has-data-focused/combobox-content:data-hovered:bg-foreground/5 data-focused:bg-accent data-focused:text-accent-foreground not-data-[variant=destructive]:data-focused:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",

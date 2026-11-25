@@ -21,8 +21,8 @@ interface Claim {
 export class SessionChangedError extends Error {}
 
 /** A 409 or a 410 after the own submit can mean that an earlier submit of this user won. */
-const canBeAnEarlierWin = (error: unknown) =>
-  isProblemDetailsError(error) && (error.status === 409 || error.status === 410)
+const canBeAnEarlierWin = (cause: unknown) =>
+  isProblemDetailsError(cause) && (cause.status === 409 || cause.status === 410)
 
 /** The preview names the tenant only by its name, and the name of a tenant is unique. */
 async function joined(queryClient: QueryClient, { identifier, tenantName }: Claim): Promise<boolean> {

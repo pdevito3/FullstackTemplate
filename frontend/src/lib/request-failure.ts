@@ -38,14 +38,19 @@ const kindOfEmptyAnswer = new Map<number, UnexplainedKind>([
   [504, 'timed-out'],
 ])
 
-export function answerError(status: number, body: unknown): ProblemDetailsError | UnexplainedFailureError {
-  if (isProblemDetails(body)) return new ProblemDetailsError(body)
+/** The error of an answer that failed. Pass the problem details of the body, or null when the body has none. */
+export function answerError(status: number, problem: ProblemDetails | null): ProblemDetailsError | UnexplainedFailureError {
+  if (problem) return new ProblemDetailsError(problem)
 
   return new UnexplainedFailureError(kindOfEmptyAnswer.get(status) ?? 'server-fault', `The answer has status ${status} and no problem details.`)
 }
 
 export function requestError(error: AxiosError): ProblemDetailsError | UnexplainedFailureError {
-  if (error.response) return answerError(error.response.status, error.response.data)
+  if (error.response) {
+    const { status, data } = error.response
+
+    return answerError(status, isProblemDetails(data) ? data : null)
+  }
 
   return new UnexplainedFailureError(error.code === AxiosError.ETIMEDOUT ? 'timed-out' : 'no-answer', error.message)
 }
@@ -56,19 +61,19 @@ function refusalTextOf({ status, detail, title }: ProblemDetails): string | null
   return detail || title || null
 }
 
-function failureOf(error: unknown): Failure {
-  if (error instanceof UnexplainedFailureError) return { kind: error.kind }
+function failureOf(cause: unknown): Failure {
+  if (cause instanceof UnexplainedFailureError) return { kind: cause.kind }
 
-  if (!isProblemDetailsError(error)) return { kind: 'app-fault' }
+  if (!isProblemDetailsError(cause)) return { kind: 'app-fault' }
 
-  if (error.problemDetails.status === 401) return { kind: 'sign-in-rejected' }
-  const text = refusalTextOf(error.problemDetails)
+  if (cause.problemDetails.status === 401) return { kind: 'sign-in-rejected' }
+  const text = refusalTextOf(cause.problemDetails)
 
   return text === null ? { kind: 'server-fault' } : { kind: 'refused', text }
 }
 
-export function failureText(error: unknown): string {
-  const failure = failureOf(error)
+export function failureText(cause: unknown): string {
+  const failure = failureOf(cause)
 
   return failure.kind === 'refused' ? failure.text : textOf[failure.kind]
 }

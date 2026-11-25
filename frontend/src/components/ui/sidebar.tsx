@@ -14,6 +14,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { SidebarLeft01Icon } from "@hugeicons/core-free-icons"
 
 import { cn } from "@/lib/utils"
+import { isText, isUpdater } from "@/components/ui/prop-guards"
 import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-variants"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,7 +69,7 @@ function SidebarProvider({
 
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
+      const openState = isUpdater(value) ? value(open) : value
 
       if (setOpenProp) {
         setOpenProp(openState)
@@ -463,7 +464,7 @@ function SidebarMenuButtonTooltip({
     return children
   }
 
-  const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip
+  const tooltipProps = isText(tooltip) ? { children: tooltip } : tooltip
 
   return (
     <TooltipTrigger isDisabled={state !== "collapsed" || isMobile}>

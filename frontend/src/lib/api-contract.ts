@@ -8,7 +8,7 @@ import * as z from 'zod'
  * `[SchemaMaxLength]` on the Server, then regenerate.
  */
 export function maxLengthOf(contract: z.ZodString): number {
-  if (typeof contract.maxLength !== 'number') {
+  if (contract.maxLength === null) {
     throw new Error('The API contract gives this field no max length. Give the DTO property [SchemaMaxLength].')
   }
 

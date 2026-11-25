@@ -20,6 +20,7 @@ import { OverlayTriggerStateContext, type ListBoxItemProps } from "react-aria-co
 import { HugeiconsIcon } from "@hugeicons/react"
 import { UnfoldMoreIcon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 
 function Select<T extends object, M extends "single" | "multiple" = "single">({
   className,
@@ -216,7 +217,7 @@ function SelectItem<T extends object>({
   return (
     <ListBoxItemPrimitive
       data-slot="select-item"
-      textValue={textValue ?? (typeof children === "string" ? children : undefined)}
+      textValue={textValue ?? (isText(children) ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         cn(
           "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-focused:bg-accent data-focused:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",

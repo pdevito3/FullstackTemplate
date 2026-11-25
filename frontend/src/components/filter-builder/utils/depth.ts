@@ -123,9 +123,7 @@ export function canAddToGroup(
   // Calculate the maximum depth of items being added
   const maxItemDepth = Math.max(
     0,
-    ...itemsToAdd
-      .filter(isFilterGroup)
-      .map(group => getGroupContentDepth(group))
+    ...itemsToAdd.flatMap(item => (isFilterGroup(item) ? [getGroupContentDepth(item)] : []))
   )
 
   // Check if adding these items would exceed max depth
@@ -149,9 +147,11 @@ export function canCreateGroup(
   }
 
   // Find all the items being grouped
-  const items = filterIds
-    .map(id => findItemById(state, id))
-    .filter(Boolean) as (Filter | FilterGroup)[]
+  const items = filterIds.flatMap(id => {
+    const item = findItemById(state, id)
+
+    return item ? [item] : []
+  })
 
   if (items.length !== filterIds.length) {
     return { canCreate: false, reason: 'Some filters not found' }
@@ -174,7 +174,7 @@ export function canCreateGroup(
   // Calculate max depth of items being grouped
   const maxItemDepth = Math.max(
     0,
-    ...items.filter(isFilterGroup).map(group => getGroupContentDepth(group))
+    ...items.flatMap(item => (isFilterGroup(item) ? [getGroupContentDepth(item)] : []))
   )
 
   // New group would be at currentDepth, with content depth of maxItemDepth

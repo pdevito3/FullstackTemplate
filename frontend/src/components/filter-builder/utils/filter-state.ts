@@ -77,18 +77,20 @@ function removeFilterRecursive(
   filters: (Filter | FilterGroup)[],
   filterId: string
 ): (Filter | FilterGroup)[] {
-  return filters
-    .filter((item) => item.id !== filterId)
-    .map((item) => {
-      if (isFilterGroup(item)) {
-        return {
+  return filters.flatMap<Filter | FilterGroup>((item) => {
+    if (item.id === filterId) return []
+
+    if (isFilterGroup(item)) {
+      return [
+        {
           ...item,
           filters: removeFilterRecursive(item.filters, filterId),
-        }
-      }
+        },
+      ]
+    }
 
-      return item
-    })
+    return [item]
+  })
 }
 
 /**

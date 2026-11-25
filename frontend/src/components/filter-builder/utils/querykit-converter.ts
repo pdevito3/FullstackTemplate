@@ -17,7 +17,13 @@ export function toQueryKitString(state: FilterState): string {
 function joinFilters(items: (Filter | FilterGroup)[], logicalOperator: FilterGroup['logicalOperator']): string {
   const operator = logicalOperator === LogicalOperators.AND ? ' && ' : ' || '
 
-  return items.map(convertFilterOrGroup).filter(Boolean).join(operator)
+  return items
+    .flatMap((item) => {
+      const text = convertFilterOrGroup(item)
+
+      return text ? [text] : []
+    })
+    .join(operator)
 }
 
 function convertFilterOrGroup(item: Filter | FilterGroup): string {

@@ -162,7 +162,11 @@ for (const [width, height] of [
         [right - 1, top + 1],
         [left + 1, bottom - 1],
         [right - 1, bottom - 1],
-      ].map(([x, y]) => paragraphTextUnderCloseButton(x, y)).filter((text) => text?.startsWith('Field '))
+      ].flatMap(([x, y]) => {
+        const text = paragraphTextUnderCloseButton(x, y)
+
+        return text?.startsWith('Field ') ? [text] : []
+      })
     }).toEqual([])
   })
 

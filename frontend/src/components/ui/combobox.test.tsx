@@ -1025,13 +1025,11 @@ async function optionsWithFill() {
 
   const empty = pixel(listBox.left + listBox.width / 2, listBox.top + 2)
 
-  return [...list.element().querySelectorAll('[role=option]')]
-    .filter((option) => {
-      const row = option.getBoundingClientRect()
+  return [...list.element().querySelectorAll('[role=option]')].flatMap((option) => {
+    const row = option.getBoundingClientRect()
 
-      return pixel(row.left + 3, row.top + row.height / 2) !== empty
-    })
-    .map((option) => option.textContent)
+    return pixel(row.left + 3, row.top + row.height / 2) !== empty ? [option.textContent] : []
+  })
 }
 
 test('the option under the pointer has no fill while the arrow keys make another option active', async () => {

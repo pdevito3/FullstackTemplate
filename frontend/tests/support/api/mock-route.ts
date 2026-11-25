@@ -29,9 +29,11 @@ export function requestRecorder() {
   const served: { method: HttpMethod; url: URL; headers: Headers; body: unknown }[] = []
 
   const all = (method: HttpMethod, path: string): ServedRequest[] =>
-    served
-      .filter((r) => r.method === method && r.url.pathname === path)
-      .map((r) => ({ query: r.url.searchParams, headers: r.headers, body: r.body }))
+    served.flatMap((r) =>
+      r.method === method && r.url.pathname === path
+        ? [{ query: r.url.searchParams, headers: r.headers, body: r.body }]
+        : [],
+    )
 
   return {
     add(method: HttpMethod, url: URL, headers: Headers, body: unknown) {

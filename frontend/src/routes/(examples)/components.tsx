@@ -394,7 +394,7 @@ function ComponentsPage() {
                     />
                     {selectedLanguages.length > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Selected: {languages.filter(l => selectedLanguages.includes(l.value)).map(l => l.label).join(', ')}
+                        Selected: {languages.flatMap(l => (selectedLanguages.includes(l.value) ? [l.label] : [])).join(', ')}
                       </p>
                     )}
                   </div>

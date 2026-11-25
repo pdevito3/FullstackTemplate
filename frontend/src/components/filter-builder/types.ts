@@ -146,7 +146,7 @@ export function isFilterGroup(item: Filter | FilterGroup): item is FilterGroup {
 }
 
 export function isDateValue(value: Filter['value'] | undefined): value is DateValue {
-  return typeof value === 'object' && !Array.isArray(value)
+  return typeof value === 'object' && value !== null && 'mode' in value
 }
 
 export function isTextValue(value: Filter['value'] | undefined): value is string {

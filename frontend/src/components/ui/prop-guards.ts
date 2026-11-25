@@ -1,6 +1,6 @@
 import type * as React from "react"
 
-export function isText<T>(value: T): value is Extract<T, string> {
+export function isText(value: unknown): value is string {
   return typeof value === "string"
 }
 
@@ -8,6 +8,6 @@ export function isRefCallback<T>(ref: React.Ref<T> | undefined): ref is React.Re
   return typeof ref === "function"
 }
 
-export function isUpdater<T>(value: T | ((previous: T) => T)): value is (previous: T) => T {
+export function isUpdater(value: boolean | ((previous: boolean) => boolean)): value is (previous: boolean) => boolean {
   return typeof value === "function"
 }

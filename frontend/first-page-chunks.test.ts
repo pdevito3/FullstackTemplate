@@ -10,21 +10,20 @@ type OutputInput =
   | Pick<Rollup.OutputChunk, 'type' | 'fileName' | 'isEntry' | 'imports' | 'dynamicImports' | 'code'>
 
 function bundleOf(chunks: Record<string, ChunkInput>): BundleFields {
-  const outputs: Record<string, OutputInput> = {}
-  outputs['index.css'] = { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) }
-
-  for (const [fileName, chunk] of Object.entries(chunks)) {
-    outputs[fileName] = {
-      type: 'chunk',
+  return Object.fromEntries([
+    ['index.css', { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) }],
+    ...Object.entries(chunks).map(([fileName, chunk]): [string, OutputInput] => [
       fileName,
-      isEntry: chunk.isEntry ?? false,
-      imports: chunk.imports ?? [],
-      dynamicImports: chunk.dynamicImports ?? [],
-      code: chunk.code ?? 'x'.repeat(chunk.bytes ?? 1000),
-    }
-  }
-
-  return outputs
+      {
+        type: 'chunk',
+        fileName,
+        isEntry: chunk.isEntry ?? false,
+        imports: chunk.imports ?? [],
+        dynamicImports: chunk.dynamicImports ?? [],
+        code: chunk.code ?? 'x'.repeat(chunk.bytes ?? 1000),
+      },
+    ]),
+  ] satisfies [string, OutputInput][])
 }
 
 const namesOf = (bundle: BundleFields) => firstPageChunks(bundle).map((chunk) => chunk.fileName).sort()

@@ -2,7 +2,7 @@ import { toCalendarDate, type CalendarDateTime } from '@internationalized/date'
 
 import { browserTimeZone, formatDate as formatCalendarDate, formatInstant } from '@/lib/zoned-time'
 
-import { isDateValue, type DateValue, type Filter } from '../types'
+import { isDateValue, isNumberValue, isTextValue, type DateValue, type Filter } from '../types'
 import { getOperatorLabel } from './operators'
 
 /**
@@ -39,31 +39,30 @@ function formatValue(
   }
 
   if (isDateValue(value)) {
-    const dateValue = value
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 
     const formatDate = (date: Date | CalendarDateTime) =>
       date instanceof Date
-        ? formatInstant(date, dateValue.timeZone ?? browserTimeZone(), options)
+        ? formatInstant(date, value.timeZone ?? browserTimeZone(), options)
         : formatCalendarDate(toCalendarDate(date), options)
 
-    switch (dateValue.mode) {
+    switch (value.mode) {
       case 'before':
-        return `Before ${formatDate(dateValue.startDate)}`
+        return `Before ${formatDate(value.startDate)}`
       case 'after':
-        return `After ${formatDate(dateValue.startDate)}`
+        return `After ${formatDate(value.startDate)}`
       case 'on':
-        return formatDate(dateValue.startDate)
+        return formatDate(value.startDate)
       case 'excluding':
-        return `Excluding ${formatDate(dateValue.startDate)}`
+        return `Excluding ${formatDate(value.startDate)}`
       case 'between':
-        if (dateValue.endDate) {
-          const range = `${formatDate(dateValue.startDate)} - ${formatDate(dateValue.endDate)}`
+        if (value.endDate) {
+          const range = `${formatDate(value.startDate)} - ${formatDate(value.endDate)}`
 
-          return dateValue.exclude ? `Excluding ${range}` : range
+          return value.exclude ? `Excluding ${range}` : range
         }
 
-        return `From ${formatDate(dateValue.startDate)}`
+        return `From ${formatDate(value.startDate)}`
       default:
         return 'Unknown date'
     }
@@ -73,5 +72,9 @@ function formatValue(
 
   if (value === false) return 'False'
 
-  return String(value)
+  if (isNumberValue(value)) return value.toString()
+
+  if (isTextValue(value)) return value
+
+  return 'Unknown'
 }

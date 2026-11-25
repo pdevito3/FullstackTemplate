@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
+import { isText } from "@/components/ui/prop-guards"
 import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
 import { PagerButtons } from "@/components/ui/pager"
 
@@ -31,10 +32,6 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
-}
-
-function isSearchText(filterValue: unknown): filterValue is string {
-  return typeof filterValue === "string"
 }
 
 function DataTable<TData, TValue>({
@@ -85,7 +82,7 @@ function DataTable<TData, TValue>({
         {searchKey && (
           <Input
             placeholder={searchPlaceholder}
-            value={isSearchText(searchText) ? searchText : ""}
+            value={isText(searchText) ? searchText : ""}
             onChange={(event) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }

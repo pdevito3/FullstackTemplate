@@ -8,6 +8,8 @@
 import * as z from 'zod'
 
 import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
+import type { ValidationProblemDetails } from '@/api/generated/models/types/validation-problem-details'
+import { validationProblemDetailsSchema } from '@/api/generated/models/zod/validation-problem-details'
 
 /**
  * The problem details of the contract, with the member that ASP.NET adds to each body (`traceId`)
@@ -73,10 +75,11 @@ export function isStaleVersionError(cause: unknown): boolean {
   return isProblemDetailsError(cause) && cause.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
 }
 
+// Each field is parsed on its own, so that one field with a bad value does not drop the messages of the other fields
 const errorsSchema = z.record(z.string(), z.unknown())
-const messagesSchema = z.array(z.string())
+const messagesSchema = validationProblemDetailsSchema.shape.errors.valueType
 
-export function validationErrorsOf(cause: unknown): Record<string, string[]> {
+export function validationErrorsOf(cause: unknown): ValidationProblemDetails['errors'] {
   if (!isProblemDetailsError(cause)) {
     return {}
   }

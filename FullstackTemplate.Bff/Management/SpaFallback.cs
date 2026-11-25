@@ -47,6 +47,7 @@ public static class SpaFallback
             else if (!Path.HasExtension(request.Path.Value))
             {
                 request.Path = IndexHtml;
+                // SAFETY: serveIndexHtml is null only when DevServer is set, and this branch runs only when it is not.
                 await serveIndexHtml!(context);
                 return;
             }
@@ -60,6 +61,7 @@ public static class SpaFallback
     /// redirect of an unknown path that starts with one of them would loop. A published BFF keeps the same 404s for
     /// these prefixes. The health probes also stay on the BFF.
     /// </summary>
+    // SAFETY: path is a request path, and each of bffPaths is a constant or an OIDC callback path with a default, so each has a value.
     private static bool IsPage(string method, PathString path, IEnumerable<PathString> bffPaths) =>
         (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
         && !Extensions.IsHealthProbe(path)

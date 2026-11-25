@@ -18,6 +18,7 @@ public static class TokenEndpointDecorator
         services.Remove(registered);
         services.Add(ServiceDescriptor.Describe(
             typeof(IOpenIdConnectUserTokenEndpoint),
+            // SAFETY: The registration is the one of IOpenIdConnectUserTokenEndpoint, so its factory or its type builds one.
             provider => wrap(provider, (IOpenIdConnectUserTokenEndpoint)inner(provider)),
             registered.Lifetime));
     }

@@ -36,6 +36,7 @@ public static class IdTokenChecks
             });
         }
 
+        // SAFETY: AuthExtensions refuses to start without Auth:ClientId and sets it as the ClientId.
         var failure = CheckAudience(context.SecurityToken.Audiences, context.Options.ClientId!);
         if (failure is not null)
             context.Fail(new CallbackRejectedException(AudienceClaim, failure));

@@ -82,9 +82,11 @@ public static class StoredFileMapping
 
     private static StorageKeyColumn ColumnOf(IEntityType entityType, IComplexType file, MemberInfo[] pathToFile)
     {
+        // SAFETY: The complex type of a StoredFile maps its StorageKey.
         var storageKey = file.FindProperty(nameof(StoredFile.StorageKey))!;
         return new StorageKeyColumn(entityType, [.. pathToFile, MemberOf(storageKey)], storageKey);
     }
 
+    // SAFETY: A property that EF maps on a CLR type has a CLR property or a field.
     private static MemberInfo MemberOf(IReadOnlyPropertyBase property) => (MemberInfo?)property.PropertyInfo ?? property.FieldInfo!;
 }

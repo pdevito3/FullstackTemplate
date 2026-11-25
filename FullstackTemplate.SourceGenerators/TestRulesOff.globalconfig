@@ -1,0 +1,8 @@
+is_global = true
+
+# Directory.Build.props gives this file to each project under tests/. These rules check the app code: the Server, the
+# BFF, and the AppHost. A test asserts with a cast or a !, and builds the type that it tests. Add each new app rule here.
+dotnet_diagnostic.FSTSAF001.severity = none
+dotnet_diagnostic.FSTSAF002.severity = none
+dotnet_diagnostic.FSTDI001.severity = none
+dotnet_diagnostic.FSTTYP004.severity = none

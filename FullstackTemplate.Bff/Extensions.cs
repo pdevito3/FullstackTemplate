@@ -80,6 +80,7 @@ public static class Extensions
                         opts.RecordException = true;
                         opts.EnrichWithHttpRequest = (activity, request) =>
                         {
+                            // SAFETY: QueryString.Value is not null when HasValue is true.
                             if (request.QueryString.HasValue)
                                 activity.SetTag("url.query", RedactedQuery(request.QueryString.Value!));
 

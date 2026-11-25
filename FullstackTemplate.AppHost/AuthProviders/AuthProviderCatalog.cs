@@ -41,6 +41,7 @@ public static class AuthProviderCatalog
     public const string SettingName = "AuthProvider";
     public const string ClassSuffix = "AuthProvider";
 
+    // SAFETY: The Where keeps only concrete classes that implement IAuthProvider, and CreateInstance of a class is not null.
     public static IReadOnlyList<IAuthProvider> All { get; } = typeof(IAuthProvider).Assembly.GetTypes()
         .Where(type => type is { IsClass: true, IsAbstract: false } && type.IsAssignableTo(typeof(IAuthProvider)))
         .Select(type => type.Name.EndsWith(ClassSuffix, StringComparison.Ordinal) && type.Name != ClassSuffix

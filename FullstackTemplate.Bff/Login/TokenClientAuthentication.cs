@@ -55,6 +55,7 @@ public sealed class TokenClientAuthentication(IOptions<UserTokenManagementOption
         {
             parameters.Remove(OpenIdConnectParameterNames.ClientId);
             parameters.Remove(OpenIdConnectParameterNames.ClientSecret);
+            // SAFETY: AuthExtensions refuses to start without Auth:ClientId and Auth:ClientSecret and sets both on the options.
             request.Headers.Authorization = BasicHeader(context.Options.ClientId!, context.Options.ClientSecret!);
         }
 
@@ -105,6 +106,7 @@ public sealed class TokenClientAuthentication(IOptions<UserTokenManagementOption
         var parameters = new Dictionary<string, string>(context.ProtocolMessage.Parameters);
         parameters.Remove(OpenIdConnectParameterNames.ClientSecret);
         using var request = new HttpRequestMessage(HttpMethod.Post, configuration.PushedAuthorizationRequestEndpoint);
+        // SAFETY: AuthExtensions refuses to start without Auth:ClientId and Auth:ClientSecret and sets both on the options.
         request.Headers.Authorization = BasicHeader(context.Options.ClientId!, context.Options.ClientSecret!);
         request.Content = new FormUrlEncodedContent(parameters);
         request.Version = context.Options.Backchannel.DefaultRequestVersion;

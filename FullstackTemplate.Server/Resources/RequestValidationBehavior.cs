@@ -19,9 +19,13 @@ using MediatR;
 /// for example "shipTo.city" or "lines[1].name". The message names only the JSON name of the field, for example "The
 /// field pageNumber must be between 1 and 4294967." or "The name field is required." under "lines[1].name".
 /// </summary>
+[SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+    Justification = "DataAnnotations boundary. The walker validates each DTO type that a request holds, and Validator takes object.")]
 public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "Per-type cache. RequestRules reads the properties of a type one time. GetValue reads each value of a request with a cached PropertyInfo.")]
     public async Task<TResponse> Handle(
         TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
@@ -43,6 +47,8 @@ public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBe
         return await next(cancellationToken);
     }
 
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "Per-type cache. RequestRules reads the properties of a type one time. GetValue reads each value of a request with a cached PropertyInfo.")]
     private static void ValidateDto(
         object dto, string prefix, Dictionary<string, string[]> errors, HashSet<object> visited)
     {

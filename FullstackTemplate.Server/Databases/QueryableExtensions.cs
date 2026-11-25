@@ -47,6 +47,7 @@ public static class QueryableExtensions
     private static class IdPrefix<TEntity>
         where TEntity : BaseEntity
     {
+        // SAFETY: FSTID001 makes IdPrefix a public const string of each entity, so its value is a string.
         public static readonly string Value = (string?)typeof(TEntity).GetField("IdPrefix")?.GetRawConstantValue()
             ?? throw new InvalidOperationException($"{typeof(TEntity).Name} has no public const string IdPrefix.");
     }

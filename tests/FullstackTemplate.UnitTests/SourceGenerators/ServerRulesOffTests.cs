@@ -6,23 +6,28 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Shouldly;
 
 /// <summary>
-/// Directory.Build.props gives each C# project the analyzers, and ServerRulesOff.globalconfig turns off each rule that
-/// checks only the code of the Server. A new Server rule that is not in the file fails this test.
+/// Directory.Build.props gives each C# project the analyzers. ServerRulesOff.globalconfig turns off each rule that
+/// checks only the code of the Server, and TestRulesOff.globalconfig turns off each rule of the app code in the tests.
+/// The custom tags of RuleScope say which file a rule goes in, so a new rule that is not in its file fails this test.
 /// </summary>
 public class ServerRulesOffTests
 {
     [Test]
-    public void the_globalconfig_turns_off_each_rule_but_fststr001()
+    [Arguments("ServerRulesOff.globalconfig", null)]
+    [Arguments("TestRulesOff.globalconfig", "AppCode")]
+    public void the_globalconfig_turns_off_each_rule_of_its_scope(string file, string? scope)
     {
         // Arrange
         var ids = typeof(RawStringAnalyzer).Assembly.GetTypes()
             .Where(type => type.IsSubclassOf(typeof(DiagnosticAnalyzer)) && !type.IsAbstract)
             .SelectMany(type => ((DiagnosticAnalyzer)Activator.CreateInstance(type)!).SupportedDiagnostics)
+            .Where(descriptor => scope is null
+                ? !descriptor.CustomTags.Any(tag => tag is "AllCode" or "AppCode")
+                : descriptor.CustomTags.Contains(scope))
             .Select(descriptor => descriptor.Id)
-            .Where(id => id != RawStringAnalyzer.EscapeHidesText.Id)
             .Distinct()
             .Order(StringComparer.Ordinal);
-        var path = Path.Combine(FindRepositoryRoot(), "FullstackTemplate.SourceGenerators", "ServerRulesOff.globalconfig");
+        var path = Path.Combine(FindRepositoryRoot(), "FullstackTemplate.SourceGenerators", file);
 
         // Act
         var turnedOff = File.ReadLines(path)

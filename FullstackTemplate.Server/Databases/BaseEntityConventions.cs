@@ -25,6 +25,7 @@ public static class BaseEntityConventions
     public static void MapEntityIdToField(this ModelConfigurationBuilder configurationBuilder)
         => configurationBuilder.ConfigureEachRootEntity(entityType =>
         {
+            // SAFETY: Each root entity derives from BaseEntity, which maps its Id.
             var idProperty = entityType.FindProperty(nameof(BaseEntity.Id))!;
             idProperty.SetField(BaseEntity.IdField);
             // Construction writes the field. Other reads use the getter, so a new entity whose ID was not read yet gets one.

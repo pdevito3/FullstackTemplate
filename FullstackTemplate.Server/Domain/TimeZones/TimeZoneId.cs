@@ -98,6 +98,7 @@ public sealed partial class TimeZoneId : ValueObject
             RequestField,
             $"'{value}' is not the time zone of a place. Use an IANA ID such as America/Chicago.");
 
+        // SAFETY: ValidationException.Must throws when found is false, and found is true only when TryFindIanaZone set zone.
         return zone!;
     }
 

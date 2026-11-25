@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -77,6 +78,8 @@ internal static class AuditValues
         _ => value.GetRawText(),
     };
 
+    [SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+        Justification = "EF boundary. It writes a provider value of any mapped type.")]
     private static void WriteValue(Utf8JsonWriter writer, string path, object? value)
     {
         switch (value)

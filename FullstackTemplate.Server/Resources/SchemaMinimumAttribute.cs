@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 /// <summary>
@@ -12,6 +13,8 @@ using System.Reflection;
 public sealed class SchemaMinimumAttribute(Type owner, string member) : Attribute
 {
     /// <exception cref="InvalidOperationException">The member is not a public static number field.</exception>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "OpenAPI transformer. The schema transformer reads it when it makes the document, not for each API request.")]
     public decimal Minimum =>
         owner.GetField(member, BindingFlags.Public | BindingFlags.Static)?.GetValue(null) switch
         {

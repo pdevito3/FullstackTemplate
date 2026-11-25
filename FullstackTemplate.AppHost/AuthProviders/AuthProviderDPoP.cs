@@ -49,6 +49,7 @@ internal sealed class DPoPKeyParameterDefault : ParameterDefault
     {
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var parameters = key.ExportParameters(includePrivateParameters: true);
+        // SAFETY: ExportParameters with the private parameters fills Q and D of an EC key.
         return JsonSerializer.Serialize(new Dictionary<string, string>
         {
             ["kty"] = "EC",

@@ -169,6 +169,7 @@ public static class BackChannelLogoutEndpoint
     private static async Task<List<BffSession>> DeleteSessionsAsync(LogoutToken token, IBffSessionStore store,
         CancellationToken ct)
     {
+        // SAFETY: CheckClaims refuses a logout token with no sub and no sid, so a token with no sid has a sub.
         var sessions = token.SessionId is { } sessionId
             ? await store.FindBySessionIdAsync(sessionId, ct)
             : await store.FindBySubjectAsync(token.Subject!, ct);
@@ -241,6 +242,7 @@ public static class BackChannelLogoutEndpoint
         }
 
         var identity = result.ClaimsIdentity;
+        // SAFETY: CheckClaims refuses a logout token with no jti.
         return new LogoutToken(
             Jti: identity.FindFirst("jti")!.Value,
             Subject: NullIfBlank(identity.FindFirst("sub")?.Value),

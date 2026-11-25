@@ -109,6 +109,7 @@ public sealed class UserinfoAuthenticationHandler(
                 return AuthenticateResult.Fail($"The userinfo endpoint rejected the access token with {(int)response.StatusCode}.");
 
             using var userinfo = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Context.RequestAborted));
+            // SAFETY: GetString returns null only for a JSON null, and the branch that calls it reads a JSON string.
             var claims = userinfo.RootElement.EnumerateObject()
                 .Where(p => p.Value.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array or JsonValueKind.Null))
                 .Select(p => new Claim(p.Name, p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()! : p.Value.GetRawText()))

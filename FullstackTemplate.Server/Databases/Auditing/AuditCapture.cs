@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
+using System.Diagnostics.CodeAnalysis;
 using Domain;
 using Domain.AuditEntries;
 using Domain.Tenants;
@@ -97,6 +98,8 @@ internal sealed class TrackedAggregates
         }
     }
 
+    [SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+        Justification = "EF boundary. EF gives the value of a foreign key as object, and the method checks that it is a string ID.")]
     private EntityEntry<BaseEntity> TrackedOwner(EntityEntry<BaseEntity> child, IForeignKey ownerKey, object? ownerId)
     {
         var ownerType = ownerKey.PrincipalEntityType;

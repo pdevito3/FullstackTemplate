@@ -23,6 +23,7 @@ internal static class PostgresCopy
     public static async Task<uint> WriteAsync(
         DatabaseFacade database, IEnumerable<IGrouping<IEntityType, EntityEntry>> tables, CancellationToken cancellationToken)
     {
+        // SAFETY: AppDbContext uses Npgsql, so its connection is an NpgsqlConnection.
         var connection = (NpgsqlConnection)database.GetDbConnection();
         var sql = database.GetService<ISqlGenerationHelper>();
         foreach (var rows in tables)
@@ -34,6 +35,7 @@ internal static class PostgresCopy
             var columns = EntityColumn.Of(rows.Key);
             var storeTypes = columns.Select(c => c.Property.GetRelationalTypeMapping().StoreType).ToList();
             var columnNames = string.Join(", ", columns.Select(c => sql.DelimitIdentifier(c.Property.GetColumnName())));
+            // SAFETY: Each entity type of AppDbContext maps to a table, so it has a table name.
             await using var importer = await connection.BeginBinaryImportAsync(
                 $"COPY {sql.DelimitIdentifier(rows.Key.GetTableName()!, rows.Key.GetSchema())} ({columnNames}) FROM STDIN (FORMAT BINARY)",
                 cancellationToken);
@@ -55,6 +57,7 @@ internal static class PostgresCopy
 
         // Each row that a transaction inserts has the id of the transaction as its xmin.
         await using var command = new NpgsqlCommand("SELECT pg_current_xact_id()::xid", connection);
+        // SAFETY: SELECT pg_current_xact_id()::xid returns one xid, which Npgsql reads as a uint.
         return (uint)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 }

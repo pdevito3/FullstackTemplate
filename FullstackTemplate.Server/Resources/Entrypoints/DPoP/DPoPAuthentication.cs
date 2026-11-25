@@ -130,6 +130,7 @@ public static class DPoPAuthentication
         var request = httpContext.Request;
         var url = new Uri(UriHelper.BuildAbsolute(request.Scheme, request.Host, request.PathBase, request.Path));
         var validator = httpContext.RequestServices.GetRequiredService<DPoPProofValidator>();
+        // SAFETY: proofs has one value, and a header value is not null. OnMessageReceived stores the access token string under TokenItemKey.
         var result = await validator.ValidateAsync(
             proofs[0]!, new DPoPRequest(request.Method, url, (string)httpContext.Items[TokenItemKey]!, boundJkt),
             httpContext.RequestAborted);
@@ -141,6 +142,7 @@ public static class DPoPAuthentication
         }
 
         Activity.Current?.SetTag("app.auth.scheme", SchemeName);
+        // SAFETY: A result that succeeded has the jkt of the proof key.
         Activity.Current?.SetTag("app.dpop.jkt_prefix", result.Jkt![..8]);
     }
 
@@ -172,6 +174,7 @@ public static class DPoPAuthentication
 
         if (context.AuthenticateFailure is DPoPAuthenticationException failure)
         {
+            // SAFETY: Fail makes a DPoPAuthenticationException only from a failed result, and a failed result has an Error.
             Respond(context, failure.Result.Error!, failure.Result.Description, algs);
         }
         else if (usedDPoPScheme && context.AuthenticateFailure is not null)

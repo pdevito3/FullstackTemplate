@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -73,6 +74,8 @@ public static class UserEndpoint
     /// <summary>
     /// One item of the <c>/bff/user</c> array. <c>valueType</c> is always null.
     /// </summary>
+    [SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+        Justification = "JSON shape. The value of an item is a claim string or a number, and the serializer writes its runtime type.")]
     public sealed record ClaimRecord(
         [property: JsonPropertyName("type")] string Type,
         [property: JsonPropertyName("value")] object Value)

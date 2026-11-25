@@ -3,6 +3,14 @@ import { openAndWaitForLogin } from '@tests/support/answers'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
+declare global {
+  /** The functions that `page.exposeFunction` adds to the page of a task below. */
+  interface Window {
+    reportRender: () => void
+    reportToast: () => void
+  }
+}
+
 export const blankPage = 'data:text/html,blank'
 
 export function sessionPage(page: Page) {
@@ -21,7 +29,7 @@ export function sessionPage(page: Page) {
         rendered = true
       })
       await page.addInitScript(() => {
-        const report = (window as unknown as { reportRender: () => void }).reportRender
+        const report = window.reportRender
         new MutationObserver(() => {
           if (document.getElementById('root')?.hasChildNodes()) report()
         }).observe(document, { childList: true, subtree: true })
@@ -67,7 +75,7 @@ export function sessionPage(page: Page) {
         toasted = true
       })
       await page.evaluate(() => {
-        const report = (window as unknown as { reportToast: () => void }).reportToast
+        const report = window.reportToast
         new MutationObserver(() => {
           if (document.querySelector('[role="alertdialog"]')) report()
         }).observe(document.body, { childList: true, subtree: true })

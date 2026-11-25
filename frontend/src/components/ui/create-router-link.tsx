@@ -12,12 +12,13 @@ export function createRouterLink<
   THost extends React.ComponentType<RouterLinkHostProps>,
 >(Host: THost): LinkComponent<THost> {
   // The returned type checks the props of each caller. The props go on to
-  // createLink as they are, with the router options added.
-  const RouterLink = createLink(Host) as unknown as React.ComponentType<
-    Record<string, unknown>
-  >
+  // createLink as they are, with the router options added. The host type has
+  // no `routerOptions`, so they go in with the spread.
+  const RouterLink = createLink(Host)
 
-  return (props) => (
-    <RouterLink activeOptions={{ exact: true }} {...props} routerOptions={props} />
-  )
+  return (props) => {
+    const hostProps = { ...props, routerOptions: props }
+
+    return <RouterLink activeOptions={{ exact: true }} {...hostProps} />
+  }
 }

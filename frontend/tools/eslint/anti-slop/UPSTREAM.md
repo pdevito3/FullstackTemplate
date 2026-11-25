@@ -17,4 +17,4 @@ This folder is a vendored copy of the generic rules of [dmmulroy/anti-slop](http
   - In a loop, oxc reports a spread only on the right side of the assignment to the variable, as in `all = [...all, n]`. This rule also reports the spread when the loop assigns the variable in a different statement, as in `const next = [...all, n]; all = next`. It also reports a parameter or a `var`, not only a `let`.
   - oxc reports the first parameter of any function with 2 to 4 parameters inside a `reduce` call. This rule reports it only when the function is the callback of the call.
   - oxc reads a method name in a template literal, as in ``arr[`reduce`]``. This rule does not.
-- `no-shape-in-symbol-names` allows the right side of a type query, such as `typeof schema.shape`. Upstream allows `schema.shape` in a value only.
+- `no-shape-in-symbol-names` allows the right side of each qualified type name, such as `shape` in `typeof schema.shape` or `Shape` in `Types.Shape`. Upstream allows `schema.shape` in a value only.

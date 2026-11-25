@@ -4,7 +4,7 @@ import { quoteText } from '@/lib/querykit-text'
 import { browserTimeZone, offsetAt, wallClockAt } from '@/lib/zoned-time'
 
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
-import { isDateValue, isFilter } from '../types'
+import { isBooleanValue, isDateValue, isFilter, isListValue, isNumberValue, isTextValue } from '../types'
 import { LogicalOperators } from './operators'
 
 /**
@@ -44,19 +44,19 @@ function convertFilter(filter: Filter): string {
 
   switch (controlType) {
     case 'text':
-      return convertTextFilter(propertyKey, operator, value as string)
+      return isTextValue(value) ? convertTextFilter(propertyKey, operator, value) : ''
 
     case 'multiselect':
-      return convertMultiSelectFilter(propertyKey, operator, value as string[], matchAll)
+      return isListValue(value) ? convertMultiSelectFilter(propertyKey, operator, value, matchAll) : ''
 
     case 'date':
-      return convertDateFilter(propertyKey, operator, value as DateValue)
+      return isDateValue(value) ? convertDateFilter(propertyKey, operator, value) : ''
 
     case 'number':
-      return convertNumberFilter(propertyKey, operator, value as number)
+      return isNumberValue(value) ? convertNumberFilter(propertyKey, operator, value) : ''
 
     case 'boolean':
-      return convertBooleanFilter(propertyKey, operator, value as boolean)
+      return isBooleanValue(value) ? convertBooleanFilter(propertyKey, operator, value) : ''
 
     default:
       return ''

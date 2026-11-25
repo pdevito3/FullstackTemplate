@@ -4,8 +4,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ResponsiveDialogFooter } from '@/components/ui/responsive-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { Filter, FilterControlProps, OperatorType } from '../types'
+import { isTextValue, type FilterControlProps, type OperatorType } from '../types'
 import {
+  baseOperator,
+  caseInsensitiveOperator,
   getDefaultOperator,
   getOperatorsForControlType,
   operatorSupportsCaseSensitivity,
@@ -38,12 +40,10 @@ export function TextFilter({
 
   const initialBaseOperator = pickOperator(
     availableOperators,
-    initialOperator
-      ? ((initialIsCaseInsensitive ? initialOperator.slice(0, -1) : initialOperator) as OperatorType)
-      : getDefaultOperator('text')
+    initialOperator ? baseOperator(initialOperator) : getDefaultOperator('text')
   )
 
-  const [value, setValue] = useState((initialFilter?.value as string) || '')
+  const [value, setValue] = useState(isTextValue(initialFilter?.value) ? initialFilter.value : '')
   const [operator, setOperator] = useState<OperatorType>(initialBaseOperator)
 
   const [caseSensitive, setCaseSensitive] = useState(
@@ -62,9 +62,7 @@ export function TextFilter({
 
     // Convert operator based on case sensitivity
     // If case-insensitive, append * to operator (e.g., @= becomes @=*)
-    const finalOperator = caseSensitive || !supportsCaseSensitivity
-      ? operator
-      : (`${operator}*` as OperatorType)
+    const finalOperator = caseSensitive ? operator : (caseInsensitiveOperator(operator) ?? operator)
 
     onSubmit({
       propertyKey,
@@ -73,7 +71,7 @@ export function TextFilter({
       operator: finalOperator,
       value: text,
       caseSensitive,
-    } as Omit<Filter, 'id'>)
+    })
   }
 
   return (

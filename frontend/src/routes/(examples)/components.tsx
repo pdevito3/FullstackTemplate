@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Dialog } from 'react-aria-components'
 import type { Key } from 'react-aria-components'
-import type { DateValue } from '@internationalized/date'
+import type { CalendarDate } from '@internationalized/date'
 import { Notification03Icon, Calendar03Icon, ArrowUpDownIcon, Mail01Icon, Add01Icon, Settings01Icon, UserIcon, Calculator01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -157,7 +157,7 @@ const countries = [
 ]
 
 function ComponentsPage() {
-  const [date, setDate] = useState<DateValue | null>(todayAt(browserTimeZone(), new Date()))
+  const [date, setDate] = useState<CalendarDate | null>(todayAt(browserTimeZone(), new Date()))
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false)
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [selectedFramework, setSelectedFramework] = useState<Key | null>(null)

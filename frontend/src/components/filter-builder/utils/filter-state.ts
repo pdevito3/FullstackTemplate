@@ -405,9 +405,9 @@ export function moveFilterToGroup(
 
   // Add to target group (or root if targetGroupId is null)
   if (targetGroupId === null) {
-    newState = addFilter(newState, filter as Filter)
+    newState = addFilter(newState, filter)
   } else {
-    newState = addFilterToGroup(newState, targetGroupId, filter as Filter)
+    newState = addFilterToGroup(newState, targetGroupId, filter)
   }
 
   return newState

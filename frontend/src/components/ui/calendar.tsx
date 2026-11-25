@@ -25,7 +25,6 @@ import {
   type CalendarGridProps as AriaCalendarGridProps,
   type CalendarHeaderCellProps as AriaCalendarHeaderCellProps,
   type CalendarProps as AriaCalendarProps,
-  type DateValue as AriaDateValue,
   type RangeCalendarProps as AriaRangeCalendarProps,
   type RangeCalendarState,
   type RangeValue,
@@ -231,10 +230,10 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
   )
 }
 
-type TypedRange = Partial<RangeValue<AriaDateValue | null>>
+type TypedRange = Partial<RangeValue<CalendarDate | null>>
 
 // The range that the date fields make: null while an end is empty, still being typed, or before the start.
-function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
+function rangeOf({ start, end }: TypedRange): RangeValue<CalendarDate> | null {
   if (!isTypedInFull(start) || !isTypedInFull(end) || end.compare(start) < 0) return null
 
   return { start, end }
@@ -249,10 +248,9 @@ function rangeFieldError(isEndBeforeStart: boolean, hasShortYear: boolean): stri
   return null
 }
 
-interface JollyCalendarProps<T extends AriaDateValue>
-  extends Omit<AriaCalendarProps<T>, "onChange"> {
+interface JollyCalendarProps extends Omit<AriaCalendarProps<CalendarDate>, "onChange"> {
   /** Gets null when the typed date is cleared or is not complete. */
-  onChange?: (value: T | null) => void
+  onChange?: (value: CalendarDate | null) => void
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
@@ -268,7 +266,7 @@ interface JollyCalendarProps<T extends AriaDateValue>
 
 // With showDateInput, autoFocus focuses the date input, because it is the first field.
 // Without it, autoFocus focuses the calendar grid.
-function JollyCalendar<T extends AriaDateValue>({
+function JollyCalendar({
   errorMessage,
   className,
   showQuickSelects,
@@ -280,14 +278,12 @@ function JollyCalendar<T extends AriaDateValue>({
   autoFocus,
   timeZone = browserTimeZone(),
   ...props
-}: JollyCalendarProps<T>) {
+}: JollyCalendarProps) {
   // Track focused value to navigate calendar view when quick select is used
   // Initialize with today if no value to avoid uncontrolled-to-controlled warning
   const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
     if (value) {
-      const calDate = value as CalendarDate
-
-      return new CalendarDate(calDate.year, calDate.month, calDate.day)
+      return new CalendarDate(value.year, value.month, value.day)
     }
 
     return todayAt(timeZone, new Date())
@@ -296,39 +292,33 @@ function JollyCalendar<T extends AriaDateValue>({
   // Sync focusedValue when value changes externally
   useEffect(() => {
     if (value) {
-      const calDate = value as CalendarDate
-      setFocusedValue(new CalendarDate(calDate.year, calDate.month, calDate.day))
+      setFocusedValue(new CalendarDate(value.year, value.month, value.day))
     }
   }, [value])
 
   const handleQuickSelect = useCallback((date: CalendarDate) => {
     // Update focused value to navigate calendar view to selected date
     setFocusedValue(date)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onChange?.(date as any)
+    onChange?.(date)
   }, [onChange])
 
   // A date that the user is still typing, or a cleared field. It shows in the field while the value is null.
-  const [typedDate, setTypedDate] = useState<AriaDateValue | null>(null)
+  const [typedDate, setTypedDate] = useState<CalendarDate | null>(null)
 
-  const handleDateInputChange = useCallback((newValue: AriaDateValue | null) => {
+  const handleDateInputChange = useCallback((newValue: CalendarDate | null) => {
     if (isTypedInFull(newValue)) {
       setTypedDate(null)
-      setFocusedValue(newValue as CalendarDate)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.(newValue as any)
+      setFocusedValue(newValue)
+      onChange?.(newValue)
     } else {
       setTypedDate(newValue)
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (value) onChange?.(null as any)
+      if (value) onChange?.(null)
     }
   }, [onChange, value])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCalendarChange = useCallback((newValue: any) => {
-    const calDate = newValue as CalendarDate
-    setFocusedValue(calDate)
+  const handleCalendarChange = useCallback((newValue: CalendarDate) => {
+    setFocusedValue(newValue)
     onChange?.(newValue)
   }, [onChange])
 
@@ -400,10 +390,9 @@ function JollyCalendar<T extends AriaDateValue>({
   )
 }
 
-interface JollyRangeCalendarProps<T extends AriaDateValue>
-  extends Omit<AriaRangeCalendarProps<T>, "onChange"> {
+interface JollyRangeCalendarProps extends Omit<AriaRangeCalendarProps<CalendarDate>, "onChange"> {
   /** Gets null when a typed date is cleared, is not complete, or ends the range before its start. */
-  onChange?: (value: RangeValue<T> | null) => void
+  onChange?: (value: RangeValue<CalendarDate> | null) => void
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
@@ -419,7 +408,7 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
 
 // With showDateInput, autoFocus focuses the start date input, because it is the first field.
 // Without it, autoFocus focuses the calendar grid.
-function JollyRangeCalendar<T extends AriaDateValue>({
+function JollyRangeCalendar({
   errorMessage,
   className,
   showQuickSelects,
@@ -431,13 +420,13 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   autoFocus,
   timeZone = browserTimeZone(),
   ...props
-}: JollyRangeCalendarProps<T>) {
+}: JollyRangeCalendarProps) {
   // The view moves to the range start on mount, on a quick select, and on a typed start date. A pick in the grid
   // keeps the focus on the picked day, which can be in another month. A value that the parent sets does not move it.
   // Initialize with today if no value to avoid uncontrolled-to-controlled warning
   const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
     if (value?.start) {
-      const start = value.start as CalendarDate
+      const { start } = value
 
       return new CalendarDate(start.year, start.month, start.day)
     }
@@ -448,8 +437,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   const handleQuickSelect = useCallback((range: { start: CalendarDate; end: CalendarDate }) => {
     // Update focused value to navigate calendar view to selected range start
     setFocusedValue(range.start)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onChange?.({ start: range.start, end: range.end } as any)
+    onChange?.({ start: range.start, end: range.end })
   }, [onChange])
 
   // The typed dates while they do not make a range. They show in the fields while the value is null.
@@ -460,16 +448,15 @@ function JollyRangeCalendar<T extends AriaDateValue>({
     const range = rangeOf(fields)
     setDraft(range ? {} : fields)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (range || value) onChange?.(range as any)
+    if (range || value) onChange?.(range)
   }, [onChange, value, draft])
 
-  const handleStartDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (isTypedInFull(newValue)) setFocusedValue(newValue as CalendarDate)
+  const handleStartDateChange = useCallback((newValue: CalendarDate | null) => {
+    if (isTypedInFull(newValue)) setFocusedValue(newValue)
     handleFieldChange({ start: newValue })
   }, [handleFieldChange])
 
-  const handleEndDateChange = useCallback((newValue: AriaDateValue | null) => {
+  const handleEndDateChange = useCallback((newValue: CalendarDate | null) => {
     handleFieldChange({ end: newValue })
   }, [handleFieldChange])
 
@@ -530,7 +517,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             cn("grow", className)
           )}
           value={value}
-          onChange={onChange as AriaRangeCalendarProps<T>["onChange"]}
+          onChange={onChange}
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}

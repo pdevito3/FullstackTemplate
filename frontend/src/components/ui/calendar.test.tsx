@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CalendarDate } from '@internationalized/date'
-import { Dialog, type DateValue, type RangeValue } from 'react-aria-components'
+import { Dialog, type RangeValue } from 'react-aria-components'
 import { expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -12,7 +12,7 @@ import { parseTimeZone } from '@/lib/zoned-time'
 
 // The same shape as the Pick a date popover of the components showcase.
 function DatePopover() {
-  const [date, setDate] = useState<DateValue | null>(new CalendarDate(2024, 3, 15))
+  const [date, setDate] = useState<CalendarDate | null>(new CalendarDate(2024, 3, 15))
 
   return (
     <PopoverTrigger>
@@ -46,8 +46,8 @@ test('calendar zoom: Select month moves the focus into the month picker, a month
   await expect.poll(() => document.activeElement?.closest('[role="gridcell"]')).not.toBeNull()
 })
 
-function DateRange({ initialRange }: { initialRange: RangeValue<DateValue> }) {
-  const [range, setRange] = useState<RangeValue<DateValue> | null>(initialRange)
+function DateRange({ initialRange }: { initialRange: RangeValue<CalendarDate> }) {
+  const [range, setRange] = useState<RangeValue<CalendarDate> | null>(initialRange)
 
   return (
     <>
@@ -147,7 +147,7 @@ test('range calendar: a click outside the calendar after a month pick ends the r
 })
 
 function DateRangeWithControls() {
-  const [range, setRange] = useState<RangeValue<DateValue> | null>(august2026)
+  const [range, setRange] = useState<RangeValue<CalendarDate> | null>(august2026)
 
   return <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showQuickSelects showDateInput />
 }
@@ -178,7 +178,7 @@ test('range calendar: a typed start date shows its month', async () => {
 })
 
 function EmptyDateRangeWithControls() {
-  const [range, setRange] = useState<RangeValue<DateValue> | null>(null)
+  const [range, setRange] = useState<RangeValue<CalendarDate> | null>(null)
 
   return (
     <>
@@ -216,8 +216,8 @@ test('range calendar: a typed end date in an empty range keeps the date', async 
   await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
 })
 
-function TypedDateRange({ initialRange = null }: { initialRange?: RangeValue<DateValue> | null }) {
-  const [range, setRange] = useState<RangeValue<DateValue> | null>(initialRange)
+function TypedDateRange({ initialRange = null }: { initialRange?: RangeValue<CalendarDate> | null }) {
+  const [range, setRange] = useState<RangeValue<CalendarDate> | null>(initialRange)
 
   return (
     <>
@@ -314,7 +314,7 @@ test('range calendar: a typed end date before the start date leaves the range em
 })
 
 function TypedDate() {
-  const [date, setDate] = useState<DateValue | null>(null)
+  const [date, setDate] = useState<CalendarDate | null>(null)
 
   return (
     <>

@@ -1,15 +1,24 @@
 import { CalendarDateTime } from '@internationalized/date'
-import { expect, test, vi } from 'vitest'
+import { expect, test, vi, type Mock } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { browserTimeZone, parseTimeZone } from '@/lib/zoned-time'
 
-import type { DateValue, FilterConfig } from '../types'
+import { isDateValue, type DateValue, type FilterConfig, type FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
 import { DateFilter } from './date-filter'
 
 const pagoPago = parseTimeZone('Pacific/Pago_Pago')
+
+/** The date value of the last filter that the control submitted. */
+function submittedDate(onSubmit: Mock<FilterControlProps['onSubmit']>): DateValue {
+  const value = onSubmit.mock.lastCall?.[0].value
+
+  if (!isDateValue(value)) throw new Error('The control submitted no date value.')
+
+  return value
+}
 
 const startsAt: FilterConfig = {
   propertyKey: 'startsAt',
@@ -50,7 +59,7 @@ test('takes today and reads the typed time in the zone of the place, not of the 
   vi.useFakeTimers({ toFake: ['Date'] })
   // 10:30 UTC on August 15 is 23:30 on August 14 in Pago Pago, and August 16 in Kiritimati.
   vi.setSystemTime(new Date('2026-08-15T10:30:00Z'))
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
 
   try {
     await render(<DateFilter config={startsAt} surface="submenu" onSubmit={onSubmit} />)
@@ -62,7 +71,7 @@ test('takes today and reads the typed time in the zone of the place, not of the 
 
     // Assert
     await expect.element(page.getByRole('group', { name: 'Date' })).toHaveTextContent('8/14/2026')
-    const value = onSubmit.mock.lastCall?.[0].value as DateValue
+    const value = submittedDate(onSubmit)
     expect(value.startDate).toEqual(new Date('2026-08-14T20:00:00Z'))
     expect(value.timeZone).toBe(pagoPago)
   } finally {
@@ -93,7 +102,7 @@ test('keeps the time of a filter to edit when the config has no zone', async () 
   // Arrange
   const value: DateValue = { mode: 'on', startDate: new Date('2026-08-14T20:00:00Z'), dateType: 'datetimeUtc', timeZone: pagoPago }
   const config = { ...startsAt, timeZone: undefined }
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
   await render(
     <DateFilter
       config={config}
@@ -107,7 +116,7 @@ test('keeps the time of a filter to edit when the config has no zone', async () 
   await page.getByRole('button', { name: 'Update Filter' }).click()
 
   // Assert
-  const submitted = onSubmit.mock.lastCall?.[0].value as DateValue
+  const submitted = submittedDate(onSubmit)
   expect(submitted.startDate).toEqual(value.startDate)
   expect(submitted.timeZone).toBe(pagoPago)
 })
@@ -140,7 +149,7 @@ const scheduledAt: FilterConfig = {
 
 test('keeps a datetime as the wall clock time that the user typed', async () => {
   // Arrange
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
   await render(<DateFilter config={scheduledAt} surface="submenu" onSubmit={onSubmit} />)
 
   // Act
@@ -150,14 +159,14 @@ test('keeps a datetime as the wall clock time that the user typed', async () => 
   await page.getByRole('button', { name: 'Add Filter' }).click()
 
   // Assert
-  const value = onSubmit.mock.lastCall?.[0].value as DateValue
+  const value = submittedDate(onSubmit)
   expect(value.startDate).toEqual(new CalendarDateTime(2026, 8, 15, 23, 30))
 })
 
 test('shows a datetime to edit at its wall clock time, and keeps that time', async () => {
   // Arrange
   const value: DateValue = { mode: 'on', startDate: new CalendarDateTime(2026, 8, 15, 23, 30), dateType: 'datetime' }
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
   await render(
     <DateFilter
       config={scheduledAt}
@@ -173,13 +182,13 @@ test('shows a datetime to edit at its wall clock time, and keeps that time', asy
   // Assert
   await expect.element(page.getByRole('group', { name: 'Date' })).toHaveTextContent('8/15/2026')
   await expect.element(page.getByRole('textbox', { name: 'Time' })).toHaveValue('23:30')
-  expect((onSubmit.mock.lastCall?.[0].value as DateValue).startDate).toEqual(value.startDate)
+  expect(submittedDate(onSubmit).startDate).toEqual(value.startDate)
 })
 
 test('keeps a datetime range as two wall clock times, and names the zone of each time input', async () => {
   // Arrange
   const config = { ...scheduledAt, timeZone: pagoPago }
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
   await render(<DateFilter config={config} surface="submenu" onSubmit={onSubmit} />)
 
   // Act
@@ -193,7 +202,7 @@ test('keeps a datetime range as two wall clock times, and names the zone of each
   await page.getByRole('button', { name: 'Add Filter' }).click()
 
   // Assert
-  const value = onSubmit.mock.lastCall?.[0].value as DateValue
+  const value = submittedDate(onSubmit)
   expect(value.startDate).toEqual(new CalendarDateTime(2026, 8, 15, 1))
   expect(value.endDate).toEqual(new CalendarDateTime(2026, 8, 16, 2, 30))
 })
@@ -214,7 +223,7 @@ test.each<[string, FilterConfig, DateValue, string]>([
   ],
 ])('shows the range of %s to edit at its end time, and keeps that time', async (_, config, value, endTimeName) => {
   // Arrange
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
   await render(
     <DateFilter
       config={config}
@@ -229,7 +238,7 @@ test.each<[string, FilterConfig, DateValue, string]>([
 
   // Assert
   await expect.element(page.getByRole('textbox', { name: endTimeName })).toHaveValue('02:30')
-  expect((onSubmit.mock.lastCall?.[0].value as DateValue).endDate).toEqual(value.endDate)
+  expect(submittedDate(onSubmit).endDate).toEqual(value.endDate)
 })
 
 test.each([
@@ -282,12 +291,12 @@ test('refuses a time that the clocks of the place skip in the spring', async () 
 test('labels the time of a filter with no zone the same way when the user adds it and when the user edits it', async () => {
   // Arrange
   const publishedAt: FilterConfig = { propertyKey: 'publishedAt', propertyLabel: 'Published At', controlType: 'date', dateType: 'datetimeUtc' }
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn<FilterControlProps['onSubmit']>()
   const screen = await render(<DateFilter config={publishedAt} surface="submenu" onSubmit={onSubmit} />)
   await page.getByRole('button', { name: 'Today', exact: true }).click()
   await page.getByRole('textbox', { name: 'Time', exact: true }).fill('09:00')
   await page.getByRole('button', { name: 'Add Filter' }).click()
-  const value = onSubmit.mock.lastCall?.[0].value as DateValue
+  const value = submittedDate(onSubmit)
   await screen.unmount()
 
   // Act

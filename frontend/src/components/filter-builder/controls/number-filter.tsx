@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { OperatorType, Filter, FilterControlProps } from '../types'
+import type { OperatorType, FilterControlProps } from '../types'
 import { getDefaultOperator, getOperatorsForControlType, pickOperator } from '../utils/operators'
 import { FilterControlFooter } from './filter-control-footer'
 import { OperatorSelect } from './operator-select'
@@ -43,7 +43,7 @@ export function NumberFilter({
       controlType: 'number',
       operator,
       value: numValue,
-    } as Omit<Filter, 'id'>)
+    })
   }
 
   const isValid = value.trim() !== '' && !isNaN(parseFloat(value))

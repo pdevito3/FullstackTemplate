@@ -4,15 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
 import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
-import { Notification } from '@/components/notification'
+import { toastQueue } from '@/components/notification'
 import { apiClient, onUnauthorized } from '@/lib/api-client'
 import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 import { failureText } from '@/lib/request-failure'
 
-vi.mock('@/components/notification', () => ({
-  Notification: { error: vi.fn() },
-}))
+/** The toasts that the Toaster shows. */
+const shownToasts = () => toastQueue.visibleToasts.map(({ content }) => content)
 
 const tenantId = '0b9d5d8e-2f8a-4a43-9d36-5c3f6f4f0a11'
 
@@ -59,7 +58,7 @@ beforeEach(() => {
 
 afterEach(() => {
   apiClient.defaults.adapter = originalAdapter
-  vi.mocked(Notification.error).mockClear()
+  toastQueue.clear()
 })
 
 describe('apiClient with a generated client', () => {
@@ -80,7 +79,7 @@ describe('apiClient with a generated client', () => {
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect((error as ProblemDetailsError).status).toBe(422)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith('Please provide a name.')
+    expect(shownToasts()).toEqual([{ type: 'error', message: 'Please provide a name.' }])
     expect(checkSession).not.toHaveBeenCalled()
   })
 
@@ -90,7 +89,7 @@ describe('apiClient with a generated client', () => {
     const error = await addTenant({ body: { name: '' }, options: { suppressErrorToast: true } }).catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 
   it('does not show a toast for a cancelled request', async () => {
@@ -101,7 +100,7 @@ describe('apiClient with a generated client', () => {
 
     expect(error).toBeInstanceOf(AxiosError)
     expect((error as AxiosError).code).toBe(AxiosError.ERR_CANCELED)
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 
   it('returns an error status as a result, with no toast, when throwOnError is false', async () => {
@@ -111,7 +110,7 @@ describe('apiClient with a generated client', () => {
 
     expect(result.status).toBe(422)
     expect(result.error).toEqual(validationProblem)
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 })
 
@@ -156,7 +155,7 @@ describe('apiClient with a fault of the Server', () => {
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect(failureText(error)).toBe(serverFault)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
+    expect(shownToasts()).toEqual([{ type: 'error', message: serverFault }])
   })
 
   it.each([
@@ -172,7 +171,7 @@ describe('apiClient with a fault of the Server', () => {
     expect(error).toBeInstanceOf(Error)
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     expect(failureText(error)).toBe(serverFault)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
+    expect(shownToasts()).toEqual([{ type: 'error', message: serverFault }])
   })
 })
 
@@ -186,7 +185,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     expect(checkSession).toHaveBeenCalledOnce()
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 
   it('checks the session for a 401, and shows a toast when the session lives', async () => {
@@ -200,7 +199,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     expect(failureText(error)).toBe(signInRejected)
     expect(checkSession).toHaveBeenCalledOnce()
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(signInRejected)
+    expect(shownToasts()).toEqual([{ type: 'error', message: signInRejected }])
   })
 
   it('does not check the session for a 401 of the session check itself', async () => {
@@ -221,7 +220,7 @@ describe('apiClient with a 401 or with no answer', () => {
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     const noAnswer = 'The app could not reach the server. Check your connection, then try again.'
     expect(failureText(error)).toBe(noAnswer)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(noAnswer)
+    expect(shownToasts()).toEqual([{ type: 'error', message: noAnswer }])
   })
   const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
 
@@ -231,7 +230,7 @@ describe('apiClient with a 401 or with no answer', () => {
     const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
 
     expect(failureText(error)).toBe(timedOut)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
+    expect(shownToasts()).toEqual([{ type: 'error', message: timedOut }])
   })
 
   it('says the same for a request that the app stops at its time limit', async () => {
@@ -242,7 +241,7 @@ describe('apiClient with a 401 or with no answer', () => {
     const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
 
     expect(failureText(error)).toBe(timedOut)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
+    expect(shownToasts()).toEqual([{ type: 'error', message: timedOut }])
   })
 
   it('gives a request a time limit of 35 s, and an upload 10 min', async () => {

@@ -69,6 +69,20 @@ const plans: PlanDefinition[] = [
 // The key rotation module of the config plan needs a second login, with the new keys
 const flowOverrides: Record<string, Flow> = { 'oidcc-client-test-signing-key-rotation': 'login-twice' }
 
+/** The configuration of a test plan of the suite, as `POST api/plan` takes it. */
+interface PlanConfig {
+  alias: string
+  description: string
+  waitTimeoutSeconds?: number
+  client: {
+    client_id: string
+    client_secret: string
+    redirect_uri: string
+    post_logout_redirect_uri?: string
+    backchannel_logout_uri?: string
+  }
+}
+
 interface AcceptedResult {
   plan: string
   module: string
@@ -166,7 +180,7 @@ async function startSuite(api: APIRequestContext) {
   writeFileSync(certificatePath, compose('exec', '-T', 'nginx', 'cat', '/etc/ssl/certs/nginx-selfsigned.crt'))
 }
 
-async function createPlan(api: APIRequestContext, plan: PlanDefinition, config: object) {
+async function createPlan(api: APIRequestContext, plan: PlanDefinition, config: PlanConfig) {
   const response = await api.post('api/plan', {
     params: { planName: plan.name, variant: JSON.stringify(plan.variant) },
     data: config,

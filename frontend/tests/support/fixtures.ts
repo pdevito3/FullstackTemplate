@@ -73,13 +73,12 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
 
           served.add(match.method, url, new Headers(await request.allHeaders()), postBody(request))
           await match.heldUntil
-          await route.fulfill({
-            status: match.status,
-            headers: match.headers,
-            ...(match.body === undefined
-              ? {}
-              : { contentType: 'application/json', body: JSON.stringify(match.body) }),
-          })
+          const { status, headers } = match
+          await route.fulfill(
+            match.body === undefined
+              ? { status, headers }
+              : { status, headers, contentType: 'application/json', body: JSON.stringify(match.body) },
+          )
         },
       )
 

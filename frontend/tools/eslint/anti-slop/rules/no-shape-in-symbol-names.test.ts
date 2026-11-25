@@ -1,4 +1,4 @@
-import { RuleTester } from "oxlint/plugins-dev";
+import { RuleTester } from "../rule-tester.ts";
 
 import { noForbiddenTermInSymbolNamesRule } from "./no-shape-in-symbol-names.ts";
 
@@ -7,6 +7,7 @@ const error = { messageId: "forbiddenSymbolName" };
 
 tester.run("anti-slop/no-shape-in-symbol-names", noForbiddenTermInSymbolNamesRule, {
 	valid: [
+		"type Fields = typeof schema.shape;",
 		"declare const schema: ExternalSchema; const field = schema.shape.id;",
 		"declare const outer: External; const value = outer.inner.shape;",
 		"declare const schema: ExternalSchema; schema.shape.id.parse('x');",

@@ -53,7 +53,7 @@ function hasSafetyJustificationBefore(
   return sourceCode
     .getCommentsBefore(owner)
     .some(
-      (comment) => comment.end <= assertion.start && pattern.test(comment.value),
+      (comment) => comment.range[1] <= assertion.range[0] && pattern.test(comment.value),
     );
 }
 

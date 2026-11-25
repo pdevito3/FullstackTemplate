@@ -1,4 +1,4 @@
-import { RuleTester } from "oxlint/plugins-dev";
+import { RuleTester } from "../rule-tester.ts";
 
 import { requireReadableSpacingRule } from "./require-readable-spacing.ts";
 import createPaddingLineRule from "../vendor/eslint-stylistic/padding-line-between-statements.ts";

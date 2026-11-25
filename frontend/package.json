@@ -48,6 +48,7 @@
     "@kubb/plugin-axios": "^5.7.0",
     "@kubb/plugin-ts": "^5.0.14",
     "@kubb/plugin-zod": "^5.4.12",
+    "@oxlint/plugins": "1.78.0",
     "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-plugin": "^1.142.0",

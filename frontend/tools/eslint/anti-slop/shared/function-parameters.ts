@@ -42,8 +42,8 @@ export function functionParameterBindingName(
 	if (parameter.type === "Identifier") return parameter.name;
 
 	const sourceText = sourceCode.getText(parameter);
-	const annotationStart = parameter.typeAnnotation?.start;
+	const annotationStart = parameter.typeAnnotation?.range[0];
 	return annotationStart === undefined
 		? sourceText
-		: sourceText.slice(0, annotationStart - parameter.start).trimEnd();
+		: sourceText.slice(0, annotationStart - parameter.range[0]).trimEnd();
 }

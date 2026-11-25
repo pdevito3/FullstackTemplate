@@ -1,7 +1,7 @@
 import { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
-import { armWaitFirstRule, codeToWordsRules, lateWaitMessage, noPageActionRule, serverStatePlugin, stringSelectorMessage } from './eslint.config.js'
+import { antiSlopRules, armWaitFirstRule, codeToWordsRules, lateWaitMessage, noPageActionRule, serverStatePlugin, stringSelectorMessage } from './eslint.config.js'
 
 const pageAction = "import type { Page } from '@playwright/test'\nexport const save = (page: Page) => page.click('#save')\n"
 
@@ -473,4 +473,47 @@ export function showOnItsOwn(setError: Form['setError']) {
   it('lets the owner read the message', async () => {
     expect(await failureTextMessages('export const text = (error: Error) => error.message', 'src/lib/request-failure.ts')).toEqual([])
   })
+})
+
+// One violation for each anti-slop rule. conformance/ has no type-aware block, so the lint of the real config is fast.
+const antiSlopSeeds = {
+  'anti-slop/no-accumulating-spread': 'export const all = [1, 2].reduce((acc: number[], n) => [...acc, n], [])\n',
+  'anti-slop/no-array-filter-map': 'const xs: number[] = [1, 2]\nexport const ys = xs.filter((x) => x > 1).map((x) => x * 2)\n',
+  'anti-slop/no-chained-type-assertions': 'declare const v: string\nexport const n = v as unknown as number\n',
+  'anti-slop/no-conditional-empty-object-spread': 'export const f = (t?: number) => ({ ...(t !== undefined ? { t } : {}) })\n',
+  'anti-slop/no-known-value-widening': 'export const m: Record<string, number> = { a: 1 }\n',
+  'anti-slop/no-module-mocking': "import { vi } from 'vitest'\nvi.mock('./x')\n",
+  'anti-slop/no-object-parameters': 'export function save(value: object) {\n  return value\n}\n',
+  'anti-slop/no-reduce-accumulator-copy': 'export const all = [1].reduce((acc, n) => Object.assign({}, acc, { [n]: n }), {})\n',
+  'anti-slop/no-reflect-apply': 'export const r = Reflect.apply(Math.max, null, [1])\n',
+  'anti-slop/no-reflect-get': "export const g = Reflect.get(Math, 'PI')\n",
+  'anti-slop/no-runtime-typeof': "export const isText = (v: string | number) => typeof v === 'string'\n",
+  'anti-slop/no-shape-in-symbol-names': 'export interface UserShape {\n  id: string\n}\n',
+  'anti-slop/no-unknown-parameters': 'export function handle(input: unknown) {\n  return input\n}\n',
+  'anti-slop/no-unknown-returns': 'export function load(): unknown {\n  return 1\n}\n',
+  'anti-slop/no-unknown-type-aliases': 'export type External = unknown\n',
+  'anti-slop/no-unsafe-dictionary-type': 'export type Metadata = Record<string, unknown>\n',
+  'anti-slop/no-widen-then-assert': 'const loaded: number = 1\nconst stored: unknown = loaded\nexport const n = stored as number\n',
+  'anti-slop/require-readable-spacing': 'export const first = 1\n/** The second. */\nexport const second = 2\n',
+  'anti-slop/require-safety-comment-for-type-assertion': 'declare const v: string | number\nexport const n = v as number\n',
+}
+
+async function antiSlopRulesOf(code) {
+  const eslint = new ESLint({ cwd: import.meta.dirname })
+  const [result] = await eslint.lintText(code, { filePath: 'conformance/seed.ts' })
+  return result.messages.map((message) => message.ruleId)
+}
+
+describe('anti-slop rules', { timeout: 60_000 }, () => {
+  it.each(Object.keys(antiSlopRules))('%s reports its seeded violation', async (rule) => {
+    expect(antiSlopSeeds[rule], `add a seed for ${rule}`).toBeDefined()
+    expect(await antiSlopRulesOf(antiSlopSeeds[rule])).toContain(rule)
+  })
+
+  it.each(['src/seed.tsx', 'tests/seed.ts', 'e2e/seed.ts'])('applies each rule to %s', async (file) => {
+    const config = await new ESLint({ cwd: import.meta.dirname }).calculateConfigForFile(file)
+    for (const rule of Object.keys(antiSlopRules))
+      expect(config.rules[rule]?.[0], rule).toBe(2)
+  })
+
 })

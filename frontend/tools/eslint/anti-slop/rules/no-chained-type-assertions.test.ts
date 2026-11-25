@@ -1,4 +1,4 @@
-import { RuleTester } from "oxlint/plugins-dev";
+import { RuleTester } from "../rule-tester.ts";
 
 import { noChainedTypeAssertionsRule } from "./no-chained-type-assertions.ts";
 

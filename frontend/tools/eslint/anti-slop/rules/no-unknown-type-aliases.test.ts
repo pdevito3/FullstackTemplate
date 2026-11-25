@@ -1,4 +1,4 @@
-import { RuleTester } from "oxlint/plugins-dev";
+import { RuleTester } from "../rule-tester.ts";
 
 import { noUnknownTypeAliasesRule } from "./no-unknown-type-aliases.ts";
 

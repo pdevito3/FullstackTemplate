@@ -81,7 +81,7 @@ export const noReduceAccumulatorCopyRule = defineRule({
         const reducer = enclosingReducer(node);
         if (reducer === null) return;
         const accumulator = context.sourceCode.getDeclaredVariables(reducer.callback).find(variable =>
-          variable.identifiers.some(identifier => identifier.start === reducer.accumulator.start),
+          variable.identifiers.some(identifier => identifier.range[0] === reducer.accumulator.range[0]),
         );
         if (accumulator === undefined) return;
         const isAccumulator = (expression: ESTree.Node) =>

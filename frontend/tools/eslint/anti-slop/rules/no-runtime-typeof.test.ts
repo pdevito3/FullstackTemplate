@@ -1,4 +1,4 @@
-import { RuleTester } from "oxlint/plugins-dev";
+import { RuleTester } from "../rule-tester.ts";
 
 import { noRuntimeTypeofRule } from "./no-runtime-typeof.ts";
 

@@ -5,6 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import ts from 'typescript'
+import antiSlop from './tools/eslint/anti-slop/index.ts'
 
 // docs/frontend.md, section "Links": a link to a route takes typed `to` and `params`, and keeps the React Aria behavior.
 const linkImports = [
@@ -566,6 +567,17 @@ const failureTextRule = {
   },
 }
 
+// docs/frontend/code-style.md, section "Lint guards". The rules come from tools/eslint/anti-slop (see its UPSTREAM.md).
+export const antiSlopRules = {
+  'anti-slop/no-accumulating-spread': 'error',
+  'anti-slop/no-reduce-accumulator-copy': 'error',
+  'anti-slop/no-reflect-apply': 'error',
+  'anti-slop/no-reflect-get': 'error',
+  'anti-slop/no-shape-in-symbol-names': 'error',
+  'anti-slop/no-unknown-type-aliases': 'error',
+  'anti-slop/no-widen-then-assert': 'error',
+}
+
 export default tseslint.config(
   // Kubb writes src/api/generated (and one sibling folder for each other API version). Run `pnpm generate:api` to change it.
   { ignores: ['dist', 'dist-functional', 'src/api/generated*', 'tools/eslint/anti-slop/**'] },
@@ -614,6 +626,11 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: { 'anti-slop': antiSlop },
+    rules: antiSlopRules,
   },
   {
     files: ['src/**/*.{ts,tsx}'],

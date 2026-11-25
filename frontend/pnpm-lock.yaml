@@ -98,6 +98,9 @@ importers:
       '@kubb/plugin-zod':
         specifier: ^5.4.12
         version: 5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(zod@4.3.4)
+      '@oxlint/plugins':
+        specifier: 1.78.0
+        version: 1.78.0
       '@playwright/test':
         specifier: 1.64.1
         version: 1.64.1
@@ -708,6 +711,10 @@ packages:
 
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
+
+  '@oxlint/plugins@1.78.0':
+    resolution: {integrity: sha512-Ypt8KeRYw+4jUtlPirfcHWMrn5ms12VrrFPD+Mds477/7tJxG1Kcz2Yrg2nVcTQEUx/GdlhS+BUg1kmxNm04Ug==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@playwright/test@1.64.1':
     resolution: {integrity: sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg==}
@@ -3923,6 +3930,8 @@ snapshots:
     optional: true
 
   '@oxc-project/types@0.154.0': {}
+
+  '@oxlint/plugins@1.78.0': {}
 
   '@playwright/test@1.64.1':
     dependencies:

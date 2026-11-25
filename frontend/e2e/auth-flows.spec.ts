@@ -81,7 +81,12 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
   }
 }
 
-const spansSchema = z.array(z.looseObject({ timestamp: z.string(), attributes: z.record(z.string(), z.unknown()) }))
+const spansSchema = z.array(
+  z.looseObject({
+    timestamp: z.string(),
+    attributes: z.looseObject({ 'url.path': z.string().optional(), 'app.auth.scheme': z.string().optional() }),
+  }),
+)
 
 /**
  * The number of server spans of the current user call with a DPoP proof since `startedAt`. The server tags the span

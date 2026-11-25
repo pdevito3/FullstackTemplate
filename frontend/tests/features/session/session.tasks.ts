@@ -3,10 +3,11 @@ import { openAndWaitForLogin } from '@tests/support/answers'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
+// page.exposeFunction adds these to the window of the page of a test that asks for them, so a page can have none
 declare global {
   interface Window {
-    reportRender: () => void
-    reportToast: () => void
+    reportRender?: () => void
+    reportToast?: () => void
   }
 }
 
@@ -28,9 +29,8 @@ export function sessionPage(page: Page) {
         rendered = true
       })
       await page.addInitScript(() => {
-        const report = window.reportRender
         new MutationObserver(() => {
-          if (document.getElementById('root')?.hasChildNodes()) report()
+          if (document.getElementById('root')?.hasChildNodes()) window.reportRender?.()
         }).observe(document, { childList: true, subtree: true })
       })
 
@@ -74,9 +74,8 @@ export function sessionPage(page: Page) {
         toasted = true
       })
       await page.evaluate(() => {
-        const report = window.reportToast
         new MutationObserver(() => {
-          if (document.querySelector('[role="alertdialog"]')) report()
+          if (document.querySelector('[role="alertdialog"]')) window.reportToast?.()
         }).observe(document.body, { childList: true, subtree: true })
       })
 

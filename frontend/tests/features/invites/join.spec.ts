@@ -4,11 +4,11 @@ import { membershipApi, membershipPaths } from '@tests/support/api/membership-ap
 import { tenantsApi } from '@tests/support/api/tenants-api'
 import { usersApi } from '@tests/support/api/users-api'
 import { actorSubject, as } from '@tests/support/auth/actors'
-import { aPreview } from '@tests/support/builders/invite-builder'
+import { aPreview, inviteExpiryInBrowserZone } from '@tests/support/builders/invite-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
-import { browserZone, shortenRequestTimeLimit } from '@tests/support/clock'
+import { shortenRequestTimeLimit } from '@tests/support/clock'
 import { expect, test } from '@tests/support/fixtures'
 import { homePage } from '../home/home.tasks'
 import { joinPage } from './invites.tasks'
@@ -21,20 +21,6 @@ const expired = 'This invite expired. Ask a tenant admin for a new invite.'
 const usedOrRevoked = 'This invite was used or revoked. Ask a tenant admin for a new invite.'
 const alreadyMember = 'Your account already belongs to a tenant.'
 const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
-
-/** `inviteExpiry` of the builder in each zone of the suite. */
-const expiryIn = new Map([
-  ['Pacific/Kiritimati', 'Jan 16, 2099, 2:00 AM'],
-  ['Pacific/Pago_Pago', 'Jan 15, 2099, 1:00 AM'],
-])
-
-function expiryInBrowserZone(): string {
-  const expiry = expiryIn.get(browserZone())
-
-  if (expiry === undefined) throw new Error(`The suite has no invite expiry for the zone ${browserZone()}.`)
-
-  return expiry
-}
 
 test.describe('a visitor with no session opens an invite link', () => {
   test.use({ actor: as.anonymous() })
@@ -82,7 +68,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
 
     await expect(join.at.detail('Acme')).toBeVisible()
     await expect(join.at.detail('Admin')).toBeVisible()
-    await expect(join.at.detail(expiryInBrowserZone())).toBeVisible()
+    await expect(join.at.detail(inviteExpiryInBrowserZone())).toBeVisible()
     await expect(join.at.form).toBeVisible()
   })
 

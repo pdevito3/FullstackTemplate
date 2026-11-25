@@ -66,6 +66,7 @@ function DataTable<TData, TValue>({
 
   // A React Aria table has one header row, so it shows the leaf headers.
   const headers = table.getLeafHeaders().filter((header) => header.column.getIsVisible())
+
   // The selection column holds only a checkbox, so it cannot name the row.
   const rowHeaderIndex = Math.max(
     headers.findIndex((header) => header.column.id !== "select"),

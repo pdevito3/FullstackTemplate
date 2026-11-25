@@ -23,6 +23,7 @@ export type TimeZone = string & { readonly __brand: 'TimeZone' }
 export function parseTimeZone(value: string): TimeZone {
   const zone = PLACE_OF_SYSTEM_V_ID[value.toUpperCase()] ?? value
   const resolved = new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone
+
   return (resolved.toLowerCase() === zone.toLowerCase() ? resolved : zone) as TimeZone
 }
 
@@ -57,7 +58,9 @@ export function timeZoneLabel(zone: TimeZone): string {
         .formatToParts()
         .find((part) => part.type === 'timeZoneName')?.value ?? '',
   )
+
   const name = names.find(isWordName) ?? names[names.length - 1]
+
   return CLEAR_NAME_OF_ZONE[name] ?? name
 }
 
@@ -103,6 +106,7 @@ export function wallClockAt(instant: Date, zone: TimeZone): CalendarDateTime {
  */
 export function instantAt(wallClock: CalendarDateTime, zone: TimeZone): Date | null {
   const zoned = toZoned(wallClock, zone, 'earlier')
+
   return toCalendarDateTime(zoned).compare(wallClock) === 0 ? zoned.toDate() : null
 }
 
@@ -116,12 +120,14 @@ export function offsetAt(instant: Date, zone: TimeZone): string {
   const minutes = fromAbsolute(instant.getTime(), zone).offset / 60_000
   const sign = minutes < 0 ? '-' : '+'
   const hours = String(Math.trunc(Math.abs(minutes) / 60)).padStart(2, '0')
+
   return `${sign}${hours}:${String(Math.abs(minutes) % 60).padStart(2, '0')}`
 }
 
 /** True when the wall clock of the place shows the time of the instant twice, as on the night that the clocks go back. */
 export function isRepeatedAt(instant: Date, zone: TimeZone): boolean {
   const wallClock = wallClockAt(instant, zone)
+
   return toZoned(wallClock, zone, 'earlier').compare(toZoned(wallClock, zone, 'later')) !== 0
 }
 
@@ -151,5 +157,6 @@ export function formatInstant(
 ): string {
   const isRepeatedTime = options.hour !== undefined && isRepeatedAt(instant, zone)
   const timeZoneName = isRepeatedTime ? 'shortOffset' : showZone ? 'short' : undefined
+
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: zone, timeZoneName }).format(instant)
 }

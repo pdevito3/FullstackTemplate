@@ -349,6 +349,7 @@ function ComponentsPage() {
                     onSelectionChange={(key) => {
                       setAutocompleteKey(key)
                       const country = countries.find((c) => c.value === key)
+
                       if (country) setAutocompleteValue(country.label)
                     }}
                     allowsCustomValue

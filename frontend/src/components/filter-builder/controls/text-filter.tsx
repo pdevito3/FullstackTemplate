@@ -25,6 +25,7 @@ export function TextFilter({
   const textOperators = getOperatorsForControlType('text')
   // Filter to only show base operators (without * suffix) - the checkbox controls case sensitivity
   const baseOperators = textOperators.filter((op) => !op.symbol.endsWith('*'))
+
   const availableOperators = (
     allowedOperators
       ? baseOperators.filter((op) => allowedOperators.includes(op.symbol))
@@ -34,6 +35,7 @@ export function TextFilter({
   // Extract base operator and case sensitivity from initial filter
   const initialOperator = initialFilter?.operator
   const initialIsCaseInsensitive = initialOperator?.endsWith('*') ?? false
+
   const initialBaseOperator = pickOperator(
     availableOperators,
     initialOperator
@@ -43,9 +45,11 @@ export function TextFilter({
 
   const [value, setValue] = useState((initialFilter?.value as string) || '')
   const [operator, setOperator] = useState<OperatorType>(initialBaseOperator)
+
   const [caseSensitive, setCaseSensitive] = useState(
     initialFilter ? !initialIsCaseInsensitive : false
   )
+
   const supportsCaseSensitivity = operatorSupportsCaseSensitivity(operator)
   const valueId = useId()
 

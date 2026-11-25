@@ -576,6 +576,7 @@ export const antiSlopRules = {
   'anti-slop/no-shape-in-symbol-names': 'error',
   'anti-slop/no-unknown-type-aliases': 'error',
   'anti-slop/no-widen-then-assert': 'error',
+  'anti-slop/require-readable-spacing': 'error',
 }
 
 export default tseslint.config(

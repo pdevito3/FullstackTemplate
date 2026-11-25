@@ -52,6 +52,7 @@ interface QuickSelectsPanelProps<P extends { label: string }> {
 
 function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSelect }: QuickSelectsPanelProps<P>) {
   const classNames = layoutClassNames[layout]
+
   return (
     <div className={cn("flex flex-col gap-1", classNames.quickSelects)}>
       <div className="mb-1 text-xs font-medium text-muted-foreground">Quick Select</div>
@@ -139,6 +140,7 @@ const CalendarGrid = ({ className, timeZone, ...props }: CalendarGridProps) => {
   const rangeState = useContext(AriaRangeCalendarStateContext)
   setZoneOfToday(calendarState ?? rangeState, timeZone)
   keepFocusOnRangeStart(rangeState)
+
   return (
     <>
       <AriaCalendarGrid
@@ -184,6 +186,7 @@ const CalendarGridBody = ({
 
 const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
   const isRange = Boolean(useContext(AriaRangeCalendarStateContext))
+
   return (
     <AriaCalendarCell
       className={composeRenderProps(className, (className, renderProps) =>
@@ -233,13 +236,16 @@ type TypedRange = Partial<RangeValue<AriaDateValue | null>>
 // The range that the date fields make: null while an end is empty, still being typed, or before the start.
 function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
   if (!isTypedInFull(start) || !isTypedInFull(end) || end.compare(start) < 0) return null
+
   return { start, end }
 }
 
 // An end before the start needs two full years, so it never shows with a short year.
 function rangeFieldError(isEndBeforeStart: boolean, hasShortYear: boolean): string | null {
   if (isEndBeforeStart) return "The end date is before the start date."
+
   if (hasShortYear) return shortYearMessage
+
   return null
 }
 
@@ -280,8 +286,10 @@ function JollyCalendar<T extends AriaDateValue>({
   const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
     if (value) {
       const calDate = value as CalendarDate
+
       return new CalendarDate(calDate.year, calDate.month, calDate.day)
     }
+
     return todayAt(timeZone, new Date())
   })
 
@@ -311,6 +319,7 @@ function JollyCalendar<T extends AriaDateValue>({
       onChange?.(newValue as any)
     } else {
       setTypedDate(newValue)
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (value) onChange?.(null as any)
     }
@@ -429,8 +438,10 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
     if (value?.start) {
       const start = value.start as CalendarDate
+
       return new CalendarDate(start.year, start.month, start.day)
     }
+
     return todayAt(timeZone, new Date())
   })
 
@@ -448,6 +459,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
     const fields = { ...(value ?? draft), ...edit }
     const range = rangeOf(fields)
     setDraft(range ? {} : fields)
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (range || value) onChange?.(range as any)
   }, [onChange, value, draft])
@@ -561,4 +573,5 @@ export {
   JollyCalendar,
   JollyRangeCalendar,
 }
+
 export type { JollyCalendarProps, JollyRangeCalendarProps }

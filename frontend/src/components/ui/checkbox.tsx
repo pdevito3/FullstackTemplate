@@ -116,4 +116,5 @@ function CheckboxGroupWithLabel({
 }
 
 export { Checkbox, CheckboxGroup, CheckboxGroupWithLabel }
+
 export type { CheckboxGroupWithLabelProps }

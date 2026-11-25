@@ -40,6 +40,7 @@ export function ExampleNav({ current, onNavigate }: ExampleNavProps) {
           <SidebarMenuSub>
             {items.map((item) => {
               const itemCurrent = current?.url === item.url ? current.current : undefined
+
               return (
                 <SidebarMenuSubItem key={item.title} isActive={itemCurrent !== undefined}>
                   <SidebarMenuSubLink to={item.url} current={itemCurrent} onPress={onNavigate}>

@@ -37,8 +37,11 @@ function respond(
     headers: new AxiosHeaders({ 'content-type': status >= 400 ? 'application/problem+json' : 'application/json', ...headers }),
     config,
   }
+
   const validateStatus = config.validateStatus ?? ((s: number) => s >= 200 && s < 300)
+
   if (validateStatus(status)) return Promise.resolve(response)
+
   return Promise.reject(new AxiosError(`Request failed with status code ${status}`, undefined, config, undefined, response))
 }
 
@@ -116,6 +119,7 @@ describe('a generated list client', () => {
   // A list endpoint has a name that ends in List, and kubb.config.ts makes its client return the full response
   it('returns the full response, so that parsePagination can read the X-Pagination header', async () => {
     const tenants = [{ id: tenantId, name: 'Acme' }]
+
     const pagination = {
       totalCount: 11,
       pageSize: 10,
@@ -127,6 +131,7 @@ describe('a generated list client', () => {
       hasPrevious: true,
       hasNext: false,
     }
+
     adapter.mockImplementation((config) =>
       respond(config, 200, tenants, { 'X-Pagination': JSON.stringify(pagination) }),
     )
@@ -192,6 +197,7 @@ describe('apiClient with a 401 or with no answer', () => {
 
     const signInRejected =
       'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
     expect(failureText(error)).toBe(signInRejected)
     expect(checkSession).toHaveBeenCalledOnce()
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(signInRejected)

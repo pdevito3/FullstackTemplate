@@ -6,6 +6,7 @@ import { testIdHeader, type Answer } from './src/test/answer'
 // A test calls them with `commands` from 'vitest/browser'.
 
 type Page = Parameters<BrowserCommand<[]>>[0]['page']
+
 type RouteHandler = Parameters<Page['route']>[1]
 
 interface Hold {
@@ -25,14 +26,17 @@ export const holdRequests: BrowserCommand<[path: string]> = async ({ page }, pat
   if (holds.has(path)) {
     throw new Error(`The requests for ${path} are already held`)
   }
+
   let release = () => {}
   const held = new Promise<void>((resolve) => (release = resolve))
   const matcher = matches(path)
+
   const handler: RouteHandler = async (route) => {
     await held
     // Not continue(): Playwright's unroute in releaseRequests can continue an in-flight request first, and a second continue throws "Route is already handled!".
     await route.fallback()
   }
+
   holds.set(path, { release, matcher, handler })
   await page.route(matcher, handler)
 }
@@ -40,6 +44,7 @@ export const holdRequests: BrowserCommand<[path: string]> = async ({ page }, pat
 /** Lets the held requests for `path` go on, and removes the route. Does nothing if `path` is not held. */
 export const releaseRequests: BrowserCommand<[path: string]> = async ({ page }, path) => {
   const hold = holds.get(path)
+
   if (!hold) return
   holds.delete(path)
   hold.release()
@@ -58,6 +63,7 @@ const answering = new WeakMap<Page, Answering>()
 
 const isAnswerFor = (request: { method: () => string; url: () => string }) => (answer: Answer) => {
   const url = new URL(request.url())
+
   return (
     answer.method === request.method() &&
     answer.path === url.pathname &&
@@ -67,11 +73,13 @@ const isAnswerFor = (request: { method: () => string; url: () => string }) => (a
 
 const body = (answer: Answer) => {
   if (answer.contentType !== undefined) return answer.body
+
   return answer.body === undefined ? '' : JSON.stringify(answer.body)
 }
 
 const answeringOn = async (page: Page) => {
   const current = answering.get(page)
+
   if (current) return current
   const state: Answering = { answers: [], unanswered: new Set(), testId: '' }
   answering.set(page, state)
@@ -80,15 +88,20 @@ const answeringOn = async (page: Page) => {
   await page.route(isBffRequest, async (route) => {
     const request = route.request()
     const answer = state.answers.findLast(isAnswerFor(request))
+
     if (!answer) {
       const url = new URL(request.url())
       const sender = request.headers()[testIdHeader]
+
       if (sender === undefined || sender === state.testId) {
         state.unanswered.add(`${request.method()} ${url.pathname}${url.search}`)
       }
+
       await route.fallback()
+
       return
     }
+
     await route.fulfill({
       status: answer.status ?? 200,
       headers: answer.headers,
@@ -96,6 +109,7 @@ const answeringOn = async (page: Page) => {
       body: body(answer),
     })
   })
+
   return state
 }
 
@@ -113,9 +127,11 @@ export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page
 
 export const takeUnansweredRequests: BrowserCommand<[]> = async ({ page }) => {
   const state = answering.get(page)
+
   if (!state) return []
   const unanswered = [...state.unanswered]
   state.unanswered.clear()
+
   return unanswered
 }
 
@@ -129,15 +145,20 @@ export const movePointerOnto: BrowserCommand<[role: Role, name: string]> = async
   const target = iframe.getByRole(role, { name, exact: true })
   await target.waitFor()
   let box = await target.boundingBox()
+
   for (let tries = 0; tries < 50; tries++) {
     await new Promise((resolve) => setTimeout(resolve, 50))
     const next = await target.boundingBox()
+
     if (box && next && JSON.stringify(box) === JSON.stringify(next)) {
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+
       return
     }
+
     box = next
   }
+
   throw new Error(`The ${role} "${name}" did not stop moving`)
 }
 

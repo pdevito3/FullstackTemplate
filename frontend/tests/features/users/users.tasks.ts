@@ -5,6 +5,7 @@ import { users } from './users.locators'
 
 export function usersPage(page: Page) {
   const at = users(page)
+
   const answered = (method: string, path: string) =>
     page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path)
 

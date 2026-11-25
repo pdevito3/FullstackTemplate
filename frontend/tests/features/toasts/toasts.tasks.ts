@@ -13,6 +13,7 @@ async function nextResizeObserverCallbacks(page: Page) {
           observer.disconnect()
           resolve()
         })
+
         observer.observe(document.body)
       }),
   )
@@ -35,6 +36,7 @@ export function toastDemoPage(page: Page) {
       await expect
         .poll(async () => {
           await page.clock.runFor(16)
+
           return at.heading.count()
         })
         .toBe(1)
@@ -67,6 +69,7 @@ export function toastDemoPage(page: Page) {
       await expect
         .poll(async () => {
           await page.clock.runFor(16)
+
           return at.dialog.count()
         })
         .toBe(0)
@@ -94,35 +97,43 @@ export function toastDemoPage(page: Page) {
 
     async shownToasts() {
       const shown: string[] = []
+
       for (const toast of await at.toasts.all()) {
         if (await takesUpSpace(toast)) shown.push((await toast.innerText()).split('\n')[0])
       }
+
       return shown
     },
 
     async shownToastsAsTimePasses(...stepsMs: number[]) {
       const samples = [{ afterMs: 0, toasts: await this.shownToasts() }]
+
       for (const ms of stepsMs) {
         await this.letTimePass(ms)
         samples.push({ afterMs: samples[samples.length - 1].afterMs + ms, toasts: await this.shownToasts() })
       }
+
       return samples
     },
 
     async overlapAreaOf(a: Locator, b: Locator) {
       if (!(await a.isVisible()) || !(await b.isVisible())) return 0
       const [boxA, boxB] = [await a.boundingBox(), await b.boundingBox()]
+
       if (!boxA || !boxB) return 0
       const width = Math.min(boxA.x + boxA.width, boxB.x + boxB.width) - Math.max(boxA.x, boxB.x)
       const height = Math.min(boxA.y + boxA.height, boxB.y + boxB.height) - Math.max(boxA.y, boxB.y)
+
       return Math.max(0, width) * Math.max(0, height)
     },
 
     async hasFocusRing(element: Locator) {
       return element.evaluate((node) => {
         const { outlineStyle, outlineWidth, boxShadow } = getComputedStyle(node)
+
         if (outlineStyle !== 'none' && parseFloat(outlineWidth) > 0) return true
         const spreads = [...boxShadow.matchAll(/-?[\d.]+px -?[\d.]+px [\d.]+px (?<spread>-?[\d.]+)px/g)].map((m) => Number(m.groups?.spread))
+
         return spreads.some((spread) => spread >= 1)
       })
     },

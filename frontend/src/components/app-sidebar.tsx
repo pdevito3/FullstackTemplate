@@ -30,6 +30,7 @@ import { exampleNavUrls } from "@/examples/example-nav-items"
 // example:end
 
 const appName = "Fullstack Template"
+
 const appInitials = appName
   .split(/[ .-]/)
   .map((word) => word[0])

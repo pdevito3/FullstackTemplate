@@ -16,6 +16,7 @@ import { failureText } from '@/lib/request-failure'
 import type { StartTenantProfile } from '../apis/get-membership'
 
 const contract = initiateUserAndTenantDtoSchema.shape
+
 const schema = z.object({
   tenantName: stringWithMaxLengthOf(contract.tenantName).min(1, 'Enter a tenant name.'),
   firstName: stringWithMaxLengthOf(contract.firstName).min(1, 'Enter your first name.'),
@@ -23,7 +24,9 @@ const schema = z.object({
   email: stringWithMaxLengthOf(contract.email).min(1, 'Enter your email address.'),
   username: stringWithMaxLengthOf(contract.username).min(1, 'Enter a username.'),
 })
+
 type StartTenantValues = z.infer<typeof schema>
+
 const FIELD_NAMES = Object.keys(schema.shape) as (keyof StartTenantValues)[]
 
 interface StartTenantFormProps {
@@ -36,19 +39,23 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
     resolver: zodResolver(schema),
     defaultValues: { tenantName: '', ...names },
   })
+
   const id = useId()
   const { errors } = form.formState
 
   const showRefusal = (error: unknown) => {
     const fieldErrors = validationErrorsOf(error)
     let shownOnField = false
+
     for (const name of FIELD_NAMES) {
       const message = fieldErrors[name]?.[0]
+
       if (message) {
         form.setError(name, { message }, { shouldFocus: !shownOnField })
         shownOnField = true
       }
     }
+
     if (!shownOnField) form.setError('root.server', { message: failureText(error) })
   }
 

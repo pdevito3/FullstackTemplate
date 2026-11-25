@@ -9,6 +9,7 @@ const profile = { identifier: 'ada', firstName: 'Ada', lastName: 'Lovelace', ema
 const noTenant: Membership = { status: 'no-tenant', profile }
 const member = { status: 'member', user: { id: 'usr_1' } } as Membership
 const data = { tenantName: 'Acme', role: 'User', expiresAt: '2099-01-15T12:00:00Z', requireEmailMatch: false } as const
+
 const refusal = (status: number, detail: string) =>
   new ProblemDetailsError({ type: 'about:blank', title: 'Refused', status, detail })
 

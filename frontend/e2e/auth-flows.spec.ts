@@ -41,9 +41,11 @@ async function becomesVisible(locator: Locator, timeout: number): Promise<boolea
 async function expandSwaggerTag(page: Page, tag: string) {
   const section = page.locator('.opblock-tag-section').filter({ has: page.locator(`.opblock-tag[data-tag="${tag}"]`) })
   await expect(section).toBeVisible()
+
   if (!(await section.getAttribute('class'))?.includes('is-open')) {
     await section.locator('.opblock-tag').click()
   }
+
   await expect(section).toHaveClass(/\bis-open\b/)
 }
 
@@ -73,6 +75,7 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
     if (idp.passwordSelector) {
       await page.locator(idp.passwordSelector).fill(idp.password!)
     }
+
     await page.locator(idp.submitSelector).click()
   }
 }
@@ -87,8 +90,10 @@ function dpopSpansOfCurrentUserSince(startedAt: number): number {
     ['aspire', 'otel', 'spans', '--search', 'app.auth.scheme', '--format', 'Json', '--apphost', '../FullstackTemplate.AppHost'],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
   )
+
   const json = output.split('\n').find((line) => line.startsWith('[{') || line === '[]')
   const spans = JSON.parse(json ?? '[]') as { timestamp: string; attributes: Record<string, string> }[]
+
   return spans.filter(
     (span) =>
       Date.parse(span.timestamp) >= startedAt &&
@@ -137,6 +142,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await expect
         .poll(async () => (await returnLink.isVisible()) || (await idpLoginForm.isVisible()), { timeout: 30000 })
         .toBe(true)
+
       if (await returnLink.isVisible()) {
         await returnLink.click()
       }
@@ -172,6 +178,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const location = (await loginResponse).headers()['location']
       expect(location).toBeTruthy()
       const authorizeParameters = [...new URL(location).searchParams.keys()].sort()
+
       if (currentIdp.capabilities.pushedAuthorization) {
         expect(authorizeParameters).toEqual(['client_id', 'request_uri'])
       } else {
@@ -225,11 +232,13 @@ async function followLinkFromAnotherSite(page: Page, target: string) {
   await page.goto(otherSite)
   const navigation = page.waitForRequest((request) => request.url() === target && request.isNavigationRequest())
   await page.getByRole('link', { name: 'Open the app' }).click()
+
   return navigation
 }
 
 async function sentSessionCookie(request: Request) {
   const cookie = (await request.allHeaders())['cookie'] ?? ''
+
   return cookie.split(';').some((pair) => pair.trim().startsWith(`${sessionCookieName}=`))
 }
 
@@ -244,6 +253,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
 
     // The browser must send these two cookies on the cross-site GET from the identity provider to /signin-oidc
     const loginCookies = await context.cookies()
+
     for (const prefix of ['.AspNetCore.Correlation.', '.AspNetCore.OpenIdConnect.Nonce.']) {
       const cookie = loginCookies.find((c) => c.name.startsWith(prefix))
       expect(cookie, `${prefix} cookie`).toBeDefined()
@@ -264,6 +274,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
   test('should show the signed-in user on a deep link from another site', async ({ page }) => {
     await signInThroughSpa(page)
     const deepLink = new URL('/about', page.url()).toString()
+
     // The root layout of the SPA that the cross-site link loads calls /bff/user same-site, with the cookie
     const user = page.waitForResponse(
       (response) => new URL(response.url()).pathname === '/bff/user' && page.url() === deepLink,
@@ -294,10 +305,12 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
 
     // The same call from the SPA is same-site, so it has the cookie and succeeds
     await page.goto('/')
+
     const sameSiteStatus = await page.evaluate(
       async (url) => (await fetch(url, { headers: { 'X-CSRF': '1' } })).status,
       apiUrl,
     )
+
     expect(sameSiteStatus).toBe(200)
   })
 })
@@ -354,16 +367,20 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     await modalAuthorizeButton.first().click()
 
     let popup: import('@playwright/test').Page
+
     try {
       popup = await popupPromise
     } catch {
       // If no popup appears, OAuth might be configured differently or blocked
       // Close modal and skip this test
       const closeButton = page.locator('.modal-ux button.btn-done, .modal-ux button[aria-label="Close"]')
+
       if (await closeButton.first().isVisible()) {
         await closeButton.first().click()
       }
+
       test.skip(true, 'OAuth popup was blocked or did not appear')
+
       return
     }
 
@@ -383,6 +400,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
       timeout: 15000,
     })
     const closeButton = page.locator('.modal-ux button.btn-done')
+
     if (await closeButton.isVisible()) {
       await closeButton.click()
     }
@@ -398,6 +416,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     if (!(await secureEndpoint.getAttribute('class'))?.includes('is-open')) {
       await secureEndpoint.locator('.opblock-summary').click()
     }
+
     await expect(secureEndpoint).toHaveClass(/\bis-open\b/)
     // Swagger UI resolves an operation after it opens. An Execute before that fails with
     // OperationNotFoundError and sends no request. The response example shows the resolved schema.
@@ -405,6 +424,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
 
     // Step 10: Click "Try it out" button if visible (might be auto-enabled)
     const tryItOutButton = secureEndpoint.getByRole('button', { name: 'Try it out' })
+
     if (await becomesVisible(tryItOutButton, 1000)) {
       await tryItOutButton.click()
     }
@@ -448,15 +468,18 @@ test.describe(`Provider discovery - ${currentIdp.name}`, () => {
       pushedAuthorization: typeof discovery.pushed_authorization_request_endpoint === 'string',
       dpop: Array.isArray(discovery.dpop_signing_alg_values_supported) && discovery.dpop_signing_alg_values_supported.length > 0,
     }
+
     expect(live).toEqual(currentIdp.capabilities)
   })
 })
 
 function requiredEnv(name: string): string {
   const value = process.env[name]
+
   if (!value) {
     throw new Error(`${name} is not set. pnpm test:e2e:stack sets it from the stack.`)
   }
+
   return value
 }
 
@@ -467,12 +490,14 @@ function requiredEnv(name: string): string {
 async function callIdp(url: string, init: RequestInit = {}): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = await fetch(url, init)
   const text = await response.text()
+
   return { status: response.status, body: text ? (JSON.parse(text) as Record<string, unknown>) : {} }
 }
 
 async function readDiscovery(): Promise<Record<string, unknown>> {
   const { status, body } = await callIdp(`${requiredEnv('AUTHORITY').replace(/\/$/, '')}/.well-known/openid-configuration`)
   expect(status).toBe(200)
+
   return body
 }
 
@@ -486,8 +511,10 @@ async function bffSessionId(page: Page): Promise<string> {
   const claims = await page.evaluate(
     async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
   )
+
   const sid = claims.find((claim) => claim.type === 'sid')?.value
   expect(sid, 'the sid claim of the BFF session').toBeTruthy()
+
   return sid!
 }
 
@@ -509,6 +536,7 @@ async function endKeycloakSession(sessionId: string) {
       password: requiredEnv('IDP_ADMIN_PASSWORD'),
     }),
   })
+
   expect(adminToken.status, 'the Keycloak admin token request').toBe(200)
   const headers = { Authorization: `Bearer ${adminToken.body.access_token as string}` }
   const session = `${keycloakUrl}/admin/realms/${realm}/sessions/${encodeURIComponent(sessionId)}`
@@ -668,6 +696,7 @@ test.describe(`BFF refresh - ${currentIdp.name}`, () => {
     const claims = await page.evaluate(
       async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
     )
+
     const logoutUrl = claims.find((claim) => claim.type === 'bff:logout_url')?.value
     expect(logoutUrl, 'the bff:logout_url claim').toBeTruthy()
     const endSession = page.waitForRequest((request) => request.url().startsWith(discovery.end_session_endpoint as string), { timeout: 30000 })
@@ -701,8 +730,10 @@ test.describe(`Refresh lock - ${currentIdp.name}`, () => {
       // no-store, because Chrome holds a second GET of the same URL until the first one ends, for its cache
       const call = async () =>
         (await fetch('/api/v1/users/me', { headers: { 'X-CSRF': '1' }, cache: 'no-store' })).status
+
       return Promise.all([call(), call()])
     })
+
     expect(statuses, 'the two API calls at the same time').toEqual([200, 200])
     expect(await bffUserStatus(page), 'the BFF session after the two calls').toBe(200)
     expect(await bffApiStatus(page, '/api/v1/users/me'), 'an API call after the two calls').toBe(200)

@@ -9,6 +9,7 @@ import { requestError } from '@/lib/request-failure'
 import { useLoadLatest } from './use-load-latest'
 
 const FIELDS = ['name', 'capacity'] as const
+
 interface RoomValues {
   name: string
   capacity: number
@@ -18,10 +19,13 @@ interface RoomValues {
 function RoomForm({ latest }: { latest: RoomValues | Error }) {
   const form = useForm<RoomValues>({ defaultValues: { name: 'Blue Room', capacity: 10, version: 1 } })
   const loadLatest = useLoadLatest(form, FIELDS)
+
   const read = async () => {
     if (latest instanceof Error) throw latest
+
     return latest
   }
+
   return (
     <form aria-label="Edit room">
       <label>Name <input {...form.register('name')} /></label>
@@ -85,6 +89,7 @@ test('keeps each edit when the read fails', async () => {
 test('takes only fields whose values compare by their text', () => {
   function PlaceForm() {
     const form = useForm<{ place: { id: string; name: string } }>()
+
     // @ts-expect-error An object field compares as "[object Object]", so the merge would drop the edit of the user.
     return useLoadLatest(form, ['place'])
   }

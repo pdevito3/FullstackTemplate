@@ -23,15 +23,18 @@ function childEnv() {
 // the path of the test file in it.
 test('a component test file with test names longer than a file name reports each test, and keeps the trace and the screenshot', { timeout: 180_000 }, () => {
   const dir = mkdtempSync(join(tmpdir(), 'long-test-names-'))
+
   try {
     const report = join(dir, 'report.json')
     rmSync(attachments, { recursive: true, force: true })
+
     const run = spawnSync(
       'pnpm',
       ['exec', 'vitest', 'run', '--config', 'long-test-names.config.ts', '--reporter=default', '--reporter=json', `--outputFile=${report}`],
       // spawnSync blocks the event loop, so the timeout of the test cannot stop a child that hangs.
       { cwd: import.meta.dirname, env: childEnv(), encoding: 'utf8', timeout: 150_000 },
     )
+
     const output = `${run.stdout}${run.stderr}`
     expect(run.error, output).toBeUndefined()
     const [file] = (JSON.parse(readFileSync(report, 'utf8')) as JsonReport).testResults

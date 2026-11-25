@@ -37,6 +37,7 @@ export function FilterBuilder({
       ...filter,
       id: crypto.randomUUID(),
     }
+
     actions.addFilter(newFilter)
   }
 
@@ -46,6 +47,7 @@ export function FilterBuilder({
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.delete(filterId)
+
       return next
     })
   }
@@ -64,6 +66,7 @@ export function FilterBuilder({
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.delete(groupId)
+
       return next
     })
   }
@@ -82,11 +85,13 @@ export function FilterBuilder({
   const handleToggleSelection = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
+
       if (next.has(id)) {
         next.delete(id)
       } else {
         next.add(id)
       }
+
       return next
     })
   }
@@ -114,6 +119,7 @@ export function FilterBuilder({
 
     if (!canCreate) {
       alert(reason || 'Cannot create group')
+
       return
     }
 

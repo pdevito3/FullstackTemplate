@@ -7,10 +7,12 @@ import { Toaster } from '@/components/toaster'
 
 test('two toasts in the same tick both show, and the skipped view transition raises no unhandled rejection', async () => {
   const unhandled: unknown[] = []
+
   const handleRejection = (event: PromiseRejectionEvent) => {
     unhandled.push(event.reason)
     event.preventDefault()
   }
+
   window.addEventListener('unhandledrejection', handleRejection)
   onTestFinished(() => window.removeEventListener('unhandledrejection', handleRejection))
   const startViewTransition = vi.spyOn(document, 'startViewTransition')

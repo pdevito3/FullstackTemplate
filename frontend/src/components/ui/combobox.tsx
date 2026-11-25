@@ -67,6 +67,7 @@ function Combobox<T extends object, M extends "single" | "multiple" = "single">(
   // gate on that open. The app can set the text in a later render than the value,
   // so the hold lasts until the next onInputChange or until the input loses the focus.
   const [isListHeldClosed, setIsListHeldClosed] = React.useState(false)
+
   const settings: ComboboxSettings = {
     ariaLabelOnly: props["aria-labelledby"] ? undefined : props["aria-label"],
     allowsCustomValue: props.allowsCustomValue ?? false,
@@ -74,6 +75,7 @@ function Combobox<T extends object, M extends "single" | "multiple" = "single">(
     pressesResumeAt: React.useRef(0),
     holdListClosed: () => setIsListHeldClosed(true),
   }
+
   return (
     // The same guard as in Select: in an overlay, the hidden copy that the
     // ComboBox builds its collection from inherits the open state of the
@@ -110,6 +112,7 @@ function ComboboxClear({
   // The button opts out of the ComboBox button slot, so it reads the disabled
   // state from the group context that the ComboBox gives.
   const isDisabled = useSlottedContext(GroupContext)?.isDisabled
+
   if (state?.inputValue === "") {
     return null
   }
@@ -150,6 +153,7 @@ function onlyOptionWithText(
 ): Key | null {
   const matches = [...options.collection.getKeys()].filter((key) => {
     const node = options.collection.getItem(key)
+
     return (
       node?.type === "item" &&
       !options.isDisabled(key) &&
@@ -158,6 +162,7 @@ function onlyOptionWithText(
       collator.compare(node.textValue, text) === 0
     )
   })
+
   return matches.length === 1 ? matches[0] : null
 }
 
@@ -192,27 +197,34 @@ function usePickTypedOption() {
     ) {
       return
     }
+
     const collator = new Intl.Collator(locale, { sensitivity: "accent" })
     // The selection manager has all the options. While the list is closed,
     // state.collection is the last list that showed, which can be empty.
     const { collection, firstSelectedKey } = state.selectionManager
     const selectedText = firstSelectedKey != null ? collection.getItem(firstSelectedKey)?.textValue : undefined
+
     if (selectedText != null && collator.compare(selectedText, state.inputValue) === 0) {
       return
     }
+
     const key = onlyOptionWithText(state.selectionManager, state.inputValue, collator)
+
     if (key != null) {
       holdListClosed()
       state.setValue(key)
     }
+
     // Tab goes on to React Aria, which closes the list, and to a focus scope,
     // which keeps the focus in a modal.
     if (e.key === "Tab") {
       return
     }
+
     if (key == null || state.isOpen) {
       e.preventDefault()
     }
+
     e.stopPropagation()
   }
 }
@@ -230,6 +242,7 @@ const DOUBLE_PRESS_MS = 600
 function keepListOpenAfterPress(row: HTMLElement | null) {
   const stop = (e: Event) => e.stopPropagation()
   row?.addEventListener("react-aria-item-action", stop)
+
   return () => row?.removeEventListener("react-aria-item-action", stop)
 }
 
@@ -246,17 +259,23 @@ function useEnterAfterRetry() {
     if (!state?.isOpen) {
       return
     }
+
     if (e.key !== "Enter") {
       pressesResumeAt.current = 0
+
       return
     }
+
     const isOnRow = state.selectionManager.focusedKey === RETRY_ROW_ID
     const isSecondPress = e.repeat || Date.now() < pressesResumeAt.current
+
     if (!isOnRow && !isSecondPress) {
       return
     }
+
     e.preventDefault()
     e.stopPropagation()
+
     if (isOnRow && !isSecondPress) {
       state.collection.getItem(RETRY_ROW_ID)?.props?.onAction?.()
     }
@@ -276,6 +295,7 @@ function ComboboxInput({
 }) {
   const pickTypedOption = usePickTypedOption()
   const enterAfterRetry = useEnterAfterRetry()
+
   return (
     <InputGroup className={cn("w-auto", className)}>
       <InputGroupInput
@@ -321,6 +341,7 @@ function ComboboxContent({
   anchor?: React.RefObject<HTMLDivElement | null>
 }) {
   const state = React.useContext(ComboBoxStateContext)
+
   // React Aria closes the list on a scroll of the page with the close of the
   // ComboBox, which commits the input and clears typed text that is not a pick.
   // While the input has the focus, the list only hides, and the blur commits.
@@ -328,6 +349,7 @@ function ComboboxContent({
     ...state,
     close: () => (state.isFocused ? state.isOpen && state.toggle() : state.close()),
   }
+
   return (
     <OverlayTriggerStateContext.Provider value={listState}>
       <PopoverPrimitive
@@ -355,11 +377,13 @@ function ComboboxList<T extends object>({
   ...props
 }: ListBoxProps<T>) {
   const { ariaLabelOnly, pressesResumeAt } = React.useContext(ComboboxSettingsContext)
+
   // React Aria names the list "Suggestions" and the label of the Combobox. With
   // only an aria-label, it takes the trigger button as the label.
   const labelProps = ariaLabelOnly
     ? { "aria-label": `Suggestions ${ariaLabelOnly}`, "aria-labelledby": "" }
     : {}
+
   return (
     <ListBoxPrimitive
       data-slot="combobox-list"
@@ -370,7 +394,9 @@ function ComboboxList<T extends object>({
         const stopSecondPress = (e: Event) => {
           if (Date.now() < pressesResumeAt.current) e.stopPropagation()
         }
+
         list?.addEventListener("pointerdown", stopSecondPress, { capture: true })
+
         return () => list?.removeEventListener("pointerdown", stopSecondPress, { capture: true })
       }}
       // React Aria makes the option under the pointer the active option, and
@@ -478,6 +504,7 @@ function ComboboxLoadMore({
     if (!isAskingAgain) {
       return
     }
+
     return () => {
       pressesResumeAt.current = Date.now() + DOUBLE_PRESS_MS
     }
@@ -636,6 +663,7 @@ function ComboboxChip({
 
 function ComboboxChipsInput({ className, onKeyDown, ...props }: InputProps) {
   const state = React.useContext(ComboBoxStateContext)
+
   return (
     <InputPrimitive
       data-slot="combobox-chip-input"
@@ -652,6 +680,7 @@ function ComboboxChipsInput({ className, onKeyDown, ...props }: InputProps) {
           e.preventDefault()
           state.setValue(state.value.slice(0, -1))
         }
+
         onKeyDown?.(e)
       }}
       {...props}

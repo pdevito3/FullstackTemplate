@@ -18,7 +18,9 @@ const openApiFolder = '../FullstackTemplate.Server/openapi'
 function outputFor(file: string) {
   if (file === 'FullstackTemplate.Server.json') return './src/api/generated'
   const version = /^FullstackTemplate\.Server_v(\d+)\.json$/.exec(file)?.[1]
+
   if (!version) throw new Error(`${openApiFolder}/${file} is not an OpenAPI document that kubb.config.ts knows.`)
+
   return `./src/api/generated-v${version}`
 }
 

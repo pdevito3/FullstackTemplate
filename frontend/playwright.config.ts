@@ -23,7 +23,9 @@ async function freePort(): Promise<number> {
 }
 
 process.env.FUNCTIONAL_PORT ??= String(await freePort())
+
 process.env.FUNCTIONAL_DEV_PORT ??= String(await freePort())
+
 const port = Number(process.env.FUNCTIONAL_PORT)
 const devPort = Number(process.env.FUNCTIONAL_DEV_PORT)
 const baseURL = `http://localhost:${port}`

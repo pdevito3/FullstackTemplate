@@ -28,8 +28,10 @@ const canBeAnEarlierWin = (error: unknown) =>
 async function joined(queryClient: QueryClient, { identifier, tenantName }: Claim): Promise<boolean> {
   try {
     const user = await queryClient.fetchQuery(callerRecordQuery(identifier))
+
     if (!user) return false
     const tenant = await getTenant({ path: { id: user.tenantId }, options: { suppressErrorToast: true } })
+
     return tenant.name === tenantName
   } catch {
     return false
@@ -44,8 +46,10 @@ export function useClaimInvite() {
     mutationFn: async (claim: Claim) => {
       // The Server binds the new user to the session, and another tab can have changed the session since the last read.
       const claims = await queryClient.fetchQuery({ ...authClaimsQuery, staleTime: 0 })
+
       if (subOfClaims(claims) !== claim.identifier) throw new SessionChangedError()
       const body = { ...claim.values, token: readInviteToken() ?? '' }
+
       try {
         await claimInvite({ body, options: { suppressErrorToast: true } })
       } catch (error) {

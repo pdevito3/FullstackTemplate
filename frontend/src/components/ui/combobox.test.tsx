@@ -50,6 +50,7 @@ test('a disabled Combobox disables its input, its trigger, and its clear button'
 test('a Combobox in a submenu: Escape closes the submenu without a Duplicate key error', async () => {
   const errors: unknown[] = []
   vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => errors.push(args))
+
   const screen = await render(
     <DropdownMenuTrigger>
       <Button>Add Filter</Button>
@@ -124,6 +125,7 @@ test('a Combobox with a visible label names its list after the label', async () 
 test('the list of a long Combobox is at most 18rem tall on a tall page', async () => {
   await page.viewport(1280, 1400)
   const options = Array.from({ length: 60 }, (_, i) => `Option ${i + 1}`)
+
   const screen = await render(
     <Combobox>
       <Label>Option</Label>
@@ -224,11 +226,13 @@ test('Enter in a Combobox that allows a custom value keeps the text and closes t
 
 test('Enter that keeps the typed text in a closed list does not submit the form', async () => {
   const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+
   const screen = await render(
     <form onSubmit={onSubmit}>
       <FrameworkCombobox defaultSelectedKey="vue" menuTrigger="manual" />
     </form>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
 
   await input.fill('Vux')
@@ -241,11 +245,13 @@ test('Enter that keeps the typed text in a closed list does not submit the form'
 test('Control+Enter passes to the parent and picks nothing', async () => {
   const onKeyDown = vi.fn()
   const onChange = vi.fn()
+
   const screen = await render(
     <div onKeyDown={(e) => onKeyDown(e.key, e.ctrlKey)}>
       <FrameworkCombobox onChange={onChange} />
     </div>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
 
   await input.click()
@@ -270,6 +276,7 @@ test('the Enter that ends an IME composition in Safari picks nothing', async () 
 
 test('Enter in a read-only Combobox picks nothing', async () => {
   const onChange = vi.fn()
+
   const screen = await render(
     <Combobox isReadOnly defaultInputValue="Vue" onChange={onChange}>
       <Label>Framework</Label>
@@ -281,6 +288,7 @@ test('Enter in a read-only Combobox picks nothing', async () => {
       </ComboboxContent>
     </Combobox>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
 
   await input.click()
@@ -293,6 +301,7 @@ test('Enter in a read-only Combobox picks nothing', async () => {
 test('Enter does not select an action option that has the typed text', async () => {
   const onAction = vi.fn()
   const onChange = vi.fn()
+
   const screen = await render(
     <Combobox onChange={onChange}>
       <Label>Framework</Label>
@@ -307,6 +316,7 @@ test('Enter does not select an action option that has the typed text', async () 
       </ComboboxContent>
     </Combobox>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
 
   await input.click()
@@ -318,11 +328,13 @@ test('Enter does not select an action option that has the typed text', async () 
 
 test('Enter with the text of a selected option that has a twin submits the form', async () => {
   const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+
   const screen = await render(
     <form onSubmit={onSubmit}>
       <FrameworkCombobox defaultSelectedKey="solid-1" menuTrigger="manual" />
     </form>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
 
   await input.click()
@@ -392,12 +404,14 @@ test.each([
   ['{Enter}', 'combobox', 'Framework'],
 ] as const)('%s picks the option with the typed text, not the option under the pointer', async (key, role, focused) => {
   const onChange = vi.fn()
+
   const screen = await render(
     <>
       <FrameworkCombobox onChange={onChange} />
       <input aria-label="Next field" />
     </>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await input.fill('vue')
@@ -440,6 +454,7 @@ function ControlledFrameworkCombobox({
   const [value, setValue] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
   const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+
   return (
     <div style={{ height: '300vh' }}>
       <Combobox
@@ -493,6 +508,7 @@ test('Tab in an open list picks the option with the typed text when the value an
 /** Nothing signals that a list will not open, so this looks at each frame for longer than the exit of .22 s. */
 async function expectListStaysClosed() {
   const end = performance.now() + 300
+
   while (performance.now() < end) {
     expect(page.getByRole('listbox').query()).toBeNull()
     await new Promise(requestAnimationFrame)
@@ -507,6 +523,7 @@ const opens = (onOpenChange: Mock) => onOpenChange.mock.calls.filter(([isOpen]) 
  */
 function pauseTheExit() {
   const animations: Animation[] = []
+
   const observer = new MutationObserver((mutations) => {
     for (const { target } of mutations) {
       if (target instanceof Element && target.hasAttribute('data-exiting')) {
@@ -517,8 +534,10 @@ function pauseTheExit() {
       }
     }
   })
+
   observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-exiting'] })
   onTestFinished(() => observer.disconnect())
+
   return {
     animations,
     finish() {
@@ -539,6 +558,7 @@ const keyTimes = [
     async (close: () => Promise<void>) => {
       await close()
       await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+
       return () => {}
     },
   ],
@@ -548,6 +568,7 @@ const keyTimes = [
       const exit = pauseTheExit()
       await close()
       await expect.poll(() => exit.animations.length).toBeGreaterThan(0)
+
       return exit.finish
     },
   ],
@@ -583,6 +604,7 @@ function SelectedKeyFrameworkCombobox({ onChange }: { onChange: (key: unknown) =
   const [selectedKey, setSelectedKey] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
   const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+
   return (
     <div style={{ height: '300vh' }}>
       <Combobox
@@ -630,6 +652,7 @@ test.each(closedLists)('Tab picks one time in a list that %s closed, %s, with a 
 
 function ValueOnlyFrameworkCombobox({ onInputChange }: { onInputChange: (text: string) => void }) {
   const [value, setValue] = useState<Key | null>(null)
+
   return (
     <div style={{ height: '300vh' }}>
       <Combobox value={value} onChange={setValue} onInputChange={onInputChange}>
@@ -665,11 +688,13 @@ test('Clear of a Combobox with only a controlled value sends the empty text one 
 
 test('a mouse press on Clear of typed text with no pick empties the input and keeps the focus in it', async () => {
   const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+
   const screen = await render(
     <form onSubmit={onSubmit}>
       <FrameworkCombobox showClear />
     </form>,
   )
+
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await userEvent.keyboard('vu')
@@ -738,6 +763,7 @@ function LateTextFrameworkCombobox({
       setTextLater(() => setInputValue('Vue'))
     }
   }, [value, setTextLater])
+
   return (
     <div style={{ height: '300vh' }}>
       <Combobox
@@ -874,6 +900,7 @@ async function pickWithEnterInAClosedList({ close = closeWithTheButton, onOpenCh
   onOpenChange?.mockClear()
   await userEvent.keyboard('{Enter}')
   await expect.element(input).toHaveValue('Vue')
+
   return input
 }
 
@@ -982,20 +1009,26 @@ test('the list of a Combobox as wide as the page fits in the page, and ArrowDown
  */
 async function optionsWithFill() {
   const list = page.getByRole('listbox')
+
   const image = await createImageBitmap(
     await (await fetch(`data:image/png;base64,${await list.screenshot({ save: false })}`)).blob(),
   )
+
   const canvas = new OffscreenCanvas(image.width, image.height)
   const context = canvas.getContext('2d')!
   context.drawImage(image, 0, 0)
   const listBox = list.element().getBoundingClientRect()
   const scale = image.width / listBox.width
+
   const pixel = (x: number, y: number) =>
     context.getImageData(Math.round((x - listBox.left) * scale), Math.round((y - listBox.top) * scale), 1, 1).data.join()
+
   const empty = pixel(listBox.left + listBox.width / 2, listBox.top + 2)
+
   return [...list.element().querySelectorAll('[role=option]')]
     .filter((option) => {
       const row = option.getBoundingClientRect()
+
       return pixel(row.left + 3, row.top + row.height / 2) !== empty
     })
     .map((option) => option.textContent)
@@ -1017,6 +1050,7 @@ test('the option under the pointer has no fill while the arrow keys make another
 
 function LoadMoreList({ finished, onLoadMore }: { finished: number; onLoadMore: () => void }) {
   const [asked, setAsked] = useState(0)
+
   return (
     <Combobox aria-label="Framework">
       <ComboboxInput />
@@ -1150,16 +1184,19 @@ function stopTheClock() {
 async function renderFailedListInForm() {
   const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
   const onLoadMore = vi.fn()
+
   const screen = await render(
     <form onSubmit={onSubmit}>
       <FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />
       <button type="submit">Save</button>
     </form>,
   )
+
   await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
   await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
   await userEvent.keyboard('{ArrowUp}')
   await expect.element(screen.getByRole('combobox', { name: 'Framework' })).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+
   return { screen, onSubmit, onLoadMore }
 }
 
@@ -1274,6 +1311,7 @@ function ControlledFailedLoadMoreList({
 }) {
   const [value, setValue] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
+
   return (
     <>
       <Combobox
@@ -1312,6 +1350,7 @@ async function renderFailedListWithTypedText() {
   await userEvent.keyboard('vue')
   const row = screen.getByRole('option', failedRow)
   await expect.element(row).toBeVisible()
+
   return { screen, input, row, onChange, onLoadMore, onOpenChange }
 }
 
@@ -1331,6 +1370,7 @@ async function expectPickHoldsTheListClosed(key: string, { screen, input, onChan
   await expectListStaysClosed()
   expect(onChange.mock.calls).toEqual([['vue']])
   expect(opens(onOpenChange)).toEqual([])
+
   if (key === '{Tab}') {
     await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
   }

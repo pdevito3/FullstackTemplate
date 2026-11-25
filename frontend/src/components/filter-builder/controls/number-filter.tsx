@@ -16,6 +16,7 @@ export function NumberFilter({
 }: FilterControlProps) {
   const { propertyKey, propertyLabel, operators: allowedOperators } = config
   const numberOperators = getOperatorsForControlType('number')
+
   const availableOperators = (
     allowedOperators
       ? numberOperators.filter((op) => allowedOperators.includes(op.symbol))
@@ -24,12 +25,14 @@ export function NumberFilter({
 
   const [value, setValue] = useState(initialFilter?.value?.toString() || '')
   const valueId = useId()
+
   const [operator, setOperator] = useState<OperatorType>(
     pickOperator(availableOperators, initialFilter?.operator ?? getDefaultOperator('number'))
   )
 
   const handleSubmit = () => {
     const numValue = parseFloat(value)
+
     if (isNaN(numValue)) {
       return
     }

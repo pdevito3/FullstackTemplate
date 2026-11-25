@@ -9,6 +9,7 @@ function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
   const outputs: Record<string, unknown> = {
     'index.css': { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) },
   }
+
   for (const [fileName, chunk] of Object.entries(chunks)) {
     outputs[fileName] = {
       type: 'chunk',
@@ -19,6 +20,7 @@ function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
       code: chunk.code ?? 'x'.repeat(chunk.bytes ?? 1000),
     }
   }
+
   return outputs as Rollup.OutputBundle
 }
 

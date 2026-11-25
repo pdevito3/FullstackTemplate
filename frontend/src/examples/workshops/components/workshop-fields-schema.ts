@@ -27,6 +27,7 @@ export function limitsOf(contract: WorkshopFieldsContract): WorkshopFieldLimits 
 
 export function workshopFieldsSchema(contract: WorkshopFieldsContract) {
   const { capacityMinimum, capacityMaximum } = limitsOf(contract)
+
   return z.object({
     title: stringWithMaxLengthOf(contract.title).min(1, 'Enter a title.'),
     startsAt: z.custom<CalendarDateTime>((value) => value instanceof CalendarDateTime, 'Enter a start.'),
@@ -41,6 +42,7 @@ export function workshopFieldsSchema(contract: WorkshopFieldsContract) {
 export type WorkshopFieldValues = z.infer<ReturnType<typeof workshopFieldsSchema>>
 
 export const WORKSHOP_FIELD_NAMES = ['title', 'startsAt', 'capacity'] as const
+
 export type WorkshopFieldName = (typeof WORKSHOP_FIELD_NAMES)[number]
 
 export function toWorkshopBody(
@@ -48,5 +50,6 @@ export function toWorkshopBody(
   zone: TimeZone,
 ): Pick<WorkshopForUpdateDto, 'title' | 'startsAt' | 'capacity'> | null {
   const instant = instantAt(startsAt, zone)
+
   return instant && { title, startsAt: instant.toISOString(), capacity }
 }

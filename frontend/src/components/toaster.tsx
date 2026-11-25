@@ -37,12 +37,16 @@ const hiddenToastSizePx = 1
 function pauseWhileHidden(toast: QueuedToast<ToastMessage>) {
   return (element: HTMLElement | null) => {
     if (!element) return
+
     const observer = new ResizeObserver(([entry]) => {
       const [{ inlineSize, blockSize }] = entry.borderBoxSize
+
       if (inlineSize > hiddenToastSizePx && blockSize > hiddenToastSizePx) toastQueue.markShown(toast)
       else toastQueue.markHidden(toast)
     })
+
     observer.observe(element)
+
     return () => observer.disconnect()
   }
 }
@@ -50,10 +54,13 @@ function pauseWhileHidden(toast: QueuedToast<ToastMessage>) {
 function publishToastRegionHeight(region: HTMLDivElement | null) {
   if (!region) return
   const root = document.documentElement
+
   const observer = new ResizeObserver(([entry]) => {
     root.style.setProperty('--toast-region-height', `${entry.borderBoxSize[0].blockSize}px`)
   })
+
   observer.observe(region)
+
   return () => {
     observer.disconnect()
     root.style.removeProperty('--toast-region-height')

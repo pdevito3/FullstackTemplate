@@ -56,7 +56,9 @@ export function isProblemDetails(obj: unknown): obj is ProblemDetails {
   if (typeof obj !== 'object' || obj === null) {
     return false
   }
+
   const pd = obj as Record<string, unknown>
+
   return (
     typeof pd.type === 'string' &&
     typeof pd.title === 'string' &&
@@ -74,10 +76,13 @@ export function validationErrorsOf(error: unknown): Record<string, string[]> {
   if (!isProblemDetailsError(error)) {
     return {}
   }
+
   const { errors } = error.problemDetails
+
   if (typeof errors !== 'object' || errors === null) {
     return {}
   }
+
   return Object.fromEntries(
     Object.entries(errors).filter(
       (entry): entry is [string, string[]] => Array.isArray(entry[1]) && entry[1].every((m) => typeof m === 'string'),

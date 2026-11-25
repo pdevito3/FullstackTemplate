@@ -36,6 +36,7 @@ const pagination = (pageNumber: number, totalPages: number) => ({
 
 function Picker({ initial }: { initial: string }) {
   const [value, setValue] = useState(initial)
+
   return <VenuePicker value={value} onChange={setValue} />
 }
 
@@ -52,6 +53,7 @@ async function renderPicker(initial = '', ...more: Answer[]) {
   ])
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const submitted = vi.fn((e: React.FormEvent) => e.preventDefault())
+
   const screen = await render(
     // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.
     <form style={{ padding: 12 }} onSubmit={submitted}>
@@ -61,6 +63,7 @@ async function renderPicker(initial = '', ...more: Answer[]) {
       <button type="submit">Save</button>
     </form>,
   )
+
   return { screen, client, submitted, input: screen.getByRole('combobox', { name: 'Venue' }) }
 }
 
@@ -167,6 +170,7 @@ const pageTwoPath = '/api/v1/venues?pageNumber=2&pageSize=10'
 function countRequests(path: string) {
   const open = vi.spyOn(XMLHttpRequest.prototype, 'open')
   onTestFinished(() => open.mockRestore())
+
   return () => open.mock.calls.filter(([, url]) => String(url).endsWith(path)).length
 }
 
@@ -233,6 +237,7 @@ const failedRow = { name: 'More venues did not load. Try again' }
 function spyOnToasts() {
   const toast = vi.spyOn(Notification, 'error')
   onTestFinished(() => toast.mockRestore())
+
   return toast
 }
 
@@ -295,6 +300,7 @@ test('sends no request when the list closes and opens after a page 2 that fails'
 
 test('Enter on the failed page asks again, and keeps the list open and the search', async () => {
   const filters = 'name @=* "Venue"'
+
   const { screen, input } = await renderPicker(
     '',
     { method: 'GET', path: '/api/v1/venues', query: { filters }, headers: pagination(1, 2), body: firstPage },

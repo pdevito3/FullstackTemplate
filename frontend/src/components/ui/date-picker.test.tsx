@@ -14,6 +14,7 @@ test('date range picker: a short year is marked after the focus leaves the picke
       <button type="button">Next</button>
     </>,
   )
+
   const startYear = screen.getByRole('spinbutton', { name: 'year, Start Date, Stay' })
 
   await page.getByRole('spinbutton', { name: 'month, Start Date, Stay' }).click()
@@ -38,6 +39,7 @@ test('date picker: with no value, opens on the month of today at the place, not 
   vi.useFakeTimers({ toFake: ['Date'] })
   // 05:00 UTC on September 1 is August 31 in Pago Pago, and September 1 in Kiritimati, the zone of the component tests.
   vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+
   try {
     const screen = await render(<JollyDatePicker label="Start date" timeZone={parseTimeZone('Pacific/Pago_Pago')} />)
 
@@ -55,6 +57,7 @@ test('date range picker: with no value, opens on the month of today at the place
   // Arrange
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+
   try {
     const screen = await render(<JollyDateRangePicker label="Stay" timeZone={parseTimeZone('Pacific/Pago_Pago')} />)
 
@@ -75,6 +78,7 @@ test.each([
   // Arrange
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+
   try {
     const screen = await render(<Component />)
 

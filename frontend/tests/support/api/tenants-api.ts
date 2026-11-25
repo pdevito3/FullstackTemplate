@@ -13,11 +13,13 @@ export const tenantsPaths = {
 export const tenantsApi = {
   oneIs(tenant: Buildable<TenantDto>): MockRoute {
     const body = tenant.build()
+
     return { method: 'get', path: tenantsPaths.one(body.id), status: 200, body }
   },
 
   oneFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'get', path: tenantsPaths.one(id), status: body.status ?? 500, body }
   },
 }

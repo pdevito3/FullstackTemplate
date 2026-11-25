@@ -21,5 +21,6 @@ export function latestOverEdits<F extends string>(
   const sameText = (a: unknown, b: TextComparable) => String(a) === String(b)
   const changed = fields.filter((field) => !sameText(loaded[field], latest[field]))
   const kept = fields.filter((field) => !changed.includes(field) && !sameText(edited[field], latest[field]))
+
   return { changed, kept }
 }

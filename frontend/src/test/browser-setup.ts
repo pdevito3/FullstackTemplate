@@ -32,6 +32,7 @@ declare module 'vitest/browser' {
 let testId = ''
 
 const send = XMLHttpRequest.prototype.send
+
 XMLHttpRequest.prototype.send = function (body) {
   this.setRequestHeader(testIdHeader, testId)
   send.call(this, body)
@@ -48,6 +49,7 @@ beforeEach(async ({ task }) => {
 // the page shows the same text for an error and for an empty answer.
 afterEach(async () => {
   const unanswered = await commands.takeUnansweredRequests()
+
   if (unanswered.length > 0) {
     throw new Error(`No answer for these requests: ${unanswered.join(', ')}. Answer them with commands.answerRequests.`)
   }

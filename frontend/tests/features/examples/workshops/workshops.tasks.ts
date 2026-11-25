@@ -5,6 +5,7 @@ import { workshops } from './workshops.locators'
 
 export function workshopsPage(page: Page) {
   const at = workshops(page)
+
   const answered = (method: string, path: string) =>
     page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path)
 
@@ -13,9 +14,11 @@ export function workshopsPage(page: Page) {
 
     async textOverflowPast(text: Locator) {
       const right = await page.evaluate(() => document.documentElement.clientWidth)
+
       return text.evaluate((node, right) => {
         const range = document.createRange()
         range.selectNodeContents(node)
+
         return range.getBoundingClientRect().right - right
       }, right)
     },
@@ -34,11 +37,13 @@ export function workshopsPage(page: Page) {
 
     async segmentsCutIn(field: Locator, segments: Locator) {
       const box = await field.evaluate((node) => node.getBoundingClientRect().toJSON() as DOMRect)
+
       return segments.evaluateAll(
         (nodes, box) =>
           nodes
             .filter((node) => {
               const { top, bottom, left, right } = node.getBoundingClientRect()
+
               return top < box.top || bottom > box.bottom || left < box.left || right > box.right
             })
             .map((node) => node.textContent),
@@ -123,11 +128,13 @@ export function workshopsPage(page: Page) {
 
     async addVenueAndOpenNewForm(name: string, venueId: string) {
       await at.venueName.fill(name)
+
       const settled = Promise.all([
         answered('POST', workshopPaths.venues),
         answered('GET', workshopPaths.venue(venueId)),
         answered('GET', workshopPaths.venues),
       ])
+
       await at.addVenue.click()
       await settled
       await expect(at.newForm).toBeVisible()
@@ -164,6 +171,7 @@ export function workshopsPage(page: Page) {
         answered('GET', workshopPaths.one(id)),
         answered('GET', workshopPaths.venue(venueId)),
       ])
+
       await at.add.click()
       await settled
     },
@@ -177,6 +185,7 @@ export function workshopsPage(page: Page) {
     /** Types each key after the search of the last key is in the URL. */
     async searchKeyByKey(text: string) {
       await at.search.click()
+
       for (let length = 1; length <= text.length; length++) {
         await page.keyboard.type(text[length - 1])
         await expect(page).toHaveURL(`/workshops?search=${text.slice(0, length)}`)
@@ -231,6 +240,7 @@ export function workshopsPage(page: Page) {
         answered('GET', workshopPaths.one(id)),
         answered('GET', workshopPaths.venue(venueId)),
       ])
+
       await at.save.click()
       await settled
     },
@@ -297,6 +307,7 @@ export function workshopsPage(page: Page) {
         answered('GET', workshopPaths.venue(venueId)),
         answered('GET', workshopPaths.attachments(id)),
       ])
+
       await page.goto(`/workshops/${id}`)
       await settled
       await expect(at.filesHeading).toBeVisible()
@@ -306,6 +317,7 @@ export function workshopsPage(page: Page) {
       const image = at.thumbnail(fileName)
       await expect(image).toBeVisible()
       await image.evaluate((node: HTMLImageElement) => node.decode())
+
       return image.evaluate((node: HTMLImageElement) => node.naturalWidth)
     },
 
@@ -345,6 +357,7 @@ export function workshopsPage(page: Page) {
       const stopped = page.waitForEvent('requestfailed', {
         predicate: (r) => r.method() === 'POST' && new URL(r.url()).pathname === workshopPaths.attachments(id),
       })
+
       await at.cancelUpload.click()
       await stopped
     },
@@ -353,6 +366,7 @@ export function workshopsPage(page: Page) {
     async typesTheChooserAccepts() {
       const chooser = page.waitForEvent('filechooser')
       await at.uploadFile.click()
+
       return (await chooser).element().getAttribute('accept')
     },
 
@@ -367,10 +381,12 @@ export function workshopsPage(page: Page) {
     async deleteFile(id: string, attachmentId: string, fileName: string) {
       await at.deleteFile(fileName).click()
       await expect(at.deleteDialog(fileName)).toBeVisible()
+
       const settled = Promise.all([
         answered('DELETE', workshopPaths.attachment(id, attachmentId)),
         answered('GET', workshopPaths.attachments(id)),
       ])
+
       await at.confirmDelete(fileName).click()
       await settled
     },

@@ -9,6 +9,7 @@ export function weatherForecastPage(page: Page) {
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
+
   // The exact path: `/api/v1/weather/secure` also starts with `/api/v1/weather`.
   const answered = (path: string) =>
     page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === path)
@@ -34,9 +35,11 @@ export function weatherForecastPage(page: Page) {
       const right = container
         ? await container.evaluate((node) => node.getBoundingClientRect().right)
         : await page.evaluate(() => document.documentElement.clientWidth)
+
       return text.evaluate((node, right) => {
         const range = document.createRange()
         range.selectNodeContents(node)
+
         return range.getBoundingClientRect().right - right
       }, right)
     },

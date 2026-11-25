@@ -42,12 +42,16 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
       const served = requestRecorder()
       const missed: string[] = []
       const holds: (() => void)[] = []
+
       const newHold = () => {
         let release = () => {}
+
         const heldUntil = new Promise<void>((resolve) => {
           release = resolve
         })
+
         holds.push(release)
+
         return { heldUntil, release }
       }
 
@@ -63,6 +67,7 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
           if (!match) {
             missed.push(`${method.toUpperCase()} ${url.pathname}`)
             await route.fulfill({ status: 501, body: `No mock for ${method} ${url.pathname}` })
+
             return
           }
 
@@ -83,6 +88,7 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
         hold: (...added) => {
           const { heldUntil, release } = newHold()
           routes.push(...added.map((route) => ({ ...route, heldUntil })))
+
           return release
         },
         holdPageSource: async (file) => {
@@ -91,11 +97,13 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
             await heldUntil
             await route.fallback()
           })
+
           return release
         },
         failPageSource: async (file) => {
           let failing = true
           await page.route(file, (route) => (failing ? route.abort() : route.fallback()))
+
           return () => {
             failing = false
           }

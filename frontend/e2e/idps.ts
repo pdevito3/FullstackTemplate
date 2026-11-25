@@ -72,9 +72,12 @@ export function loadIdp(name: string | undefined): IdpConfig {
   if (!name) {
     throw new Error('IDP is not set. Run the tests with `pnpm test:e2e:stack`, which finds the IdP of the running stack.')
   }
+
   const key = name.toLowerCase()
+
   if (!idpNames().includes(key)) {
     throw new Error(`IDP '${name}' has no file in e2e/idps/. Use one of these: ${idpNames().join(', ')}.`)
   }
+
   return JSON.parse(readFileSync(new URL(`${key}.json`, idpsDir), 'utf8')) as IdpConfig
 }

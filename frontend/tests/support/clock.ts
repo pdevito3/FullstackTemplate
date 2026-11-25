@@ -3,7 +3,9 @@ import { parseDateTime, toZoned } from '@internationalized/date'
 
 export function browserZone(): string {
   const zone = test.info().project.use.timezoneId
+
   if (!zone) throw new Error(`The project ${test.info().project.name} sets no timezoneId.`)
+
   return zone
 }
 

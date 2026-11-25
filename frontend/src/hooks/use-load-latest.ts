@@ -26,20 +26,25 @@ export function useLoadLatest<T extends FieldValues, F extends TextField<T>>(
   const load = async (read: () => Promise<T>) => {
     setState({ kind: 'loading' })
     let latest: T
+
     try {
       latest = await read()
     } catch {
       setState({ kind: 'idle' })
+
       return false
     }
+
     try {
       const edited = form.getValues()
       const result = latestOverEdits<F>(form.formState.defaultValues ?? {}, edited, latest, fields)
       // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
       form.setFocus(result.changed[0] ?? fields[0])
       form.reset(latest)
+
       for (const field of result.kept) form.setValue(field, edited[field] as PathValue<T, F>, { shouldDirty: true })
       setState({ kind: 'loaded', changed: result.changed })
+
       return true
     } catch (error) {
       setState({ kind: 'idle' })

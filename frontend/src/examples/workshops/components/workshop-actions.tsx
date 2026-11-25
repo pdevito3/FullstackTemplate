@@ -58,6 +58,7 @@ export function WorkshopActions({ workshop, pendingAction, onAction }: WorkshopA
             {LABELS[action]}
           </Button>
         )
+
         return action === 'Cancel' ? (
           <ConfirmCancel key={action} onConfirm={() => onAction(action)}>
             {button}

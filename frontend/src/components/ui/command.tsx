@@ -46,6 +46,7 @@ function Command({
   style?: React.CSSProperties
 }) {
   const { contains } = useFilter({ sensitivity: "base" })
+
   return (
     <div
       data-slot="command"
@@ -208,7 +209,9 @@ type CommandItemProps<T extends object = object> = Omit<
 
 function ownsFocus(item: Element) {
   const focused = item.ownerDocument.activeElement
+
   if (!focused) return false
+
   return (
     item.closest('[data-slot="command"]')?.contains(focused) ||
     focused === item.closest('[role="dialog"]')
@@ -294,4 +297,5 @@ export {
   CommandShortcut,
   CommandSeparator,
 }
+
 export type { CommandItemProps }

@@ -11,10 +11,13 @@ import { AuthKeys } from './auth.keys'
  */
 export async function getUser(): Promise<BffClaim[] | null> {
   const response = await apiClient.get<unknown>('/bff/user', { suppressErrorToast: true })
+
   if (response.status === 204) return null
+
   if (!Array.isArray(response.data)) {
     throw new Error(`GET /bff/user answered ${response.status} with a body that is not a list of claims.`)
   }
+
   return response.data
 }
 
@@ -65,6 +68,7 @@ function parseAuthClaims(claims: BffClaim[]): Omit<AuthState, 'isLoading'> {
     (found, finder) => found ?? finder(claims),
     undefined
   )
+
   const logoutUrl = findClaim('bff:logout_url')(claims)
 
   return {

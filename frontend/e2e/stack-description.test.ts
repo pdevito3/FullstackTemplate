@@ -21,9 +21,11 @@ function described(resources: unknown[]): DescribeRun {
 
 function messageOf(run: DescribeRun): string {
   const check = checkStack({ run, appHost })
+
   if (check.kind !== 'not-ready') {
     throw new Error(`Expected a not-ready stack, got ${check.kind}`)
   }
+
   return check.message
 }
 

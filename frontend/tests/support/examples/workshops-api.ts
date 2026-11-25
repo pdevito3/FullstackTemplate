@@ -34,16 +34,19 @@ export const workshopsApi = {
 
   oneIs(workshop: Buildable<WorkshopDto>): MockRoute {
     const body = workshop.build()
+
     return { method: 'get', path: workshopPaths.one(body.id), status: 200, body }
   },
 
   oneFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'get', path: workshopPaths.one(id), status: body.status ?? 500, body }
   },
 
   listFails(problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'get', path: workshopPaths.list, status: body.status ?? 500, body }
   },
 
@@ -53,21 +56,25 @@ export const workshopsApi = {
 
   updateSaves(workshop: Buildable<WorkshopDto>): MockRoute {
     const body = workshop.build()
+
     return { method: 'put', path: workshopPaths.one(body.id), status: 200, body }
   },
 
   updateFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'put', path: workshopPaths.one(id), status: body.status ?? 500, body }
   },
 
   actionMoves(action: 'schedule' | 'cancel' | 'complete', workshop: Buildable<WorkshopDto>): MockRoute {
     const body = workshop.build()
+
     return { method: 'post', path: workshopPaths.action(body.id, action), status: 200, body }
   },
 
   actionFails(id: string, action: 'schedule' | 'cancel' | 'complete', problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'post', path: workshopPaths.action(id, action), status: body.status ?? 500, body }
   },
 
@@ -77,6 +84,7 @@ export const workshopsApi = {
     uploadRules: Buildable<UploadRulesDto> = anUploadRules(),
   ): MockRoute {
     const { id } = workshop.build()
+
     return {
       method: 'get',
       path: workshopPaths.attachments(id),
@@ -87,12 +95,14 @@ export const workshopsApi = {
 
   attachmentUploads(workshop: Buildable<WorkshopDto>, attachment: Buildable<AttachmentDto>): MockRoute {
     const { id } = workshop.build()
+
     return { method: 'post', path: workshopPaths.attachments(id), status: 201, body: attachment.build() }
   },
 
   attachmentUploadFails(workshop: Buildable<WorkshopDto>, problem: Buildable<ProblemDetails>): MockRoute {
     const { id } = workshop.build()
     const body = problem.build()
+
     return { method: 'post', path: workshopPaths.attachments(id), status: body.status ?? 500, body }
   },
 
@@ -120,11 +130,13 @@ export const workshopsApi = {
 
   venueFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'get', path: workshopPaths.venue(id), status: body.status ?? 500, body }
   },
 
   venueIs(venue: Buildable<VenueDto>): MockRoute {
     const body = venue.build()
+
     return { method: 'get', path: workshopPaths.venue(body.id), status: 200, body }
   },
 }

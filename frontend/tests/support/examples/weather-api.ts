@@ -19,6 +19,7 @@ export const weatherApi = {
 
   listFails(problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
+
     return { method: 'get', path: weatherPaths.list, status: body.status ?? 500, body }
   },
 

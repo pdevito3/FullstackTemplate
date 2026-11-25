@@ -10,6 +10,7 @@ import { Operators } from '../utils/operators'
 import { DateFilter } from './date-filter'
 
 const pagoPago = parseTimeZone('Pacific/Pago_Pago')
+
 const startsAt: FilterConfig = {
   propertyKey: 'startsAt',
   propertyLabel: 'Starts At',
@@ -50,6 +51,7 @@ test('takes today and reads the typed time in the zone of the place, not of the 
   // 10:30 UTC on August 15 is 23:30 on August 14 in Pago Pago, and August 16 in Kiritimati.
   vi.setSystemTime(new Date('2026-08-15T10:30:00Z'))
   const onSubmit = vi.fn()
+
   try {
     await render(<DateFilter config={startsAt} surface="submenu" onSubmit={onSubmit} />)
 

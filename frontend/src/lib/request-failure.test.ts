@@ -8,8 +8,10 @@ const problem = (body: Record<string, unknown>) => new ProblemDetailsError({ typ
 
 const serverFault = 'The server could not complete the request. Try again in a moment.'
 const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
+
 const signInRejected =
   'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
 const appFault = 'The app has a fault. Reload the page, then try again.'
 
 describe('failureText of a refusal of the Server', () => {

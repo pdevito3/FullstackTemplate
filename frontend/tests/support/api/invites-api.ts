@@ -18,6 +18,7 @@ export const invitesPaths = {
 
 const problemAt = (method: MockRoute['method'], path: string, problem: Buildable<ProblemDetails>): MockRoute => {
   const body = problem.build()
+
   return { method, path, status: body.status ?? 500, body }
 }
 
@@ -46,6 +47,7 @@ export const invitesApi = {
 
   revokes(invite: Buildable<InviteDto>): MockRoute {
     const body = invite.build()
+
     return { method: 'post', path: invitesPaths.revoke(body.id), status: 200, body }
   },
 

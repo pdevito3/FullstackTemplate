@@ -49,6 +49,7 @@ const uploadTimeoutMs = 10 * 60_000
 
 apiClient.interceptors.request.use((config) => {
   config.timeout ||= config.data instanceof FormData ? uploadTimeoutMs : requestTimeoutMs
+
   return config
 })
 
@@ -81,6 +82,7 @@ apiClient.interceptors.response.use(
     // The check of the session cannot wait for itself, so its own 401 is a failed check.
     if (error.response?.status === 401 && config?.url !== '/bff/user') {
       if (!(await isSessionEnded()) && !suppressToast) Notification.error(failureText(processedError))
+
       return Promise.reject(processedError)
     }
 
@@ -96,6 +98,7 @@ apiClient.interceptors.response.use(
 // The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
 // Each API version has its own generated folder (src/api/generated, src/api/generated-v2), and each folder has its own client.
 const kubbClients = import.meta.glob<{ client: typeof KubbClient }>('/src/api/generated*/.kubb/client.ts', { eager: true })
+
 for (const { client } of Object.values(kubbClients)) {
   client.setConfig({ transport: apiClient })
 }

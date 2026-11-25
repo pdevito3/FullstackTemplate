@@ -12,6 +12,7 @@ class VenueBuilder {
 
   static create() {
     const n = next()
+
     return new VenueBuilder({
       id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
       name: `Venue ${n}`,

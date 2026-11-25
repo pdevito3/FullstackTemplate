@@ -29,4 +29,5 @@ const layoutClassNames = {
 } satisfies Record<CalendarLayout, Record<string, string>>
 
 export { layoutClassNames }
+
 export type { CalendarLayout }

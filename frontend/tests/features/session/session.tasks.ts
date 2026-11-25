@@ -7,6 +7,7 @@ export const blankPage = 'data:text/html,blank'
 
 export function sessionPage(page: Page) {
   const at = session(page)
+
   const answered = (path: string) =>
     page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === path)
 
@@ -27,6 +28,7 @@ export function sessionPage(page: Page) {
       })
 
       await openAndWaitForLogin(page, path)
+
       return { rendered }
     },
 
@@ -75,6 +77,7 @@ export function sessionPage(page: Page) {
       await link.click()
       await login
       await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
+
       return { toasted }
     },
 

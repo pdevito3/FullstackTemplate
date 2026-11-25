@@ -14,6 +14,7 @@ test('the menu of a trigger as wide as the page fits in the page', async () => {
       </DropdownMenu>
     </DropdownMenuTrigger>,
   )
+
   expect(screen.getByRole('button').element().getBoundingClientRect().width).toBe(document.documentElement.clientWidth)
 
   await screen.getByRole('button', { name: 'Actions' }).click()

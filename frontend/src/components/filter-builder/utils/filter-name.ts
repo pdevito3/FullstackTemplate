@@ -12,6 +12,7 @@ export function formatFilterValue(filter: Filter): string {
   const value = filter.controlType === 'multiselect' && filter.selectedLabels
     ? filter.selectedLabels
     : filter.value
+
   return formatValue(value)
 }
 
@@ -28,9 +29,12 @@ function formatValue(
 ): string {
   if (Array.isArray(value)) {
     if (value.length === 0) return 'None'
+
     if (value.length === 1) return value[0]
+
     // Show actual values if less than 4
     if (value.length < 4) return value.join(', ')
+
     return `${value.length} selected`
   }
 
@@ -50,6 +54,7 @@ function formatValue(
   if (typeof value === 'object' && 'mode' in value) {
     const dateValue = value as DateValue
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+
     const formatDate = (date: Date | CalendarDateTime) =>
       date instanceof Date
         ? formatInstant(date, dateValue.timeZone ?? browserTimeZone(), options)
@@ -67,8 +72,10 @@ function formatValue(
       case 'between':
         if (dateValue.endDate) {
           const range = `${formatDate(dateValue.startDate)} - ${formatDate(dateValue.endDate)}`
+
           return dateValue.exclude ? `Excluding ${range}` : range
         }
+
         return `From ${formatDate(dateValue.startDate)}`
       default:
         return 'Unknown date'

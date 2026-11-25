@@ -19,6 +19,7 @@ export const bffApi = {
   /** The BFF fails to read the session. */
   userFails(problem: { build(): ProblemDetails }): MockRoute {
     const body = problem.build()
+
     return { method: 'get', path: bffPaths.user, status: body.status ?? 500, body }
   },
 

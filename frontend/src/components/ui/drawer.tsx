@@ -35,14 +35,19 @@ function CloseOnEscape({
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const overlay = overlayRef.current
+
       if (event.key !== "Escape" || !overlay || !(event.target instanceof Node)) return
+
       if (!isBefore(event.target, overlay)) return
       event.stopPropagation()
       onClose()
     }
+
     document.addEventListener("keydown", onKeyDown, true)
+
     return () => document.removeEventListener("keydown", onKeyDown, true)
   }, [overlayRef, onClose])
+
   return null
 }
 
@@ -84,6 +89,7 @@ function Drawer({
 }) {
   const [descriptionId, setDescriptionId] = React.useState<string>()
   const overlayRef = React.useRef<HTMLDivElement>(null)
+
   return (
     <SheetOverlayPrimitive
       ref={overlayRef}

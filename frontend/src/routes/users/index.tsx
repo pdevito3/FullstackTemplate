@@ -39,6 +39,7 @@ function UsersPage() {
 
   const handlePageChange = (pageNumber: number) =>
     navigate({ search: (prev) => ({ ...prev, page: pageNumber === 1 ? undefined : pageNumber }) })
+
   const handleInvitesPageChange = (pageNumber: number) =>
     navigate({ search: (prev) => ({ ...prev, invitesPage: pageNumber === 1 ? undefined : pageNumber }) })
 

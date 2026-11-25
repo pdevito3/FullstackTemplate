@@ -17,6 +17,7 @@ export const membershipApi = {
     if (!identity.signedIn) return []
     const subject = identity.claims.find((claim) => claim.type === 'sub')?.value ?? actorSubject
     const path = membershipPaths.userOf(subject)
+
     return identity.hasTenant
       ? [{ method: 'get', path, status: 200, body: aUser().identifiedBy(subject).build() }]
       : [{ method: 'get', path, status: 404, body: { ...aProblem().saying('User was not found.').build(), status: 404 } }]
@@ -29,6 +30,7 @@ export const membershipApi = {
 
   lookupRefuses(detail: string): MockRoute {
     const body = { ...aProblem().saying(detail).build(), status: 403 }
+
     return { method: 'get', path: membershipPaths.userOf(actorSubject), status: 403, body }
   },
 
@@ -39,6 +41,7 @@ export const membershipApi = {
   /** The Server refuses one field, as it refuses a tenant name in use with a 409. */
   startRefuses(field: string, message: string): MockRoute {
     const body = { ...aProblem().saying(message).build(), status: 409, errors: { [field]: [message] } }
+
     return { method: 'post', path: membershipPaths.start, status: 409, body }
   },
 

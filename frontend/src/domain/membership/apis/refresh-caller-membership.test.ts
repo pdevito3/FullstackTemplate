@@ -7,6 +7,7 @@ import { retryFailedMembership } from './refresh-caller-membership'
 const queryClientAfter = async (queryFn: () => Promise<unknown>) => {
   const queryClient = new QueryClient()
   await queryClient.prefetchQuery({ queryKey: MembershipKeys.of('bob'), queryFn, retry: false })
+
   return queryClient
 }
 

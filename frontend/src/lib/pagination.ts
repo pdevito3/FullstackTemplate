@@ -21,9 +21,11 @@ export function parsePagination(result: { response: Pick<AxiosResponse, 'headers
   const header: unknown = Object.entries(result.response.headers).find(
     ([name]) => name.toLowerCase() === paginationHeader,
   )?.[1]
+
   if (typeof header !== 'string') {
     throw new Error(`The response has no ${paginationHeader} header.`)
   }
+
   // The schema rejects a header that does not have the shape of the contract, so a caller does not read a wrong type.
   return paginationMetadataSchema.parse(JSON.parse(header))
 }

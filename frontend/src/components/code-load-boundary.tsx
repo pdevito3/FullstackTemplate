@@ -21,8 +21,11 @@ export class CodeLoadBoundary extends Component<CodeLoadBoundaryProps, { caught?
 
   render() {
     const { caught } = this.state
+
     if (!caught) return this.props.children
+
     if (!isModuleNotFoundError(caught.error)) throw caught.error
+
     return this.props.fallback
   }
 }

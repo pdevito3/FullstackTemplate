@@ -11,6 +11,7 @@ type Settings = { hooks: { PreToolUse: { matcher: string; hooks: { command: stri
 function runHook(command: string) {
   const settings = JSON.parse(readFileSync(resolve(repoRoot, '.claude/settings.json'), 'utf8')) as Settings
   const entry = settings.hooks.PreToolUse.find((candidate) => candidate.matcher === 'Bash')
+
   return spawnSync('sh', ['-c', entry?.hooks[0]?.command ?? 'exit 99'], {
     input: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
     env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot },

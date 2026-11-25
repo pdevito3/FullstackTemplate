@@ -5,6 +5,7 @@ import { startTenant } from './start-tenant.locators'
 
 export function startTenantPage(page: Page) {
   const at = startTenant(page)
+
   const answered = (method: string, path: string) =>
     page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path)
 

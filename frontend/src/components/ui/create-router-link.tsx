@@ -16,6 +16,7 @@ export function createRouterLink<
   const RouterLink = createLink(Host) as unknown as React.ComponentType<
     Record<string, unknown>
   >
+
   return (props) => (
     <RouterLink activeOptions={{ exact: true }} {...props} routerOptions={props} />
   )

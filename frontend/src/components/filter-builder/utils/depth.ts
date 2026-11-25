@@ -26,6 +26,7 @@ export function calculateDepth(
 
     if (isFilterGroup(item)) {
       const depth = calculateDepthRecursive(item.filters, targetId, currentDepth + 1)
+
       if (depth !== null) {
         return depth
       }
@@ -47,6 +48,7 @@ function calculateDepthRecursive(
 
     if (isFilterGroup(item)) {
       const depth = calculateDepthRecursive(item.filters, targetId, currentDepth + 1)
+
       if (depth !== null) {
         return depth
       }
@@ -115,6 +117,7 @@ export function canAddToGroup(
 ): boolean {
   // Calculate current depth of the target group
   const targetDepth = groupId === null ? 0 : calculateDepth(state, groupId)
+
   if (targetDepth === null) return false
 
   // Calculate the maximum depth of items being added
@@ -163,6 +166,7 @@ export function canCreateGroup(
   }
 
   const currentDepth = depths[0]
+
   if (currentDepth === null) {
     return { canCreate: false, reason: 'Could not determine filter depth' }
   }
@@ -200,6 +204,7 @@ export function findItemById(
 
     if (isFilterGroup(item)) {
       const found = findItemByIdRecursive(item.filters, targetId)
+
       if (found) return found
     }
   }
@@ -218,6 +223,7 @@ function findItemByIdRecursive(
 
     if (isFilterGroup(item)) {
       const found = findItemByIdRecursive(item.filters, targetId)
+
       if (found) return found
     }
   }
@@ -251,5 +257,6 @@ export function getItemsAtDepth(state: FilterState, targetDepth: number): (Filte
   }
 
   collectAtDepth(state.filters, 0)
+
   return items
 }

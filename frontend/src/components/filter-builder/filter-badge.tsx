@@ -15,6 +15,7 @@ interface FilterBadgeProps {
 
 export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
   const formattedValue = formatFilterValue(filter)
+
   // A filter is case-sensitive if:
   // 1. The caseSensitive flag is explicitly true, OR
   // 2. The operator doesn't end with * (which indicates case-insensitive)

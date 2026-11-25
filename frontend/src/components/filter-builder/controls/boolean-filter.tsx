@@ -13,6 +13,7 @@ export function BooleanFilter({ config, initialFilter, onSubmit }: BooleanFilter
   const currentValue = initialFilter?.operator === Operators.NOT_EQUALS ? !initialFilter.value : initialFilter?.value
   const isPressed = (value: boolean) => (initialFilter ? currentValue === value : undefined)
   const labelId = useId()
+
   const handleSubmit = (selectedValue: boolean) => {
     onSubmit({
       propertyKey,

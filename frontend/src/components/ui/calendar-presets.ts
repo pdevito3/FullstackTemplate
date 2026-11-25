@@ -16,6 +16,7 @@ function getWeekRange(zone: TimeZone, weeksOffset: number): { start: CalendarDat
   const targetWeekStart = todayAt(zone, new Date()).add({ weeks: weeksOffset })
   const weekStart = targetWeekStart.subtract({ days: getDayOfWeek(targetWeekStart, "en-US") })
   const weekEnd = weekStart.add({ days: 6 })
+
   return { start: weekStart, end: weekEnd }
 }
 
@@ -24,6 +25,7 @@ function getMonthRange(zone: TimeZone, monthsOffset: number): { start: CalendarD
   const targetMonth = todayAt(zone, new Date()).add({ months: monthsOffset })
   const monthStart = new CalendarDate(targetMonth.year, targetMonth.month, 1)
   const monthEnd = monthStart.add({ months: 1 }).subtract({ days: 1 })
+
   return { start: monthStart, end: monthEnd }
 }
 
@@ -32,6 +34,7 @@ function getYearRange(zone: TimeZone, yearsOffset: number): { start: CalendarDat
   const targetYear = todayAt(zone, new Date()).year + yearsOffset
   const yearStart = new CalendarDate(targetYear, 1, 1)
   const yearEnd = new CalendarDate(targetYear, 12, 31)
+
   return { start: yearStart, end: yearEnd }
 }
 

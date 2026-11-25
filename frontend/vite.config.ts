@@ -36,7 +36,9 @@ const vendorChunks: Record<string, string[]> = {
 
 function vendorChunk(id: string): string | undefined {
   const match = id.match(/.*\/node_modules\/((?:@[^/]+\/)?[^/]+)\//)
+
   if (!match) return undefined
+
   return Object.keys(vendorChunks).find((chunk) =>
     vendorChunks[chunk].includes(match[1]),
   )
@@ -50,6 +52,7 @@ const failOverFirstPageBudget: Plugin = {
   writeBundle(_, bundle) {
     const loaded = firstPageChunks(bundle)
     const totalKb = loaded.reduce((sum, chunk) => sum + chunk.sizeKb, 0)
+
     if (totalKb > firstPageBudgetKb) {
       this.error(
         `The first page loads ${totalKb.toFixed(2)} kB, over the budget of ${firstPageBudgetKb} kB: ` +
@@ -77,6 +80,7 @@ const failStalledBffRequests: ProxyOptions['configure'] = (proxy) => {
         ),
       )
     }, bffTimeoutMs)
+
     proxyReq.on('response', () => clearTimeout(timer))
     proxyReq.on('close', () => clearTimeout(timer))
   })

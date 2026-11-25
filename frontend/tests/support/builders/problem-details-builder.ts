@@ -23,6 +23,7 @@ class ProblemDetailsBuilder {
 
   staleVersion() {
     const detail = 'This record changed after you loaded it. Reload it, then make your change again.'
+
     return new ProblemDetailsBuilder({
       ...this.problem,
       type: 'urn:fullstacktemplate:problem:stale-version',

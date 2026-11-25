@@ -13,6 +13,7 @@ import { parseTimeZone } from '@/lib/zoned-time'
 // The same shape as the Pick a date popover of the components showcase.
 function DatePopover() {
   const [date, setDate] = useState<DateValue | null>(new CalendarDate(2024, 3, 15))
+
   return (
     <PopoverTrigger>
       <Button>Pick a date</Button>
@@ -47,6 +48,7 @@ test('calendar zoom: Select month moves the focus into the month picker, a month
 
 function DateRange({ initialRange }: { initialRange: RangeValue<DateValue> }) {
   const [range, setRange] = useState<RangeValue<DateValue> | null>(initialRange)
+
   return (
     <>
       <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} />
@@ -146,12 +148,14 @@ test('range calendar: a click outside the calendar after a month pick ends the r
 
 function DateRangeWithControls() {
   const [range, setRange] = useState<RangeValue<DateValue> | null>(august2026)
+
   return <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showQuickSelects showDateInput />
 }
 
 test('range calendar: a Quick Select shows the month of the start of its range', async () => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 7, 15, 12))
+
   try {
     const screen = await render(<DateRangeWithControls />)
 
@@ -175,6 +179,7 @@ test('range calendar: a typed start date shows its month', async () => {
 
 function EmptyDateRangeWithControls() {
   const [range, setRange] = useState<RangeValue<DateValue> | null>(null)
+
   return (
     <>
       <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showDateInput />
@@ -213,6 +218,7 @@ test('range calendar: a typed end date in an empty range keeps the date', async 
 
 function TypedDateRange({ initialRange = null }: { initialRange?: RangeValue<DateValue> | null }) {
   const [range, setRange] = useState<RangeValue<DateValue> | null>(initialRange)
+
   return (
     <>
       <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showDateInput />
@@ -309,6 +315,7 @@ test('range calendar: a typed end date before the start date leaves the range em
 
 function TypedDate() {
   const [date, setDate] = useState<DateValue | null>(null)
+
   return (
     <>
       <JollyCalendar aria-label="Dates" value={date} onChange={setDate} showDateInput />
@@ -361,6 +368,7 @@ async function pixelsOf(element: Element): Promise<ImageData> {
   canvas.height = image.height
   const context = canvas.getContext('2d')!
   context.drawImage(image, 0, 0)
+
   return context.getImageData(0, 0, image.width, image.height)
 }
 
@@ -369,11 +377,14 @@ test('range calendar: a selected range paints one band from its start day, with 
   const grid = screen.getByRole('grid').element()
   const pixels = await pixelsOf(grid)
   const scale = pixels.width / grid.getBoundingClientRect().width
+
   const colorAt = (x: number, y: number) => {
     const gridBox = grid.getBoundingClientRect()
     const i = (Math.floor((y - gridBox.top) * scale) * pixels.width + Math.floor((x - gridBox.left) * scale)) * 4
+
     return Array.from(pixels.data.slice(i, i + 4))
   }
+
   const day = (date: number) => screen.getByRole('button', { name: new RegExp(`August ${date}, 2026`) }).element().getBoundingClientRect()
 
   const start = day(3)
@@ -381,6 +392,7 @@ test('range calendar: a selected range paints one band from its start day, with 
   const middle = start.top + start.height / 2
   expect(colorAt(start.right - 0.5, middle), 'the right edge of the start day').toEqual(colorAt(start.left + 3, middle))
   expect(colorAt(day(4).left + 0.5, middle), 'the left edge of Aug 4').toEqual(colorAt(day(4).left + 3, middle))
+
   for (const date of [4, 5, 6]) {
     const top = day(date).top + 1.5
     const band = colorAt(day(date).left + day(date).width / 2, top)
@@ -388,6 +400,7 @@ test('range calendar: a selected range paints one band from its start day, with 
     expect(colorAt(day(date).right - 0.5, top), `the right edge of Aug ${date}`).toEqual(band)
     expect(colorAt(day(date + 1).left + 0.5, top), `the left edge of Aug ${date + 1}`).toEqual(band)
   }
+
   expect(colorAt(start.left + start.width / 2, start.top + 0.5), 'the top edge of the start day').not.toEqual(colorAt(start.left + start.width / 2, start.top - 1))
 })
 
@@ -402,12 +415,14 @@ test('calendar: the wide layout is as wide with the range quick selects as with 
       </div>
     </>
   )
+
   await document.fonts.ready
 
   const single = screen.getByRole('region', { name: 'Single' }).element().getBoundingClientRect()
   const range = screen.getByRole('region', { name: 'Range' }).element().getBoundingClientRect()
 
   expect(range.width).toBe(single.width)
+
   for (const region of ['Single', 'Range']) {
     for (const preset of screen.getByRole('region', { name: region }).getByRole('button', { name: /^(This|Last|Next|Today|Tomorrow|Yesterday)/ }).elements()) {
       expect(contentFits(preset), `the ${preset.textContent} label fits its button`).toBe(true)
@@ -420,6 +435,7 @@ function contentFits(button: Element): boolean {
   text.selectNodeContents(button)
   const style = getComputedStyle(button)
   const room = button.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+
   return text.getBoundingClientRect().width <= room
 }
 
@@ -481,6 +497,7 @@ test('calendar: marks today and opens on today at the place of the date, not in 
   vi.useFakeTimers({ toFake: ['Date'] })
   // 05:00 UTC on September 1 is August 31 in Pago Pago, and September 1 in Kiritimati, the zone of the component tests.
   vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+
   try {
     // Act
     const screen = await render(<JollyCalendar aria-label="Date" timeZone={parseTimeZone('Pacific/Pago_Pago')} />)
@@ -502,6 +519,7 @@ test.each([
   vi.useFakeTimers({ toFake: ['Date'] })
   // 05:00 UTC on September 1 is August 31 in Pago Pago, and September 1 in Kiritimati, the zone of the component tests.
   vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+
   try {
     // Act
     const screen = await render(<Component />)

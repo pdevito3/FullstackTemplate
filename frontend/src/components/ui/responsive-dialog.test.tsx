@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/responsive-dialog'
 
 const longTitle = 'Close work order WO-2026-00042 for the north depot vehicle'
+
 const longDescription =
   'Closing this work order records the final odometer reading, marks every open task as done, and sends a notice to ' +
   'the fleet manager. You cannot reopen a closed work order later, so check each field first.'
@@ -82,6 +83,7 @@ function FormDialog({ title, description }: { title: string; description?: strin
 
 function isHidden(element: Element): boolean {
   const { left, right, top, bottom } = element.getBoundingClientRect()
+
   return [
     [left + 1, top + 1],
     [right - 1, bottom - 1],
@@ -94,8 +96,11 @@ function closeButton(): Element {
 
 function scrollParent(element: Element): Element {
   let parent = element.parentElement
+
   while (parent && getComputedStyle(parent).overflowY !== 'auto') parent = parent.parentElement
+
   if (!parent) throw new Error('The content has no scroll container')
+
   return parent
 }
 
@@ -105,10 +110,12 @@ async function openAnimationsFinished(): Promise<void> {
   // The modal starts its animations after it paints.
   startStep('two frames')
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+
   // The line above the dialog footer follows the scroll of the dialog, so its animation finishes only at the end.
   const animations = document.getAnimations().filter(
     (animation) => !(animation instanceof CSSAnimation && animation.animationName === 'dialog-footer-edge'),
   )
+
   startStep(`${animations.length} open animations`)
   await Promise.all(animations.map((animation) => animation.finished))
 }
@@ -116,6 +123,7 @@ async function openAnimationsFinished(): Promise<void> {
 function paragraphTextUnderCloseButton(x: number, y: number): string | undefined {
   const button = closeButton()
   const shown = document.elementsFromPoint(x, y).find((element) => !button.contains(element))
+
   return shown?.closest('p')?.textContent ?? undefined
 }
 
@@ -130,9 +138,11 @@ for (const [width, height] of [
     const button = closeButton().getBoundingClientRect()
     const range = document.createRange()
     range.selectNodeContents(page.getByRole('heading', { name: longTitle }).element())
+
     const linesUnderButton = Array.from(range.getClientRects()).filter(
       (line) => line.left < button.right && button.left < line.right && line.top < button.bottom && button.top < line.bottom,
     )
+
     expect(linesUnderButton).toEqual([])
   })
 
@@ -146,6 +156,7 @@ for (const [width, height] of [
     await expect.poll(() => {
       const { left, right, top, bottom } = closeButton().getBoundingClientRect()
       expect(closeButton().contains(document.elementFromPoint((left + right) / 2, (top + bottom) / 2))).toBe(true)
+
       return [
         [left + 1, top + 1],
         [right - 1, top + 1],
@@ -164,16 +175,21 @@ for (const [width, height] of [
     scrollParent(page.getByRole('textbox', { name: 'Field 1', exact: true }).element()).scrollTop = 40
     const focused: string[] = []
     const hidden: string[] = []
+
     function readHidden() {
       const field = document.activeElement!
+
       if (isHidden(field)) hidden.push(field.ariaLabel!)
     }
+
     function readPress(event: KeyboardEvent) {
       if (event.key !== 'Tab') return
       focused.push(document.activeElement!.ariaLabel!)
       readHidden()
     }
+
     document.addEventListener('keyup', readPress)
+
     // Send the presses in few calls. The answer to a keyboard call waits for the next frame, and a frame is slow under load.
     // A read at a keyup comes before that frame, so read the last field of each call again after the frame.
     // A late move in the direction of travel cannot show at Field 20 and Field 1, where the box is at the end of its scroll.
@@ -183,11 +199,13 @@ for (const [width, height] of [
       await userEvent.keyboard('{Tab}'.repeat(presses))
       readHidden()
     }
+
     for (const presses of [6, 13]) {
       startStep(`${presses} Shift+Tab`)
       await userEvent.keyboard(`{Shift>}${'{Tab}'.repeat(presses)}{/Shift}`)
       readHidden()
     }
+
     document.removeEventListener('keyup', readPress)
 
     expect(focused).toHaveLength(39)
@@ -214,13 +232,16 @@ for (const [width, height] of [
       const right = left + box.clientWidth
       const { top, bottom } = title.getBoundingClientRect()
       const shown = new Set<string>()
+
       for (let y = top; y <= bottom + 3; y++) {
         for (let x = left + 1; x < right; x += 2) {
           const hit = document.elementFromPoint(x, y)
+
           if (!hit || header.contains(hit) || closeButton().contains(hit)) continue
           shown.add(hit === field ? 'the field' : hit.getAttribute('class') ?? hit.tagName)
         }
       }
+
       return [...shown]
     }).toEqual([])
   })
@@ -234,6 +255,7 @@ for (const [width, height] of [
     await expect.poll(() => {
       const action = page.getByRole('button', { name: 'Close work order' }).element()
       const { left, top, width: w, height: h } = action.getBoundingClientRect()
+
       return action.contains(document.elementFromPoint(left + w / 2, top + h / 2))
     }).toBe(true)
   })

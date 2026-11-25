@@ -16,6 +16,7 @@ export function toQueryKitString(state: FilterState): string {
 
 function joinFilters(items: (Filter | FilterGroup)[], logicalOperator: FilterGroup['logicalOperator']): string {
   const operator = logicalOperator === LogicalOperators.AND ? ' && ' : ' || '
+
   return items.map(convertFilterOrGroup).filter(Boolean).join(operator)
 }
 
@@ -23,7 +24,9 @@ function convertFilterOrGroup(item: Filter | FilterGroup): string {
   if (isFilter(item)) {
     return convertFilter(item)
   }
+
   const filters = joinFilters(item.filters, item.logicalOperator)
+
   return filters ? `(${filters})` : ''
 }
 
@@ -100,6 +103,7 @@ function convertDateFilter(propertyKey: string, _operator: string, value: DateVa
     if (!(date instanceof Date)) return date.set({ millisecond: 0 }).toString()
 
     const wallClock = wallClockAt(date, timeZone).set({ millisecond: 0 })
+
     switch (dateType) {
       case 'datetimeUtc':
         return `${date.toISOString().slice(0, 19)}Z`
@@ -131,10 +135,12 @@ function convertDateFilter(propertyKey: string, _operator: string, value: DateVa
         // Single date still uses parentheses for consistency
         return `(${propertyKey} >= "${formatDateValue(startDate)}")`
       }
+
       // If exclude is true, use OR logic (dates outside the range)
       if (exclude) {
         return `(${propertyKey} < "${formatDateValue(startDate)}" || ${propertyKey} > "${formatDateValue(endDate)}")`
       }
+
       // Normal between uses AND logic (dates inside the range) - always wrap in parentheses for proper precedence
       return `(${propertyKey} >= "${formatDateValue(startDate)}" && ${propertyKey} <= "${formatDateValue(endDate)}")`
 
@@ -172,9 +178,11 @@ export function validateFilterState(state: FilterState): {
       if (!item.propertyKey) {
         errors.push(`${path}: Filter missing propertyKey`)
       }
+
       if (!item.operator) {
         errors.push(`${path}: Filter missing operator`)
       }
+
       if (item.value === undefined || item.value === null) {
         errors.push(`${path}: Filter missing value`)
       }
@@ -188,9 +196,11 @@ export function validateFilterState(state: FilterState): {
 
       if (item.controlType === 'date' && typeof item.value === 'object') {
         const dateValue = item.value as DateValue
+
         if (!dateValue.startDate) {
           errors.push(`${path}: Date filter missing startDate`)
         }
+
         if (dateValue.mode === 'between' && !dateValue.endDate) {
           errors.push(`${path}: Date filter with 'between' mode missing endDate`)
         }

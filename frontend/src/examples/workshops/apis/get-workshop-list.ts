@@ -27,6 +27,7 @@ export function useWorkshopList(params: WorkshopListParams, { enabled = true }: 
         },
         signal,
       })
+
       return { workshops: result.data, pagination: parsePagination(result) }
     },
     placeholderData: keepPreviousData,

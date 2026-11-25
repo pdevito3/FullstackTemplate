@@ -40,28 +40,35 @@ const kindOfEmptyAnswer: Partial<Record<number, UnexplainedKind>> = {
 
 export function answerError(status: number, body: unknown): ProblemDetailsError | UnexplainedFailureError {
   if (isProblemDetails(body)) return new ProblemDetailsError(body)
+
   return new UnexplainedFailureError(kindOfEmptyAnswer[status] ?? 'server-fault', `The answer has status ${status} and no problem details.`)
 }
 
 export function requestError(error: AxiosError): ProblemDetailsError | UnexplainedFailureError {
   if (error.response) return answerError(error.response.status, error.response.data)
+
   return new UnexplainedFailureError(error.code === AxiosError.ETIMEDOUT ? 'timed-out' : 'no-answer', error.message)
 }
 
 function refusalTextOf({ status, detail, title }: ProblemDetails): string | null {
   if ((status ?? 500) >= 500) return null
+
   return detail || title || null
 }
 
 function failureOf(error: unknown): Failure {
   if (error instanceof UnexplainedFailureError) return { kind: error.kind }
+
   if (!isProblemDetailsError(error)) return { kind: 'app-fault' }
+
   if (error.problemDetails.status === 401) return { kind: 'sign-in-rejected' }
   const text = refusalTextOf(error.problemDetails)
+
   return text === null ? { kind: 'server-fault' } : { kind: 'refused', text }
 }
 
 export function failureText(error: unknown): string {
   const failure = failureOf(error)
+
   return failure.kind === 'refused' ? failure.text : textOf[failure.kind]
 }

@@ -24,18 +24,23 @@ export function MultiSelectFilter({
     options = NO_OPTIONS,
     operators: allowedOperators = DEFAULT_OPERATORS,
   } = config
+
   const [searchTerm, setSearchTerm] = useState('')
+
   const [selected, setSelected] = useState<string[]>(
     (initialFilter?.value as string[]) || []
   )
+
   const [operator, setOperator] = useState<OperatorType>(
     pickOperator(allowedOperators, initialFilter?.operator ?? getDefaultOperator('multiselect'))
   )
+
   const [matchAll, setMatchAll] = useState(initialFilter?.matchAll || false)
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options
     const lower = searchTerm.toLowerCase()
+
     return options.filter(
       (opt) =>
         opt.label.toLowerCase().includes(lower) ||

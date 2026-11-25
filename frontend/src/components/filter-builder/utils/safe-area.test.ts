@@ -9,11 +9,13 @@ const start = { x: 20, y: 315 }
 function walk(from: Point, to: Point, steps = 50) {
   let area = moveSafeArea(safeAreaFrom(trigger), from, trigger, submenu)
   const areas = []
+
   for (let step = 1; step <= steps; step++) {
     const point = { x: from.x + ((to.x - from.x) * step) / steps, y: from.y + ((to.y - from.y) * step) / steps }
     area = moveSafeArea(area, point, trigger, submenu)
     areas.push({ point, area })
   }
+
   return areas
 }
 

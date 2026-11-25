@@ -25,7 +25,9 @@ export function NoTenantNotice() {
   useEffect(() => {
     const stoppedFailing = wasFailed.current && !isFailed
     wasFailed.current = isFailed
+
     if (!stoppedFailing || document.activeElement !== document.body) return
+
     if (noticeLink.current) noticeLink.current.focus({ preventScroll: true })
     else focusWithoutTabStop(document.querySelector<HTMLElement>('main h1'))
   }, [isFailed])

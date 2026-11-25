@@ -66,9 +66,18 @@ tester.run("anti-slop/no-accumulating-spread", noAccumulatingSpreadRule, {
     "let list = []; for (const item of items) { const copy = [...list, item]; use(copy); }",
     "for (const item of items) { let all = []; all = [...all, item]; }",
     "items.reduce((acc, item) => { const acc2 = item; return [...acc2]; }, []);",
+    "let cur = start; while (cur) { const n = { ...cur }; use(n); cur = cur.next; }",
+    "async function f() { let page = first; while (page) { render({ ...page }); page = await next(page); } }",
+    "let state = init; for (const e of events) { state = reduce(state, e); log({ ...state }); }",
+    "let row = {}; for (const c of cols) { const r = { ...row }; r[c] = 1; out.push(r); row = {}; }",
     ...oxcValid,
   ],
   invalid: [
+    {
+      name: "spread in a reducer with a this parameter",
+      code: "arr.reduce(function (this: unknown, acc: number[], x: number) { return [...acc, x]; }, []);",
+      errors: [error],
+    },
     { name: "array spread in an arrow reducer", code: "items.reduce((acc, item) => [...acc, item], []);", errors: [error] },
     { name: "object spread in a reducer", code: "items.reduce((acc, item) => ({ ...acc, [item.id]: item }), {});", errors: [error] },
     { name: "spread in a returned value", code: "items.reduceRight(function (acc, item) { return [...acc, item]; }, []);", errors: [error] },

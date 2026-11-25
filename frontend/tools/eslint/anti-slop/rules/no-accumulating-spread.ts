@@ -1,5 +1,5 @@
 import { defineRule } from "@oxlint/plugins";
-import type { ESTree, Variable } from "@oxlint/plugins";
+import type { ESTree, Reference, SourceCode, Variable } from "@oxlint/plugins";
 
 import { arrayMethodTarget, resolveArrayBinding, unwrapArrayExpression } from "../shared/array-method.ts";
 
@@ -29,9 +29,10 @@ function isReducerAccumulator(variable: Variable, spread: ESTree.SpreadElement):
 
   const fn = definition.node;
   if (fn.type !== "ArrowFunctionExpression" && fn.type !== "FunctionExpression") return false;
-  if (fn.params.length < 2 || fn.params.length > 4) return false;
+  const params = fn.params[0]?.type === "Identifier" && fn.params[0].name === "this" ? fn.params.slice(1) : fn.params;
+  if (params.length < 2 || params.length > 4) return false;
 
-  const first = fn.params[0];
+  const first = params[0];
   const binding = first?.type === "AssignmentPattern" ? first.left : first;
   if (binding !== definition.name || enclosingFunction(spread) !== fn) return false;
 
@@ -45,11 +46,30 @@ function isReducerAccumulator(variable: Variable, spread: ESTree.SpreadElement):
   return callback !== undefined && unwrapArrayExpression(callback) === fn && method !== null && REDUCERS.has(method.name);
 }
 
-// As oxc: a loop around the spread that does not hold the declaration of the variable. Unlike oxc, the loop may
-// assign the variable anywhere, not only with the spread on the right side, as in `const next = [...all, n]; all = next`.
-function isLoopAccumulator(variable: Variable, spread: ESTree.SpreadElement): boolean {
+// The value that a write gives the variable is the array or object of the spread, directly, as in `all = [...all, n]`,
+// or through a const that it initializes, as in `const next = [...all, n]; all = next`.
+function writesCopy(sourceCode: SourceCode, write: Reference, copy: ESTree.Node): boolean {
+  const assignment = write.identifier.parent;
+  if (assignment?.type !== "AssignmentExpression" || assignment.operator !== "=" || assignment.left !== write.identifier)
+    return false;
+
+  const value = unwrapArrayExpression(assignment.right);
+  if (value === copy) return true;
+
+  const definition = resolveArrayBinding(sourceCode, value)?.defs[0];
+  const declarator = definition?.node;
+  const declaration = definition?.parent;
+  if (declarator?.type !== "VariableDeclarator" || declaration?.type !== "VariableDeclaration") return false;
+
+  return declaration.kind === "const" && declarator.init !== null && unwrapArrayExpression(declarator.init) === copy;
+}
+
+// As oxc: a loop around the spread that does not hold the declaration of the variable, and that assigns the copy back
+// to the variable.
+function isLoopAccumulator(sourceCode: SourceCode, variable: Variable, spread: ESTree.SpreadElement): boolean {
   const declaration = variable.identifiers[0];
-  if (declaration === undefined) return false;
+  const copy = spread.parent;
+  if (declaration === undefined || copy === null) return false;
 
   const writes = variable.references.filter((reference) => reference.isWrite() && !reference.init);
 
@@ -57,7 +77,7 @@ function isLoopAccumulator(variable: Variable, spread: ESTree.SpreadElement): bo
     if (!LOOPS.has(at.type) || contains(at, declaration)) continue;
 
     const loop = at;
-    if (writes.some((reference) => contains(loop, reference.identifier))) return true;
+    if (writes.some((write) => contains(loop, write.identifier) && writesCopy(sourceCode, write, copy))) return true;
   }
 
   return false;
@@ -82,7 +102,7 @@ export const noAccumulatingSpreadRule = defineRule({
         const variable = resolveArrayBinding(context.sourceCode, spread.argument);
         if (variable === null) return;
 
-        if (isReducerAccumulator(variable, spread) || isLoopAccumulator(variable, spread))
+        if (isReducerAccumulator(variable, spread) || isLoopAccumulator(context.sourceCode, variable, spread))
           context.report({ node: spread, messageId: "accumulatingSpread", data: { name: spread.argument.name } });
       },
     };

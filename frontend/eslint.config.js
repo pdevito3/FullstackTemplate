@@ -568,7 +568,7 @@ const failureTextRule = {
 
 export default tseslint.config(
   // Kubb writes src/api/generated (and one sibling folder for each other API version). Run `pnpm generate:api` to change it.
-  { ignores: ['dist', 'dist-functional', 'src/api/generated*'] },
+  { ignores: ['dist', 'dist-functional', 'src/api/generated*', 'tools/eslint/anti-slop/**'] },
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/lib/request-failure.ts', 'src/**/*.test.{ts,tsx}', 'src/test/**'],

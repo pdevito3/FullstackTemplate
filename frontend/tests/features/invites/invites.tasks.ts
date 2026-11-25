@@ -3,7 +3,23 @@ import { nextFrames, openAndWaitForLogin } from '@tests/support/answers'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { invitesPaths } from '@tests/support/api/invites-api'
 import { tenantsPaths } from '@tests/support/api/tenants-api'
+import { browserZone } from '@tests/support/clock'
 import { invites, join } from './invites.locators'
+
+/** `inviteExpiry` in each zone of the suite. */
+const inviteExpiryIn = new Map([
+  ['Pacific/Kiritimati', 'Jan 16, 2099, 2:00 AM'],
+  ['Pacific/Pago_Pago', 'Jan 15, 2099, 1:00 AM'],
+])
+
+/** The text of `inviteExpiry` that the page shows in the zone of the browser. */
+export function inviteExpiryInBrowserZone(): string {
+  const expiry = inviteExpiryIn.get(browserZone())
+
+  if (expiry === undefined) throw new Error(`The suite has no invite expiry for the zone ${browserZone()}.`)
+
+  return expiry
+}
 
 const answeredBy = (page: Page) => (method: string, path: string, nth = 1) => {
   let answers = 0

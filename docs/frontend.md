@@ -28,6 +28,8 @@ pnpm generate:api  # API contract from the OpenAPI document
 
 `engines.pnpm` makes `pnpm install`, `pnpm add`, `pnpm update`, and each script fail on a pnpm older than 10. An older pnpm rewrites `pnpm-lock.yaml`, and the next frozen install then fails with an error such as `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. If a command fails with `ERR_PNPM_UNSUPPORTED_ENGINE`, upgrade the global pnpm with the tool that installed it, such as `pnpm i -g pnpm` or `npm i -g pnpm`. Then run `pnpm --version` in `frontend/`. It must print the pinned version. If it prints the old version, an old pnpm comes first in `PATH`.
 
+`pnpm lint` needs Node 22.18 or later, because `eslint.config.js` imports a `.ts` file and Node strips its types. `engines.node` gives only a warning on an older Node. Then `pnpm lint` fails when Node loads the `.ts` file.
+
 The component tests use Vitest browser mode with the Playwright provider. Before the first `pnpm test`, install Chromium once with `pnpm exec playwright install chromium`. A component test renders with `render` from `vitest-browser-react`. Find an element in an overlay with `page` from `vitest/browser`, because an overlay renders outside the test container.
 
 ## Project structure

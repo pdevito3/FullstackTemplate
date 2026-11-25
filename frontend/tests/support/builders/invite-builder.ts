@@ -1,26 +1,10 @@
 import type { InviteDto } from '@/api/generated/models/types/invite-dto'
 import type { InvitePreviewDto } from '@/api/generated/models/types/invite-preview-dto'
-import { browserZone } from '@tests/support/clock'
 
 let seed = 0
 const next = () => ++seed
 
 export const inviteExpiry = '2099-01-15T12:00:00Z'
-
-/** `inviteExpiry` in each zone of the suite. */
-const inviteExpiryIn = new Map([
-  ['Pacific/Kiritimati', 'Jan 16, 2099, 2:00 AM'],
-  ['Pacific/Pago_Pago', 'Jan 15, 2099, 1:00 AM'],
-])
-
-/** The text of `inviteExpiry` that the page shows in the zone of the browser. */
-export function inviteExpiryInBrowserZone(): string {
-  const expiry = inviteExpiryIn.get(browserZone())
-
-  if (expiry === undefined) throw new Error(`The suite has no invite expiry for the zone ${browserZone()}.`)
-
-  return expiry
-}
 
 class InviteBuilder {
   private readonly invite: InviteDto

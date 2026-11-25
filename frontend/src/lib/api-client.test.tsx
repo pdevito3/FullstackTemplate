@@ -79,7 +79,7 @@ describe('apiClient with a generated client', () => {
     const error = await addTenant({ body: { name: '' } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
-    expect((error as ProblemDetailsError).status).toBe(422)
+    expect(error).toHaveProperty('status', 422)
     expect(shownToasts()).toEqual([{ type: 'error', message: 'Please provide a name.' }])
     expect(checkSession).not.toHaveBeenCalled()
   })
@@ -100,7 +100,7 @@ describe('apiClient with a generated client', () => {
     const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(AxiosError)
-    expect((error as AxiosError).code).toBe(AxiosError.ERR_CANCELED)
+    expect(error).toHaveProperty('code', AxiosError.ERR_CANCELED)
     expect(shownToasts()).toEqual([])
   })
 

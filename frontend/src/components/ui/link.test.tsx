@@ -129,7 +129,10 @@ test('a disabled link is marked disabled and does not navigate or call onPress',
   await expect.element(link).toHaveAttribute('aria-disabled', 'true')
 
   // Playwright does not click an element with aria-disabled. A screen reader clicks it in this way.
-  const element = link.element() as HTMLElement
+  const element = link.element()
+
+  if (!(element instanceof HTMLElement)) throw new Error('The link is not an HTML element.')
+
   element.click()
 
   expect(router.state.location.pathname).toBe('/')

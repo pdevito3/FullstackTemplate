@@ -23,7 +23,7 @@ async function currentAt(path: string, urls: readonly string[] = navUrls) {
   const screen = await render(<RouterProvider router={router} />)
   const output = screen.getByRole('status')
   await expect.element(output).toBeInTheDocument()
-  const current = JSON.parse(output.element().textContent ?? '') as unknown
+  const current: unknown = JSON.parse(output.element().textContent ?? '')
   await screen.unmount()
 
   return current

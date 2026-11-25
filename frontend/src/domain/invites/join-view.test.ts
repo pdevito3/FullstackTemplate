@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import type { Membership } from '@/domain/membership/apis/get-membership'
 import { ProblemDetailsError } from '@/lib/problem-details'
+import { member as user } from '@/test/session'
 
 import { joinViewOf, LINK_NEEDED, LINK_NOT_VALID } from './join-view'
 
 const profile = { identifier: 'ada', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', username: 'ada' }
 const noTenant: Membership = { status: 'no-tenant', profile }
-const member = { status: 'member', user: { id: 'usr_1' } } as Membership
+const member: Membership = { status: 'member', user }
 const data = { tenantName: 'Acme', role: 'User', expiresAt: '2099-01-15T12:00:00Z', requireEmailMatch: false } as const
 
 const refusal = (status: number, detail: string) =>

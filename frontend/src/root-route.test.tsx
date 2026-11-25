@@ -164,7 +164,7 @@ test('a heading that shows after the user moved the focus off the main landmark 
 
   const trigger = screen.getByRole('button', { name: 'Toggle Sidebar' }).first()
 
-  ;(trigger.element() as HTMLElement).focus()
+  trigger.element().focus()
 
   showLateHeading()
 
@@ -206,7 +206,7 @@ test('a click on the content after the focus move to the main landmark does not 
 test('a navigation that leaves the focus on a control in the page announces the page', async () => {
   const { screen, router } = await renderLayoutAt('/users/u_1')
 
-  ;(screen.getByRole('button', { name: 'Next user' }).element() as HTMLElement).focus()
+  screen.getByRole('button', { name: 'Next user' }).element().focus()
 
   router.history.push('/users/u_2')
 
@@ -222,7 +222,7 @@ test('two navigations in a row to pages with the same name each change the text 
 
   const trigger = screen.getByRole('button', { name: 'Toggle Sidebar' }).first()
 
-  ;(trigger.element() as HTMLElement).focus()
+  trigger.element().focus()
 
   router.history.push('/users/u_2')
   await expect.poll(() => region.textContent).toBe('User')
@@ -235,13 +235,14 @@ test('each page of the app declares the name that its breadcrumb shows', () => {
   const router = createRouter({ routeTree })
 
   // A pathless layout or a route with an index child is never the last match, so a child names the page.
-  const hasIndexChild = (route: AnyRoute) =>
-    Object.values((route.children ?? {}) as Record<string, AnyRoute>).some((child) => child.path === '/')
+  const routes: AnyRoute[] = Object.values(router.routesById)
+  const hasIndexChild = (route: AnyRoute) => routes.some((child) => child.parentRoute === route && child.path === '/')
 
-  const pagesWithoutBreadcrumb = Object.values(router.routesById)
-    .filter((route) => !route.isRoot && route.path !== undefined && !hasIndexChild(route))
-    .filter((route) => !route.options.staticData?.breadcrumb)
-    .map((route) => route.fullPath)
+  const pagesWithoutBreadcrumb = routes.flatMap((route) => {
+    const isPage = !route.isRoot && route.path !== undefined && !hasIndexChild(route)
+
+    return isPage && !route.options.staticData?.breadcrumb ? [route.fullPath] : []
+  })
 
   expect(Object.keys(router.routesById).length).toBeGreaterThan(1)
   expect(pagesWithoutBreadcrumb).toEqual([])

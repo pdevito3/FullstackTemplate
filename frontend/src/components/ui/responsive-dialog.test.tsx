@@ -221,7 +221,7 @@ for (const [width, height] of [
     await renderAt(width, height, <FormDialog title="Edit filter" />)
     await openAnimationsFinished()
 
-    const field = page.getByRole('textbox', { name: 'Field 4', exact: true }).element() as HTMLElement
+    const field = page.getByRole('textbox', { name: 'Field 4', exact: true }).element()
     field.focus()
     const box = scrollParent(field)
     const title = page.getByRole('heading', { name: 'Edit filter' }).element()

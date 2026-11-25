@@ -178,7 +178,7 @@ test('a current page with no room left on the line moves to the next line and sh
   const current = screen.getByRole('link', { name: 'Demo' })
   await expect.element(current).toBeVisible()
 
-  const name = current.element() as HTMLElement
+  const name = current.element()
   const first = screen.getByRole('link', { name: 'Work orders' }).element().getBoundingClientRect()
   const crumb = screen.getByRole('link', { name: 'North yard compressors' }).element().getBoundingClientRect()
   expect(crumb.top).toBe(first.top)

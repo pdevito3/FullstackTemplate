@@ -587,6 +587,7 @@ export const antiSlopRules = {
   'anti-slop/no-unsafe-dictionary-type': 'error',
   'anti-slop/no-widen-then-assert': 'error',
   'anti-slop/require-readable-spacing': 'error',
+  'anti-slop/require-safety-comment-for-type-assertion': 'error',
 }
 
 export default tseslint.config(

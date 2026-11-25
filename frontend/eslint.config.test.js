@@ -1,6 +1,7 @@
 import { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
+import antiSlop from './tools/eslint/anti-slop/index.ts'
 import { antiSlopRules, armWaitFirstRule, codeToWordsRules, lateWaitMessage, noPageActionRule, serverStatePlugin, stringSelectorMessage } from './eslint.config.js'
 
 const pageAction = "import type { Page } from '@playwright/test'\nexport const save = (page: Page) => page.click('#save')\n"
@@ -511,7 +512,12 @@ describe('anti-slop rules', { timeout: 60_000 }, () => {
     expect(await antiSlopRulesOf(antiSlopSeeds[rule])).toContain(rule)
   })
 
-  it.each(['src/seed.tsx', 'tests/seed.ts', 'e2e/seed.ts'])('applies each rule to %s', async (file) => {
+  it('turns on each rule of the plugin', () => {
+    const enabled = Object.entries(antiSlopRules).flatMap(([rule, entry]) => ([entry].flat()[0] === 'error' ? [rule] : []))
+    expect(enabled.sort()).toEqual(Object.keys(antiSlop.rules).map((rule) => `anti-slop/${rule}`).sort())
+  })
+
+  it.each(['src/seed.tsx', 'src/seed.test.ts', 'src/test/seed.ts', 'tests/seed.ts', 'e2e/seed.ts', 'vite.config.ts'])('applies each rule to %s', async (file) => {
     const config = await new ESLint({ cwd: import.meta.dirname }).calculateConfigForFile(file)
     for (const rule of Object.keys(antiSlopRules))
       expect(config.rules[rule]?.[0], rule).toBe(2)

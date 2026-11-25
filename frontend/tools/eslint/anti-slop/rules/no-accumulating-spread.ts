@@ -1,32 +1,11 @@
 import { defineRule } from "@oxlint/plugins";
-import type { ESTree } from "@oxlint/plugins";
+import type { ESTree, Variable } from "@oxlint/plugins";
+
+import { arrayMethodTarget, resolveArrayBinding, unwrapArrayExpression } from "../shared/array-method.ts";
 
 const REDUCERS = new Set(["reduce", "reduceRight"]);
 
 const LOOPS = new Set(["ForStatement", "ForInStatement", "ForOfStatement", "WhileStatement", "DoWhileStatement"]);
-
-function spreadsName(collection: ESTree.Node | null | undefined, name: string): boolean {
-  if (collection?.type !== "ArrayExpression" && collection?.type !== "ObjectExpression") return false;
-
-  const items: readonly (ESTree.Node | null)[] =
-    collection.type === "ArrayExpression" ? collection.elements : collection.properties;
-
-  return items.some(
-    (item) => item?.type === "SpreadElement" && item.argument.type === "Identifier" && item.argument.name === name,
-  );
-}
-
-function reducerAccumulator(fn: ESTree.Node): string | null {
-  const call = fn.parent;
-  if (call?.type !== "CallExpression" || call.arguments[0] !== fn) return null;
-  if (call.callee.type !== "MemberExpression" || call.callee.property.type !== "Identifier") return null;
-  if (!REDUCERS.has(call.callee.property.name)) return null;
-
-  const params = "params" in fn ? fn.params : [];
-  const first = params[0];
-
-  return first?.type === "Identifier" ? first.name : null;
-}
 
 const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
 
@@ -38,10 +17,47 @@ function enclosingFunction(node: ESTree.Node): ESTree.Node | null {
   return null;
 }
 
-function insideLoop(node: ESTree.Node): boolean {
-  for (let at = node.parent; at; at = at.parent) {
-    if (LOOPS.has(at.type)) return true;
-    if (FUNCTIONS.has(at.type)) return false;
+function contains(outer: ESTree.Node, inner: ESTree.Node): boolean {
+  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
+}
+
+// As oxc: the first parameter of a callback with 2 to 4 parameters, which is the first of 1 or 2 arguments of a
+// reduce or reduceRight call, and no function between the spread and that callback.
+function isReducerAccumulator(variable: Variable, spread: ESTree.SpreadElement): boolean {
+  const definition = variable.defs[0];
+  if (definition?.type !== "Parameter") return false;
+
+  const fn = definition.node;
+  if (fn.type !== "ArrowFunctionExpression" && fn.type !== "FunctionExpression") return false;
+  if (fn.params.length < 2 || fn.params.length > 4) return false;
+
+  const first = fn.params[0];
+  const binding = first?.type === "AssignmentPattern" ? first.left : first;
+  if (binding !== definition.name || enclosingFunction(spread) !== fn) return false;
+
+  let call: ESTree.Node | null = fn.parent;
+  while (call !== null && unwrapArrayExpression(call) === fn) call = call.parent;
+  if (call?.type !== "CallExpression" || call.arguments.length > 2) return false;
+
+  const callback = call.arguments[0];
+  const method = arrayMethodTarget(call.callee);
+
+  return callback !== undefined && unwrapArrayExpression(callback) === fn && method !== null && REDUCERS.has(method.name);
+}
+
+// As oxc: a loop around the spread that does not hold the declaration of the variable. Unlike oxc, the loop may
+// assign the variable anywhere, not only with the spread on the right side, as in `const next = [...all, n]; all = next`.
+function isLoopAccumulator(variable: Variable, spread: ESTree.SpreadElement): boolean {
+  const declaration = variable.identifiers[0];
+  if (declaration === undefined) return false;
+
+  const writes = variable.references.filter((reference) => reference.isWrite() && !reference.init);
+
+  for (let at: ESTree.Node | null = spread.parent; at; at = at.parent) {
+    if (!LOOPS.has(at.type) || contains(at, declaration)) continue;
+
+    const loop = at;
+    if (writes.some((reference) => contains(loop, reference.identifier))) return true;
   }
 
   return false;
@@ -59,22 +75,15 @@ export const noAccumulatingSpreadRule = defineRule({
     },
   },
   createOnce(context) {
-    const report = (node: ESTree.Node, name: string) =>
-      context.report({ node, messageId: "accumulatingSpread", data: { name } });
-
     return {
-      ArrowFunctionExpression(fn) {
-        const name = reducerAccumulator(fn);
-        if (name !== null && fn.body.type !== "BlockStatement" && spreadsName(fn.body, name)) report(fn.body, name);
-      },
-      ReturnStatement(node) {
-        const fn = enclosingFunction(node);
-        const name = fn && reducerAccumulator(fn);
-        if (name && spreadsName(node.argument, name) && node.argument) report(node.argument, name);
-      },
-      AssignmentExpression(node) {
-        if (node.operator !== "=" || node.left.type !== "Identifier") return;
-        if (spreadsName(node.right, node.left.name) && insideLoop(node)) report(node.right, node.left.name);
+      SpreadElement(spread) {
+        if (spread.argument.type !== "Identifier") return;
+
+        const variable = resolveArrayBinding(context.sourceCode, spread.argument);
+        if (variable === null) return;
+
+        if (isReducerAccumulator(variable, spread) || isLoopAccumulator(variable, spread))
+          context.report({ node: spread, messageId: "accumulatingSpread", data: { name: spread.argument.name } });
       },
     };
   },

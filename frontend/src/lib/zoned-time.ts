@@ -24,6 +24,8 @@ export function parseTimeZone(value: string): TimeZone {
   const zone = PLACE_OF_SYSTEM_V_ID.get(value.toUpperCase()) ?? value
   const resolved = new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone
 
+  // SAFETY: Intl.DateTimeFormat threw a RangeError above for a zone that the browser does not know, so the browser knows
+  // both the zone and the name that it resolved the zone to.
   return (resolved.toLowerCase() === zone.toLowerCase() ? resolved : zone) as TimeZone
 }
 
@@ -43,6 +45,7 @@ const PLACE_OF_SYSTEM_V_ID = new Map([
 
 /** The zone of the browser. Use it only for a time that belongs to the user, not to a place. */
 export function browserTimeZone(): TimeZone {
+  // SAFETY: getLocalTimeZone gives the zone that Intl resolved for the browser, so the browser knows it.
   return getLocalTimeZone() as TimeZone
 }
 

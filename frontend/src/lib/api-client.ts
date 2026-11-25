@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosError } from 'axios'
 
 import type { client as KubbClient } from '@/api/generated/.kubb/client'
 import { Notification } from '@/components/notification'
@@ -69,7 +69,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     // Get custom config options
-    const config = error.config as AxiosRequestConfig | undefined
+    const config = error.config
     const suppressToast = config?.suppressErrorToast ?? false
 
     // A cancel (for example, TanStack Query aborts an old query) is not an error to show.

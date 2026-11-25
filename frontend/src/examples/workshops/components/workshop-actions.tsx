@@ -26,7 +26,7 @@ const LABELS: Record<WorkshopCommand, string> = {
 }
 
 const isCommand = (action: WorkshopDtoAllowedActionsEnumKey): action is WorkshopCommand =>
-  !(NOT_COMMANDS as readonly WorkshopDtoAllowedActionsEnumKey[]).includes(action)
+  !NOT_COMMANDS.some((notCommand) => notCommand === action)
 
 interface WorkshopActionsProps {
   workshop: WorkshopDto

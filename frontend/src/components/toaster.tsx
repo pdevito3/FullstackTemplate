@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Text } from 'react-aria-components'
 // The UNSTABLE_ toast APIs can change in a minor release. package.json pins
 // react-aria-components to ~1.22.1 for this reason (notification.ts uses them too).
@@ -95,7 +94,7 @@ export function Toaster() {
           toast={toast}
           ref={pauseWhileHidden(toast)}
           data-slot="toast"
-          style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' } as CSSProperties}
+          style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' }}
           className={cn(
             'bg-card text-card-foreground border border-border',
             'shadow-lg rounded-lg px-4 py-3',

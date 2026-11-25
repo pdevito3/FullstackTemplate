@@ -28,7 +28,7 @@ const schema = z.object({
 
 type StartTenantValues = z.infer<typeof schema>
 
-const FIELD_NAMES = Object.keys(schema.shape) as (keyof StartTenantValues)[]
+const FIELD_NAMES = schema.keyof().options
 
 interface StartTenantFormProps {
   profile: StartTenantProfile

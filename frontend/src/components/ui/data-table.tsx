@@ -33,6 +33,11 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
 }
 
+/** Whether the filter value of the search column is text. The search input sets it to the text that it holds. */
+function isSearchText(filterValue: unknown): filterValue is string {
+  return typeof filterValue === "string"
+}
+
 function DataTable<TData, TValue>({
   label,
   columns,
@@ -73,13 +78,15 @@ function DataTable<TData, TValue>({
     0
   )
 
+  const searchText = searchKey ? table.getColumn(searchKey)?.getFilterValue() : undefined
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
         {searchKey && (
           <Input
             placeholder={searchPlaceholder}
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+            value={isSearchText(searchText) ? searchText : ""}
             onChange={(event) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }

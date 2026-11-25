@@ -124,6 +124,19 @@ import { getCurrentUser } from '@/api/generated/users/clients/get-current-user'
 import { UserKeys } from './user.keys'
 ```
 
+## Lint guards
+
+`pnpm lint` runs the rules of [anti-slop](https://github.com/dmmulroy/anti-slop) on each TypeScript file of `frontend/`. The repo owns a copy of the rules in `tools/eslint/anti-slop/`. Its `UPSTREAM.md` gives the upstream commit and each change from upstream. `antiSlopRules` in `eslint.config.js` lists the rules that are on. Each message of a rule names its fix. These rules ask for a form that the other sections do not give:
+
+1. Parse data from outside at the boundary, with a zod schema or a type guard. A `typeof` check is correct only in a type guard, a function that returns `value is T`. Do not give the type `unknown` to a parameter, a return type, or a value of a `Record`. There are two exceptions. The value that a type guard checks can be `unknown`, as in `isUserDto` above. A caught error can be `unknown` when the name of the parameter is `cause`, as in `failureText(cause: unknown)`.
+2. Do not widen a value that has a known type. Write `satisfies Record<K, V>`, not `: Record<string, V>`, so that the type keeps the keys of the literal. Give a returned object a named interface, not an inline object type.
+3. Before each `as`, write a `// SAFETY:` comment that names the fact that makes the assertion true. A chain such as `as unknown as T` is not allowed.
+4. Make one pass over an array. Write `flatMap`, not `filter` then `map`. In a `reduce` or a loop, add to the accumulator. Do not copy it with a spread.
+5. Do not mock a module with `vi.mock`. Give the code a seam, such as a parameter, and pass the test double through it.
+6. Put a blank line before a `return` and before and after a block. `eslint --fix` adds these lines.
+
+To get a new upstream rule or fix, follow `references/update.md` of the upstream `install-anti-slop` skill. Then run `pnpm test`. It runs the upstream tests of each rule on ESLint.
+
 ## Comments
 
 Give a JSDoc comment to each exported function that is not obvious. Add a comment where the code follows a business rule or does a thing that a reader does not expect. Do not describe what the code already says.

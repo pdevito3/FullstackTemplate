@@ -38,7 +38,8 @@ try
         .BindConfiguration(ProxyOptions.SectionName)
         .ValidateDataAnnotations()
         .ValidateOnStart();
-    // After AddHttpForwarder, which registers the default factory. The wrapper adds the DPoP nonce retry.
+    // After AddHttpForwarder, which registers the default factory. The wrapper adds the DPoP nonce retry and the
+    // 502 for a connect timeout.
     builder.Services.AddSingleton<IForwarderHttpClientFactory, DPoPProxy.NonceRetryClientFactory>();
     // Bff:PublicOrigin, the forwarded headers, and the host filter
     builder.Services.AddHostTrust();

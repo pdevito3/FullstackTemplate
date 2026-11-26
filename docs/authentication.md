@@ -26,6 +26,8 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 
 `ActivityTimeoutsByContentType` in `Proxy/ApiProxy.cs` maps each content type to its setting, and each content type gets its own forwarder. The SPA stops its own wait after 35 seconds, and after 10 minutes for an upload (`requestTimeoutMs` and `uploadTimeoutMs` in `frontend/src/lib/api-client.ts`). So the 504 of the BFF normally comes first, and a dropped network does not keep a page pending with no end. Either stop ends only the wait: the Server can still complete the request.
 
+A connection to the Server that does not open in 15 seconds (the connect timeout of YARP) gets a 502, as a refused connection does. The request did not get to the Server, so it is not a time limit of the request. For example, the Aspire proxy of a stopped Server accepts the connection and then sends nothing. `Proxy/ConnectTimeoutHandler.cs` gives this 502.
+
 ## Login flow
 
 1. The React app calls `/bff/user` before it shows a page. Each page needs a session. If the answer is 204, the app shows no page and goes to the login.

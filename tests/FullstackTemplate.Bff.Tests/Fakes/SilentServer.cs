@@ -3,10 +3,6 @@ namespace FullstackTemplate.Bff.Tests.Fakes;
 using System.Net;
 using System.Net.Sockets;
 
-/// <summary>
-/// A port that accepts each TCP connection and never sends a byte, as the Aspire proxy of a stopped server does. A
-/// TLS handshake to it waits until the connect timeout of the proxy.
-/// </summary>
 public sealed class SilentServer : IDisposable
 {
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
@@ -33,7 +29,6 @@ public sealed class SilentServer : IDisposable
         }
         catch (Exception ex) when (ex is SocketException or ObjectDisposedException)
         {
-            // Dispose stopped the listener
         }
     }
 

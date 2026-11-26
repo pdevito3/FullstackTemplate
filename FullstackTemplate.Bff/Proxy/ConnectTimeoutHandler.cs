@@ -3,8 +3,7 @@ namespace FullstackTemplate.Bff.Proxy;
 /// <summary>
 /// Makes a connect timeout a connection error, so that YARP answers 502 and not 504. A connect timeout comes as a
 /// <see cref="TaskCanceledException"/>, which YARP reports as a timeout of the request. But the request never
-/// reached the server, as when the Aspire proxy of a stopped server holds the TLS handshake. The 504 of the BFF
-/// means that the server can still complete the request, and the SPA tells the user to reload to see it.
+/// reached the server.
 /// </summary>
 internal sealed class ConnectTimeoutHandler(HttpMessageHandler inner) : DelegatingHandler(inner)
 {

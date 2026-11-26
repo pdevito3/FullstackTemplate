@@ -6,7 +6,7 @@ A domain entity holds its data and its business rules. Code outside the entity c
 
 1. Give each property a private setter.
 2. Create the entity with a static `Create` method that takes a creation model. Do not use a public constructor.
-3. Add one public method for each change, for example `Update`, `UpdateRole`, or `AddPermission`. Each method returns `this`.
+3. Add one public method for each change, for example `Update`, `UpdateRoles`, or `AddPermission`. Each method returns `this`.
 4. Validate in the entity. Throw a `ValidationException` when a rule fails. Give it the name of the request field in camelCase, for example `"firstName"`. This name is the key in the `errors` of the problem.
 5. Queue a domain event in each method that changes the state. See [domain-events.md](domain-events.md).
 6. Keep collections private. Expose an `IReadOnlyCollection<T>`, and change it only with entity methods.
@@ -125,7 +125,7 @@ public Tenant Update(TenantForUpdate tenantForUpdate)
 }
 ```
 
-A method for one intent, such as `UpdateRole` or `AddPermission`, gets no version. The context still checks the loaded version when it saves, and the command runs again when it loses. See [concurrency.md](concurrency.md#run-again).
+A method for one intent, such as `UpdateRoles` or `AddPermission`, gets no version. The context still checks the loaded version when it saves, and the command runs again when it loses. See [concurrency.md](concurrency.md#run-again).
 
 ## Guards
 

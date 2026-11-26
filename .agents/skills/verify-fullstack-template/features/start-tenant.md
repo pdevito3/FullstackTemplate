@@ -27,7 +27,7 @@ Preconditions:
 - **Notice.** Run `login()`. `page.getByRole('region', { name: 'No tenant' })` contains `You are not a member of a tenant.`.
 - **Check failed.** With `page.route`, answer one lookup with a problem details 403, then reload. The region `Membership check` shows the reason and `Try Again`. Click it: the notice shows and its link has the focus.
 - **Form.** Run `notice.getByRole('link', { name: 'Start a tenant' }).click()`. The heading `Start a tenant` is visible. `First name`, `Last name`, and `Email` have the values of the `given_name`, `family_name`, and `email` claims of `GET /bff/user`.
-- **Start.** Fill `Tenant name` with a unique name, then click `Start a tenant` after `waitForResponse` on `POST /api/v1/users/initiate`. The response is 201. `user.role` is `Admin` and `user.identifier` is the `sub` claim. The page names the tenant of the response, and `Go to the home page` has the focus. Choose it. The level 1 heading of the home page has the focus, and the notice has count 0.
+- **Start.** Fill `Tenant name` with a unique name, then click `Start a tenant` after `waitForResponse` on `POST /api/v1/users/initiate`. The response is 201. `user.roles` is `["Admin"]` and `user.identifier` is the `sub` claim. The page names the tenant of the response, and `Go to the home page` has the focus. Choose it. The level 1 heading of the home page has the focus, and the notice has count 0.
 - **Permissions.** `fetch('/api/v1/users')` in the page gives 200 with the new admin.
 - **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/start-tenant.mjs`. The captures `home-with-notice`, `start-tenant-form`, `started`, and `home-after-start` show the four states.
 

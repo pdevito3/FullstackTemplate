@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -128,10 +129,10 @@ public class UpdateUserRolesCommandTests : TestBase
         await testingServiceScope.SendAsync(new AddUserPermission.Command(member.Id, "read_users"));
         await testingServiceScope.SendAsync(new RemoveUserPermission.Command(admin.Id, "manage_agents"));
 
-        // Act
-        await testingServiceScope.SendAsync(new UpdateUserRoles.Command(member.Id, ["Admin"]));
-        var memberReturned = await testingServiceScope.SendAsync(new UpdateUserRoles.Command(member.Id, ["User"]));
-        var adminReturned = await testingServiceScope.SendAsync(new UpdateUserRoles.Command(admin.Id, ["Admin", "User"]));
+        // Act: each command in a new scope, so each handler loads the user from the database, not from the tracker
+        await new TestingServiceScope().SendAsync(new UpdateUserRoles.Command(member.Id, ["Admin"]));
+        var memberReturned = await new TestingServiceScope().SendAsync(new UpdateUserRoles.Command(member.Id, ["User"]));
+        var adminReturned = await new TestingServiceScope().SendAsync(new UpdateUserRoles.Command(admin.Id, ["Admin", "User"]));
 
         // Assert
         memberReturned.Roles.ShouldBe(["User"]);
@@ -140,6 +141,29 @@ public class UpdateUserRolesCommandTests : TestBase
         adminReturned.Permissions.ShouldBe(Permission.ListNames().Where(p => p != "manage_agents"), ignoreOrder: true);
         (await PermissionsOfAsync(member.Id)).ShouldBe(["read_users"]);
         (await RolesOfAsync(admin.Id)).ShouldBe(["Admin", "User"], ignoreOrder: true);
+        (await PermissionsOfAsync(admin.Id)).ShouldBe(Permission.ListNames().Where(p => p != "manage_agents"), ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task a_role_that_the_user_keeps_needs_no_permission_of_it_that_the_user_lacks()
+    {
+        // Arrange: the target is an admin with manage_agents removed by hand, and the caller holds each permission of
+        // the target but not manage_agents. Keeping Admin grants nothing, so only the added User role is checked.
+        var scope = new TestingServiceScope();
+        var graph = scope.StartGraph(out _)
+            .AddUsers(out var users, u => u.Role = "User", u => u.Role = "Admin");
+        var (caller, target) = (users[0], users[1]);
+        caller.AddPermissions(Permission.GetAll().Where(p => p != Permission.ManageAgents()));
+        target.RemovePermissionIgnoringLastManager(Permission.ManageAgents());
+        await graph.BuildAsync();
+        scope.SetUserWithDefaults(identifier: caller.Identifier);
+
+        // Act
+        await scope.SendAsync(new UpdateUserRoles.Command(target.Id, ["Admin", "User"]));
+
+        // Assert
+        (await RolesOfAsync(target.Id)).ShouldBe(["Admin", "User"], ignoreOrder: true);
+        (await PermissionsOfAsync(target.Id)).ShouldNotContain("manage_agents");
     }
 
     [Test]

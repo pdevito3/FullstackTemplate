@@ -34,7 +34,7 @@ Each action in `model/Membership.tla` names its code. One action is one transact
 | `DeleteLoad`, `DeleteSave` | `DeleteTenant.Handler`: the exclusive lock, `TenantOwnedRows.LoadAsync`, then one save that soft-deletes the loaded rows and the tenant. A soft delete is an update with the xmin check (`AppDbContext`, `EntityState.Deleted` to `Modified`) |
 | `ChangeFind` | `UpdateUserRoles.Handler` to roles that cannot manage the tenant, `RemoveUserPermission.Handler`, or `DeleteUser.Handler`: the `users.update_roles.find_tenant`, `users.remove_permission.find_tenant`, or `users.delete.find_tenant` lookup of the tenant of the user, with no lock |
 | `ChangeLoad` | `RootLock.Tenant.RunExclusiveAsync` on that tenant, the `.load` query of the user, `ManagerCaseLoader.KeepManagerAsync` (`users.load_managers`, then `TenantManagers.Decide` in memory): 404, 422 for the only manager, or no change to who can manage for a demote or a permission removal of a user who is not a manager. The model skips that write |
-| `ChangeSave` | The one `SaveChangesAsync` of the user row with the xmin check: the new role, the permission removal (a child change also updates the user row), or the soft delete that frees the identifier. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ChangeFind` |
+| `ChangeSave` | The one `SaveChangesAsync` of the user row with the xmin check: the new roles, the permission removal (a child change also updates the user row), or the soft delete that frees the identifier. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ChangeFind` |
 | `InitiateCheck`, `InitiateSave` | `InitiateUserAndTenant.Handler`: `User.CreateFirstOfTenant`, which gives 422 for a first user who cannot manage the tenant, the `users.initiate.identifier_in_use` check, then the save of the tenant and the user, with the index as the backstop |
 | `ClockPassesExpiry` | Time passes `ExpiresAt`. `Invite.IsExpiredAt` computes the expiry, so no process must run for it |
 | `*Fails` | A crash, a cancel, a timeout, or a restart. The transaction rolls back and the session lock ends with its connection |
@@ -88,7 +88,7 @@ Sync commit: `adeb4db0` (#528, the UM-4 change). The model describes these files
 - `FullstackTemplate.Server/Domain/Users/Features/DeleteUser/DeleteUser.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Users/TenantManagers.cs` - `CanManage`, `Decide`, `KeepsAManager`, `ManagerChange.PermissionsAfter`
 - `FullstackTemplate.Server/Domain/Users/ManagerCaseLoader.cs` - `KeepManagerAsync`, `LoadManagerCaseAsync`
-- `FullstackTemplate.Server/Domain/Users/User.cs` - `CreateFirstOfTenant`, `UpdateRole`, `RemovePermission`, `Delete`
+- `FullstackTemplate.Server/Domain/Users/User.cs` - `CreateFirstOfTenant`, `UpdateRoles`, `RemovePermission`, `Delete`
 - `FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant/DeleteTenant.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Databases/TenantOwnedRows.cs` - `LoadAsync`
 - `FullstackTemplate.Server/Databases/RootLock.cs` - `RunSharedAsync`, `RunExclusiveAsync`, `FreeAsync`

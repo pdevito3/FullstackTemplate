@@ -77,6 +77,61 @@ public sealed class GrantPermissionMigrationTests : IAsyncDisposable
         (await OverridesAsync("manage_agents")).Order().ShouldBe([("usr_manager", true), ("usr_removedadmin", false)]);
     }
 
+    [Test]
+    public async Task grant_to_holders_gives_the_permission_and_a_granted_override_and_keeps_a_removed_one()
+    {
+        // Arrange
+        await _database.StartAsync();
+        await using var context = CreateContext();
+        await context.GetService<IMigrator>().MigrateAsync();
+        await ExecuteAsync(ArrangeSql);
+        await ExecuteAsync(ManagersSql);
+        await ExecuteAsync("""
+            INSERT INTO user_permissions (id, user_id, permission, is_deleted) VALUES
+                ('uperm_removedadmin1', 'usr_removedadmin', 'manage_users', false);
+            """);
+        var builder = new MigrationBuilder(context.Database.ProviderName);
+        builder.GrantPermissionToHoldersOf("manage_agents", "manage_users");
+
+        // Act
+        foreach (var sql in builder.Operations.Cast<SqlOperation>().Select(o => o.Sql))
+        {
+            await ExecuteAsync(sql);
+            await ExecuteAsync(sql);
+        }
+
+        // Assert: the member's manage_users row is deleted, so the member holds nothing to grant from
+        (await UsersWithAsync("manage_agents")).Order().ShouldBe(["usr_admin", "usr_manager"]);
+        (await OverridesAsync("manage_agents")).Order()
+            .ShouldBe([("usr_admin", true), ("usr_manager", true), ("usr_removedadmin", false)]);
+    }
+
+    [Test]
+    public async Task delete_permission_also_deletes_its_overrides()
+    {
+        // Arrange
+        await _database.StartAsync();
+        await using var context = CreateContext();
+        await context.GetService<IMigrator>().MigrateAsync();
+        await ExecuteAsync(ArrangeSql);
+        await ExecuteAsync("""
+            INSERT INTO user_permissions (id, user_id, permission, is_deleted) VALUES
+                ('uperm_admin1', 'usr_admin', 'manage_agents', false);
+            INSERT INTO user_permission_overrides (id, user_id, permission, granted, is_deleted) VALUES
+                ('upovr_member', 'usr_member', 'manage_agents', true, true);
+            """);
+        var builder = new MigrationBuilder(context.Database.ProviderName);
+        builder.DeletePermission("manage_agents");
+
+        // Act
+        foreach (var sql in builder.Operations.Cast<SqlOperation>().Select(o => o.Sql))
+            await ExecuteAsync(sql);
+
+        // Assert: a row of a permission that Permission does not know would stop each load of its user
+        (await UsersWithAsync("manage_agents")).ShouldBeEmpty();
+        (await CountAsync("SELECT count(*) FROM user_permission_overrides WHERE permission = 'manage_agents'")).ShouldBe(0);
+    }
+
     private const string ArrangeSql = """
         INSERT INTO tenants (id, name, is_deleted) VALUES ('ten_migration', 'Migration tenant', false);
         INSERT INTO users (id, tenant_id, first_name, last_name, identifier, username, email, is_deleted) VALUES
@@ -124,6 +179,14 @@ public sealed class GrantPermissionMigrationTests : IAsyncDisposable
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<long> CountAsync(string sql)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        return (long)(await command.ExecuteScalarAsync())!;
     }
 
     private async Task<List<(string UserId, bool Granted)>> OverridesAsync(string permission)

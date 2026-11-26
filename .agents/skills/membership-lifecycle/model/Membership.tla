@@ -22,7 +22,7 @@ CONSTANTS
     Admins,        \* the subs of the admins of T1 at the start, as a sequence. Each holds every permission
     Changes,       \* member changes: one UpdateUserRoles.Command to roles that cannot manage the tenant, RemoveUserPermission.Command, or DeleteUser.Command each
     ChangeSub(_),  \* the sub of the user that the change names
-    ChangeKind(_), \* "demote" (UpdateUserRoles to a set with no Admin), "revoke" (RemoveUserPermission), or "delete" (DeleteUser)
+    ChangeKind(_), \* "demote" (UpdateUserRoles to roles that cannot manage the tenant), "revoke" (RemoveUserPermission), or "delete" (DeleteUser)
     MaxRuns,       \* RaceRetryBehavior.MaxRuns (20 in the code)
     InviteVersionCheck, \* TRUE in the code. FALSE mirrors a scratch break: no xmin check on an invite update
     ClaimTakesLock, \* TRUE in the code. FALSE mirrors a scratch break: the claim skips RootLock.Tenant.RunSharedAsync
@@ -246,7 +246,7 @@ DeleteFails(d) ==
                    rpc, rruns, rsnap, rres, ipc, ires, changeVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-\* UpdateUserRoles (Domain/Users/Features/UpdateUserRoles/UpdateUserRoles.cs) to roles with no Admin,
+\* UpdateUserRoles (Domain/Users/Features/UpdateUserRoles/UpdateUserRoles.cs) to roles that cannot manage the tenant,
 \* RemoveUserPermission (Domain/Users/Features/RemoveUserPermission/RemoveUserPermission.cs), and
 \* DeleteUser (Domain/Users/Features/DeleteUser/DeleteUser.cs). Each runs again when raced, and each checks UM-4
 \* with TenantManagers.Decide (Domain/Users/TenantManagers.cs). A soft delete frees the identifier, so the sub can

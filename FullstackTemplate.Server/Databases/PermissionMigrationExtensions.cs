@@ -68,8 +68,10 @@ public static class PermissionMigrationExtensions
     }
 
     /// <summary>
-    /// Hard-deletes each row of the permission in both tables, also the soft-deleted rows. Before the migration that
-    /// adds the agents, only <c>user_permissions</c> exists.
+    /// Hard-deletes each row of the permission in <c>user_permissions</c>, <c>agent_permissions</c>, and
+    /// <c>user_permission_overrides</c>, also the soft-deleted rows. A row of a permission that <c>Permission</c> does
+    /// not know stops each load of its owner. Before the migration that adds the agents, only <c>user_permissions</c>
+    /// exists, and before <c>GiveUsersManyRoles</c>, the overrides do not.
     /// </summary>
     public static void DeletePermission(this MigrationBuilder migrationBuilder, string permission)
         => migrationBuilder.Sql($"""
@@ -78,6 +80,9 @@ public static class PermissionMigrationExtensions
             BEGIN
                 IF to_regclass('agent_permissions') IS NOT NULL THEN
                     DELETE FROM agent_permissions WHERE permission = {Literal(permission)};
+                END IF;
+                IF to_regclass('user_permission_overrides') IS NOT NULL THEN
+                    DELETE FROM user_permission_overrides WHERE permission = {Literal(permission)};
                 END IF;
             END $delete$;
             """);

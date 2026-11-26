@@ -20,7 +20,6 @@ using Shouldly;
 /// </summary>
 public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
 {
-    private const string PreviousMigration = "20261114220528_IndexWorkshopAttachmentStorageKeyExample";
     private const string ThisMigration = "20261125192501_GiveUsersManyRoles";
 
     private readonly PostgresTestDatabase _database = new();
@@ -33,7 +32,12 @@ public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
         // Arrange
         await _database.StartAsync();
         await using var context = CreateContext();
-        await context.GetService<IMigrator>().MigrateAsync(PreviousMigration);
+        // The migration before this one, by ID. A hard-coded name could be an example migration, which an app with no
+        // examples does not have.
+        var previousMigration = context.GetService<IMigrationsAssembly>().Migrations.Keys
+            .Where(id => string.CompareOrdinal(id, ThisMigration) < 0)
+            .Max(StringComparer.Ordinal);
+        await context.GetService<IMigrator>().MigrateAsync(previousMigration);
         await ExecuteAsync(ArrangeSql());
         var permissionsBefore = await ReadAsync("SELECT user_id, permission, is_deleted FROM user_permissions",
             r => (r.GetString(0), r.GetString(1), r.GetBoolean(2)));
@@ -45,7 +49,8 @@ public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
         var roles = await ReadAsync("SELECT id, user_id, role, is_deleted FROM user_roles",
             r => (Id: r.GetString(0), UserId: r.GetString(1), Role: r.GetString(2), IsDeleted: r.GetBoolean(3)));
         roles.Select(r => (r.UserId, r.Role, r.IsDeleted)).ShouldBe(
-            [("usr_member", "User", false), ("usr_admin", "Admin", false), ("usr_deleted", "Admin", true)],
+            [("usr_member", "User", false), ("usr_admin", "Admin", false), ("usr_deleted", "Admin", true),
+             ("usr_gone", "User", true)],
             ignoreOrder: true);
         roles.ShouldAllBe(r => EntityId.IsValid(r.Id, UserRoleAssignment.IdPrefix));
 
@@ -56,23 +61,30 @@ public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
         var overrides = await ReadAsync("SELECT id, user_id, permission, granted FROM user_permission_overrides",
             r => (Id: r.GetString(0), UserId: r.GetString(1), Permission: r.GetString(2), Granted: r.GetBoolean(3)));
         overrides.Select(o => (o.UserId, o.Permission, o.Granted)).ShouldBe(
-            [("usr_member", "read_users", true), ("usr_admin", "manage_agents", false)], ignoreOrder: true);
+            [("usr_member", "read_users", true), ("usr_admin", "manage_agents", false), ("usr_admin", "manage_tenant", false)],
+            ignoreOrder: true);
         overrides.ShouldAllBe(o => EntityId.IsValid(o.Id, UserPermissionOverride.IdPrefix));
     }
 
-    // The admin holds each permission but manage_agents. The deleted admin holds nothing and gets no override.
+    // The admin holds each permission but manage_agents and manage_tenant. Someone removed manage_tenant by hand, so
+    // only a soft-deleted row is left for it. The member had manage_users removed the same way. The deleted admin
+    // holds nothing, and the deleted member holds read_users: neither gets an override.
     private static string ArrangeSql()
     {
-        var adminPermissions = Permission.ListNames().Where(p => p != "manage_agents")
+        var adminPermissions = Permission.ListNames().Where(p => p is not ("manage_agents" or "manage_tenant"))
             .Select((p, i) => $"('uperm_admin{i}', 'usr_admin', '{p}', false)");
         return $"""
             INSERT INTO tenants (id, name, is_deleted) VALUES ('ten_migration', 'Migration tenant', false);
             INSERT INTO users (id, tenant_id, first_name, last_name, identifier, username, email, role, is_deleted) VALUES
                 ('usr_member', 'ten_migration', 'Mia', 'Member', 'idp-member', 'mia', 'mia@example.com', 'User', false),
                 ('usr_admin', 'ten_migration', 'Ada', 'Admin', 'idp-admin', 'ada', 'ada@example.com', 'Admin', false),
-                ('usr_deleted', 'ten_migration', 'Dan', 'Deleted', 'idp-deleted', 'dan', 'dan@example.com', 'Admin', true);
+                ('usr_deleted', 'ten_migration', 'Dan', 'Deleted', 'idp-deleted', 'dan', 'dan@example.com', 'Admin', true),
+                ('usr_gone', 'ten_migration', 'Gus', 'Gone', 'idp-gone', 'gus', 'gus@example.com', 'User', true);
             INSERT INTO user_permissions (id, user_id, permission, is_deleted) VALUES
                 ('uperm_member', 'usr_member', 'read_users', false),
+                ('uperm_memberremoved', 'usr_member', 'manage_users', true),
+                ('uperm_adminremoved', 'usr_admin', 'manage_tenant', true),
+                ('uperm_gone', 'usr_gone', 'read_users', false),
                 {string.Join(",\n    ", adminPermissions)};
             """;
     }

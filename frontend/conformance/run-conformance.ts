@@ -109,7 +109,8 @@ const describedSchema = z.object({
 
 const planSchema = z.object({
   id: z.string(),
-  modules: z.array(z.object({ testModule: z.string(), variant: z.record(z.string(), z.string()) })),
+  // The suite gives null for a module with no variant of its own
+  modules: z.array(z.object({ testModule: z.string(), variant: z.record(z.string(), z.string()).nullable() })),
 })
 
 const moduleSchema = z.object({ id: z.string() })
@@ -209,7 +210,7 @@ async function createPlan(api: APIRequestContext, plan: PlanDefinition, config: 
   return planSchema.parse(await response.json())
 }
 
-async function createModule(api: APIRequestContext, planId: string, module: string, variant: Record<string, string>) {
+async function createModule(api: APIRequestContext, planId: string, module: string, variant: Record<string, string> | null) {
   const response = await api.post('api/runner', { params: { test: module, plan: planId, variant: JSON.stringify(variant) } })
 
   if (response.status() !== 201) throw new Error(`Could not create the module ${module}: ${await response.text()}`)

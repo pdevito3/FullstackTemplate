@@ -21,9 +21,11 @@ const stack = checkStack({
   }),
   appHost,
 })
+
 if (stack.kind === 'not-ready') {
   fail(stack.message)
 }
+
 const described = { resources: stack.resources }
 
 // A problem with the stack is a message to the user, not a stack trace
@@ -32,17 +34,20 @@ function fail(message: string): never {
   process.exit(1)
 }
 
-function environmentOf(resource: string): Record<string, string> {
-  return (described.resources.find((r) => r.displayName === resource) as { environment?: Record<string, string> } | undefined)
-    ?.environment ?? {}
+function environmentOf(resource: string): Record<string, string | undefined> {
+  const environment = described.resources.find((r) => r.displayName === resource)?.environment ?? {}
+
+  return Object.fromEntries(Object.entries(environment).map(([name, value]) => [name, value ?? undefined]))
 }
 
 // The authority of the BFF
 function bffAuthority(): string {
   const authority = environmentOf('bff').Auth__Authority
+
   if (!authority) {
     fail('The stack has no Auth__Authority for the BFF.')
   }
+
   return authority
 }
 
@@ -53,6 +58,7 @@ function appHostSecret(key: string): string {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   })
+
   return output.trim().split('\n').at(-1)?.trim() ?? ''
 }
 
@@ -60,26 +66,32 @@ function endpointUrl(resource: string, endpoint: string): string {
   const url = described.resources
     .find((r) => r.displayName === resource)
     ?.urls?.find((u) => u.name === endpoint)?.url
+
   if (!url) {
     fail(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with the AuthProvider of the IDP.`)
   }
+
   return url
 }
 
 function idpOfStack(): string {
   const resources = new Set(described.resources.map((r) => r.displayName))
   const idps = idpNames().map((name) => ({ name, resource: loadIdp(name).resource }))
+
   const detected =
     idps.find((idp) => idp.resource !== undefined && resources.has(idp.resource)) ??
     idps.find((idp) => idp.resource === undefined)
+
   if (!detected) {
     fail(`The stack has no resource of an IDP in e2e/idps/. Set IDP to one of these: ${idpNames().join(', ')}.`)
   }
+
   return detected.name
 }
 
 const idp = (process.env.IDP ?? idpOfStack()).toLowerCase()
 const bffEnvironment = environmentOf('bff')
+
 const env: NodeJS.ProcessEnv = {
   ...process.env,
   IDP: idp,
@@ -122,20 +134,26 @@ const expectations: { variable: string; feature: string; actual: boolean }[] = [
     actual: env.DPOP === 'true',
   },
 ]
+
 let mismatch = false
+
 for (const { variable, feature, actual } of expectations) {
   const expected = process.env[variable]
+
   if (expected === undefined || expected === '') {
     continue
   }
+
   if (expected !== 'true' && expected !== 'false') {
     throw new Error(`${variable} must be true or false, not '${expected}'.`)
   }
+
   if ((expected === 'true') !== actual) {
     console.error(`${variable}=${expected}, but the stack has ${actual ? '' : 'no '}${feature}.`)
     mismatch = true
   }
 }
+
 if (mismatch) {
   process.exit(1)
 }
@@ -143,4 +161,5 @@ if (mismatch) {
 console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP} DPOP=${env.DPOP}`)
 
 const result = spawnSync('pnpm', ['exec', 'playwright', 'test', '--config', 'playwright.stack.config.ts', ...process.argv.slice(2)], { stdio: 'inherit', env })
+
 process.exit(result.status ?? 1)

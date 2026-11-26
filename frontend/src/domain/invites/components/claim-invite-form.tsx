@@ -29,6 +29,7 @@ export function ClaimInviteForm({ profile, requireEmailMatch, onClaim }: ClaimIn
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
+
     try {
       await onClaim(values)
     } catch (error) {

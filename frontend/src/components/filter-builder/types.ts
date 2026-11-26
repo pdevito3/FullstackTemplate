@@ -144,3 +144,23 @@ export function isFilter(item: Filter | FilterGroup): item is Filter {
 export function isFilterGroup(item: Filter | FilterGroup): item is FilterGroup {
   return 'type' in item && item.type === 'group'
 }
+
+export function isDateValue(value: Filter['value'] | undefined): value is DateValue {
+  return typeof value === 'object' && value !== null && 'mode' in value
+}
+
+export function isTextValue(value: Filter['value'] | undefined): value is string {
+  return typeof value === 'string'
+}
+
+export function isListValue(value: Filter['value'] | undefined): value is string[] {
+  return Array.isArray(value)
+}
+
+export function isNumberValue(value: Filter['value'] | undefined): value is number {
+  return typeof value === 'number'
+}
+
+export function isBooleanValue(value: Filter['value'] | undefined): value is boolean {
+  return typeof value === 'boolean'
+}

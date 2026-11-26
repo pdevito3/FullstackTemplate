@@ -30,9 +30,11 @@ declare module '@tanstack/react-router' {
 }
 
 const queryClient = createQueryClient()
+
 // With no cancelRefetch, the 401s of calls that run at the same time wait for one check of the session.
 onUnauthorized(async () => {
   await queryClient.invalidateQueries({ queryKey: AuthKeys.user() }, { cancelRefetch: false })
+
   return queryClient.getQueryData(AuthKeys.user()) === null
 })
 

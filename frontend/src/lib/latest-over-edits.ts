@@ -13,13 +13,14 @@ export interface LatestOverEdits<F extends string> {
  * see.
  */
 export function latestOverEdits<F extends string>(
-  loaded: Partial<Record<F, unknown>>,
+  loaded: Partial<Record<F, TextComparable>>,
   edited: Partial<Record<F, TextComparable>>,
   latest: Partial<Record<F, TextComparable>>,
   fields: readonly F[],
 ): LatestOverEdits<F> {
-  const sameText = (a: unknown, b: TextComparable) => String(a) === String(b)
+  const sameText = (a: TextComparable, b: TextComparable) => String(a) === String(b)
   const changed = fields.filter((field) => !sameText(loaded[field], latest[field]))
   const kept = fields.filter((field) => !changed.includes(field) && !sameText(edited[field], latest[field]))
+
   return { changed, kept }
 }

@@ -14,14 +14,16 @@ import { stringWithMaxLengthOf } from '@/lib/api-contract'
 import { browserTimeZone } from '@/lib/zoned-time'
 
 const contract = venueForCreationDtoSchema.shape
+
 const schema = venueForCreationDtoSchema.extend({
   name: stringWithMaxLengthOf(contract.name).min(1, 'Enter a name.'),
   timeZone: stringWithMaxLengthOf(contract.timeZone).min(1, 'Enter a time zone.'),
 })
+
 const FIELD_NAMES = ['name', 'timeZone'] as const
 
 interface VenueCreateFormProps {
-  onSave: (body: VenueForCreationDto) => Promise<unknown>
+  onSave: (body: VenueForCreationDto) => Promise<void>
 }
 
 export function VenueCreateForm({ onSave }: VenueCreateFormProps) {
@@ -29,12 +31,14 @@ export function VenueCreateForm({ onSave }: VenueCreateFormProps) {
     resolver: zodResolver(schema),
     defaultValues: { name: '', timeZone: browserTimeZone() },
   })
+
   const serverErrors = useServerErrors(form, FIELD_NAMES)
   const id = useId()
   const { errors } = form.formState
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
+
     try {
       await onSave(values)
     } catch (error) {

@@ -27,7 +27,9 @@ export function moveSafeArea(area: SafeArea, point: Point, trigger: Box, submenu
   if (contains(trigger, point)) {
     return { from: { left: point.x, top: point.y, right: point.x, bottom: point.y }, isOnTrigger: true }
   }
+
   if (area === null || contains(submenu, point)) return null
+
   return isInHull(point, [...cornersOf(area.from), ...cornersOf(submenu)]) ? { from: area.from, isOnTrigger: false } : null
 }
 
@@ -52,20 +54,26 @@ function cross(a: Point, b: Point, c: Point): number {
 /** Whether `point` is in the smallest convex polygon that holds all `points`, edges included. */
 function isInHull(point: Point, points: Point[]): boolean {
   const hull = convexHull(points)
+
   return hull.every((corner, index) => cross(corner, hull[(index + 1) % hull.length], point) >= 0)
 }
 
 /** The corners of the convex hull in one turning direction, by Andrew's monotone chain. */
 function convexHull(points: Point[]): Point[] {
   const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y)
+
   const chain = (ordered: Point[]) => {
     const result: Point[] = []
+
     for (const point of ordered) {
       while (result.length >= 2 && cross(result[result.length - 2], result[result.length - 1], point) <= 0) result.pop()
       result.push(point)
     }
+
     result.pop()
+
     return result
   }
+
   return [...chain(sorted), ...chain([...sorted].reverse())]
 }

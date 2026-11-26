@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 // The same shape as the Add Filter menu of the filter builder: a Select in the dialog of a submenu.
 function MenuWithSelect() {
   const [operator, setOperator] = useState<Key | null>('equals')
+
   return (
     <DropdownMenuTrigger>
       <Button>Add Filter</Button>
@@ -167,6 +168,7 @@ test('the list of a Select as wide as the page fits in the page', async () => {
       </SelectContent>
     </Select>,
   )
+
   expect(screen.getByRole('button').element().getBoundingClientRect().width).toBe(document.documentElement.clientWidth)
 
   await screen.getByRole('button').click()

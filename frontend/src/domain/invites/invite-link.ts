@@ -14,10 +14,13 @@ export const tokenOfFragment = (hash: string): string | null => new URLSearchPar
  */
 function moveLinkToTheTab(): boolean {
   const token = tokenOfFragment(window.location.hash)
+
   if (token === null) return false
   forgetInviteToken()
+
   if (token) sessionStorage.setItem(TOKEN_KEY, token)
   window.history.replaceState(window.history.state, '', '/join')
+
   return true
 }
 
@@ -50,12 +53,16 @@ export function forgetInviteToken(): void {
  */
 export function inviteTokenFor(sub: string): string | null {
   const token = readInviteToken()
+
   if (token === null) return null
   const holder = sessionStorage.getItem(HOLDER_KEY)
+
   if (holder === null) sessionStorage.setItem(HOLDER_KEY, sub)
   else if (holder !== sub) {
     forgetInviteToken()
+
     return null
   }
+
   return token
 }

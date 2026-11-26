@@ -7,6 +7,7 @@ import {
   type PopoverProps as PopoverPrimitiveProps,
 } from "@animate-ui/react/primitives/react-aria"
 import { cn } from "@/lib/utils"
+import { isRefCallback } from "@/components/ui/prop-guards"
 
 function PopoverTrigger({ children, ...props }: DialogTriggerProps) {
   return (
@@ -32,13 +33,17 @@ function Popover({
   const popoverRef = React.useCallback(
     (element: HTMLElement | null) => {
       if (!element) return
+
       const observer = new ResizeObserver(() => {
         if (element.scrollHeight > element.clientHeight) window.dispatchEvent(new Event("resize"))
       })
+
       for (const child of element.children) observer.observe(child)
       const callerCleanup = setRef(ref, element)
+
       return () => {
         observer.disconnect()
+
         if (callerCleanup) callerCleanup()
         else setRef(ref, null)
       }
@@ -63,7 +68,8 @@ function Popover({
 }
 
 function setRef<T>(ref: React.Ref<T> | undefined, value: T | null): (() => void) | void {
-  if (typeof ref === "function") return ref(value)
+  if (isRefCallback(ref)) return ref(value)
+
   if (ref) ref.current = value
 }
 

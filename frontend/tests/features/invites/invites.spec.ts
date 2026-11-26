@@ -7,18 +7,11 @@ import { anInvite } from '@tests/support/builders/invite-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
-import { browserZone } from '@tests/support/clock'
 import { expect, test } from '@tests/support/fixtures'
 import { usersPage } from '../users/users.tasks'
-import { usersWithInvites } from './invites.tasks'
+import { inviteExpiryInBrowserZone, usersWithInvites } from './invites.tasks'
 
 const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v'
-
-/** `inviteExpiry` of the builder in each zone of the suite. */
-const expiryIn: Record<string, string> = {
-  'Pacific/Kiritimati': 'Jan 16, 2099, 2:00 AM',
-  'Pacific/Pago_Pago': 'Jan 15, 2099, 1:00 AM',
-}
 
 test.describe('the users page of a plain member', () => {
   test.use({ actor: as.user('Bob Smith') })
@@ -74,7 +67,7 @@ test.describe('the invites of a tenant admin', () => {
 
     await expect(users.at.cell('pending@example.com', 'Admin')).toBeVisible()
     await expect(users.at.cell('pending@example.com', 'Pending')).toBeVisible()
-    await expect(users.at.cell('pending@example.com', expiryIn[browserZone()])).toBeVisible()
+    await expect(users.at.cell('pending@example.com', inviteExpiryInBrowserZone())).toBeVisible()
     await expect(users.at.rowEmailNote('match@example.com', 'Email must match')).toBeVisible()
     await expect(users.at.cell('expired@example.com', 'Expired')).toBeVisible()
     await expect(users.at.cell('claimed@example.com', 'Claimed')).toBeVisible()
@@ -134,7 +127,7 @@ test.describe('the invites of a tenant admin', () => {
     const link = `${new URL(baseURL!).origin}/join#token=${token}`
     await expect(users.at.linkField).toHaveValue(link)
     await expect(users.at.onlyTimeSentence).toBeVisible()
-    await expect(users.at.linkExpiry).toContainText(expiryIn[browserZone()])
+    await expect(users.at.linkExpiry).toContainText(inviteExpiryInBrowserZone())
     await expect(users.at.copyLink).toBeFocused()
     expect(await users.copyTheLink()).toBe(link)
     await expect(page).toHaveURL('/users')

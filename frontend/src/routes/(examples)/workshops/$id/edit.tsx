@@ -40,6 +40,7 @@ function EditWorkshopPage() {
 
   const handleLoadLatest = async () => {
     const result = await workshop.refetch()
+
     if (result.isSuccess) return result.data
     throw result.error
   }

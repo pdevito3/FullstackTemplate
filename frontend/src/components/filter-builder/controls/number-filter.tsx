@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { OperatorType, Filter, FilterControlProps } from '../types'
+import type { OperatorType, FilterControlProps } from '../types'
 import { getDefaultOperator, getOperatorsForControlType, pickOperator } from '../utils/operators'
 import { FilterControlFooter } from './filter-control-footer'
 import { OperatorSelect } from './operator-select'
@@ -16,6 +16,7 @@ export function NumberFilter({
 }: FilterControlProps) {
   const { propertyKey, propertyLabel, operators: allowedOperators } = config
   const numberOperators = getOperatorsForControlType('number')
+
   const availableOperators = (
     allowedOperators
       ? numberOperators.filter((op) => allowedOperators.includes(op.symbol))
@@ -24,12 +25,14 @@ export function NumberFilter({
 
   const [value, setValue] = useState(initialFilter?.value?.toString() || '')
   const valueId = useId()
+
   const [operator, setOperator] = useState<OperatorType>(
     pickOperator(availableOperators, initialFilter?.operator ?? getDefaultOperator('number'))
   )
 
   const handleSubmit = () => {
     const numValue = parseFloat(value)
+
     if (isNaN(numValue)) {
       return
     }
@@ -40,7 +43,7 @@ export function NumberFilter({
       controlType: 'number',
       operator,
       value: numValue,
-    } as Omit<Filter, 'id'>)
+    })
   }
 
   const isValid = value.trim() !== '' && !isNaN(parseFloat(value))

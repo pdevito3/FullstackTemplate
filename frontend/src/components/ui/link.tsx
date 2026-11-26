@@ -47,6 +47,7 @@ export function RouterLinkPrimitive({
   ...props
 }: RouterLinkHostProps) {
   const router = useRouter()
+
   return (
     <RouterProvider navigate={(href, options) => router.navigate(options ?? { href })}>
       <LinkPrimitive
@@ -76,6 +77,7 @@ interface HrefRouterProviderProps {
 /** Sends a plain React Aria `href` in the app to the router. */
 export function HrefRouterProvider({ children }: HrefRouterProviderProps) {
   const router = useRouter()
+
   return (
     <RouterProvider
       navigate={(href, options) => router.navigate(options ?? hrefNavigateOptions(router, href))}

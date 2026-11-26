@@ -5,6 +5,7 @@ import { users } from './users.locators'
 
 export function usersPage(page: Page) {
   const at = users(page)
+
   const answered = (method: string, path: string) =>
     page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path)
 
@@ -59,6 +60,7 @@ export function usersPage(page: Page) {
     async toggleRoles(name: string, ...roles: string[]) {
       await at.actionButton(name, 'Change roles').click()
       await expect(at.roleDialog).toBeVisible()
+
       for (const role of roles) {
         const checkbox = at.roleCheckbox(role)
         const wasChecked = await checkbox.isChecked()

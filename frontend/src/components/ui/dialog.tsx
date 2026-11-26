@@ -77,6 +77,7 @@ function Dialog({
     showCloseButton?: boolean
   }) {
   const [descriptionId, setDescriptionId] = React.useState<string>()
+
   return (
     <DialogOverlay isDismissable={isDismissable} {...props}>
       <ModalPrimitive

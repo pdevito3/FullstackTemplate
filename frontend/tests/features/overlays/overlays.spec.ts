@@ -25,6 +25,7 @@ for (const viewport of [
 
         await expect(demo.at.title).toBeVisible()
         await expect.poll(() => demo.overlapAreaOf(demo.at.title, demo.at.devtoolsBadge)).toBe(0)
+
         if (hasCloseButton) {
           await expect(demo.at.closeButton).toBeVisible()
           await expect.poll(() => demo.overlapAreaOf(demo.at.closeButton, demo.at.devtoolsBadge)).toBe(0)

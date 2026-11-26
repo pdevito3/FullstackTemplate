@@ -12,6 +12,7 @@ export function useInviteList(params: InviteListParams) {
     queryKey: InviteKeys.list(params),
     queryFn: async ({ signal }) => {
       const result = await getInviteList({ query: { pageNumber: params.page, pageSize: INVITE_PAGE_SIZE }, signal })
+
       return { invites: result.data, pagination: parsePagination(result) }
     },
     placeholderData: keepPreviousData,

@@ -45,6 +45,7 @@ function PagerButtons({ hasPrevious, hasNext, onPrevious, onNext }: PagerButtons
 
   useEffect(() => {
     const focused = document.activeElement
+
     if (!hasNext && focused === next.current) previous.current?.focus()
     else if (!hasPrevious && focused === previous.current) next.current?.focus()
   }, [hasPrevious, hasNext])

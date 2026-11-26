@@ -27,9 +27,11 @@ export function overlayDemoPage(page: Page) {
     async overlapAreaOf(a: Locator, b: Locator) {
       if (!(await a.isVisible()) || !(await b.isVisible())) return 0
       const [boxA, boxB] = [await a.boundingBox(), await b.boundingBox()]
+
       if (!boxA || !boxB) return 0
       const width = Math.min(boxA.x + boxA.width, boxB.x + boxB.width) - Math.max(boxA.x, boxB.x)
       const height = Math.min(boxA.y + boxA.height, boxB.y + boxB.height) - Math.max(boxA.y, boxB.y)
+
       return Math.max(0, width) * Math.max(0, height)
     },
   }

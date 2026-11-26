@@ -18,6 +18,7 @@ export function useSubmenuSafeArea(triggerRef: RefObject<HTMLElement | null>, su
   useLayoutEffect(() => {
     const trigger = triggerRef.current
     const menu = trigger?.closest<HTMLElement>('[role="menu"]')
+
     if (!trigger || !menu) return
 
     let restTimer: ReturnType<typeof setTimeout> | undefined
@@ -28,18 +29,22 @@ export function useSubmenuSafeArea(triggerRef: RefObject<HTMLElement | null>, su
     const releaseTo = ({ x, y }: { x: number; y: number }) => {
       area = null
       const item = document.elementFromPoint(x, y)
+
       if (item && menu.contains(item)) item.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse', clientX: x, clientY: y }))
     }
 
     // The browser sends pointerover and pointerout before the pointermove of the same move.
     const handlePointerMove = (event: PointerEvent) => {
       const submenu = submenuRef.current
+
       if (event.pointerType === 'touch' || !submenu) return
       clearTimeout(restTimer)
       const point = { x: event.clientX, y: event.clientY }
       const next = moveSafeArea(area, point, trigger.getBoundingClientRect(), submenu.getBoundingClientRect())
+
       if (area && !next) releaseTo(point)
       else area = next
+
       if (area && !area.isOnTrigger) restTimer = setTimeout(() => releaseTo(point), REST_MS)
     }
 
@@ -47,12 +52,14 @@ export function useSubmenuSafeArea(triggerRef: RefObject<HTMLElement | null>, su
     // still reach the items.
     const blockHover = (event: PointerEvent) => {
       const to = event.type === 'pointerover' ? event.target : event.relatedTarget
+
       if (area && to instanceof Node && menu.contains(to) && !trigger.contains(to)) event.stopImmediatePropagation()
     }
 
     // The wheel moves the items under the mouse, so the mouse no longer goes from the trigger to the submenu.
     const handleWheel = (event: WheelEvent) => {
       clearTimeout(restTimer)
+
       if (area) releaseTo({ x: event.clientX, y: event.clientY })
     }
 
@@ -60,6 +67,7 @@ export function useSubmenuSafeArea(triggerRef: RefObject<HTMLElement | null>, su
     window.addEventListener('pointerout', blockHover, true)
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('wheel', handleWheel, { passive: true })
+
     return () => {
       clearTimeout(restTimer)
       window.removeEventListener('pointerover', blockHover, true)

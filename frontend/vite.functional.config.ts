@@ -1,5 +1,5 @@
 import path from 'path'
-import { defineConfig, mergeConfig, type PluginOption } from 'vite'
+import { defineConfig, mergeConfig, type Plugin, type PluginOption } from 'vite'
 import base from './vite.config'
 
 /**
@@ -13,7 +13,7 @@ import base from './vite.config'
  * The inputs share chunks with the app, so the chunks differ from those of `pnpm build`. The first page budget counts
  * the chunks of each input, so this build leaves it out, and `pnpm build` checks it.
  */
-const isBudget = (plugin: PluginOption) => typeof plugin === 'object' && plugin !== null && 'name' in plugin && plugin.name === 'first-page-budget'
+const isBudget = (plugin: PluginOption): plugin is Plugin => typeof plugin === 'object' && plugin !== null && 'name' in plugin && plugin.name === 'first-page-budget'
 
 export default mergeConfig(
   { ...base, plugins: base.plugins?.filter((plugin) => !isBudget(plugin)) },

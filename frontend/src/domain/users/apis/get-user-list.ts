@@ -17,6 +17,7 @@ export function useUserList(params: UserListParams, { enabled = true }: { enable
     queryKey: UserKeys.list(params),
     queryFn: async ({ signal }) => {
       const result = await getUserList({ query: { pageNumber: params.page, pageSize: USER_PAGE_SIZE }, signal })
+
       return { users: result.data, pagination: parsePagination(result) }
     },
     placeholderData: keepPreviousData,

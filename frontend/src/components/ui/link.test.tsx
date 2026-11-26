@@ -18,6 +18,7 @@ const rootRoute = createRootRoute({ component: Outlet })
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Home })
 const userRoute = createRoute({ getParentRoute: () => rootRoute, path: '/users/$id', component: User })
 const routeTree = rootRoute.addChildren([homeRoute, userRoute])
+
 type TestRouter = ReturnType<typeof createTestRouter>
 
 const onPress = vi.fn()
@@ -36,6 +37,7 @@ function Home() {
 
 function User() {
   const { id } = userRoute.useParams()
+
   return <h1>User {id}</h1>
 }
 
@@ -44,6 +46,7 @@ async function renderHome() {
   const screen = await render(<RouterProvider router={router} />)
   const link = screen.getByRole('link', { name: 'Open user' })
   await expect.element(link).toBeVisible()
+
   return { router, screen, link }
 }
 
@@ -119,13 +122,17 @@ test('a disabled link is marked disabled and does not navigate or call onPress',
       </Link>
     ),
   })
+
   const router = createRouter({ routeTree: disabledRoot, history: createMemoryHistory({ initialEntries: ['/'] }) })
   const screen = await render(<RouterProvider router={router} />)
   const link = screen.getByRole('link', { name: 'Open user' })
   await expect.element(link).toHaveAttribute('aria-disabled', 'true')
 
   // Playwright does not click an element with aria-disabled. A screen reader clicks it in this way.
-  const element = link.element() as HTMLElement
+  const element = link.element()
+
+  if (!(element instanceof HTMLElement)) throw new Error('The link is not an HTML element.')
+
   element.click()
 
   expect(router.state.location.pathname).toBe('/')
@@ -143,11 +150,14 @@ test('a plain href on a React Aria component goes to its route with no page load
       </HrefRouterProvider>
     ),
   })
+
   const menuUserRoute = createRoute({ getParentRoute: () => menuRoot, path: '/users/$id', component: () => <h1>User page</h1> })
+
   const router = createRouter({
     routeTree: menuRoot.addChildren([menuUserRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
+
   const screen = await render(<RouterProvider router={router} />)
 
   await userEvent.click(screen.getByRole('menuitem', { name: 'Open user' }))

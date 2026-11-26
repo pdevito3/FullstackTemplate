@@ -1,12 +1,15 @@
 import { QueryClient } from '@tanstack/react-query'
 import { expect, test, vi } from 'vitest'
 
+import type { UserDto } from '@/api/generated/models/types/user-dto'
+
 import { MembershipKeys } from './membership.keys'
 import { retryFailedMembership } from './refresh-caller-membership'
 
-const queryClientAfter = async (queryFn: () => Promise<unknown>) => {
+const queryClientAfter = async (queryFn: () => Promise<UserDto | null>) => {
   const queryClient = new QueryClient()
   await queryClient.prefetchQuery({ queryKey: MembershipKeys.of('bob'), queryFn, retry: false })
+
   return queryClient
 }
 

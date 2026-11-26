@@ -48,6 +48,7 @@ class UserBuilder {
   named(fullName: string) {
     const [firstName, ...rest] = fullName.split(' ')
     const username = firstName.toLowerCase()
+
     return this.with({ firstName, lastName: rest.join(' '), fullName, username, email: `${username}@example.com` })
   }
 
@@ -92,5 +93,6 @@ export const aUser = () => UserBuilder.create()
 
 export const aStartedTenant = (name: string, user = aUser()): InitiateUserAndTenantResponseDto => {
   const admin = { ...user.build(), roles: ['Admin' as const] }
+
   return { tenant: { id: admin.tenantId, name, allowedActions: ['InviteUser'], version: 1 }, user: admin }
 }

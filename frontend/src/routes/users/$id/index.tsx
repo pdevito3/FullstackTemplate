@@ -60,6 +60,7 @@ function UserPage() {
     remove.mutate(id, {
       onSuccess: () => {
         Notification.success('User deleted')
+
         return leaveDeletedRecord(queryClient, {
           detail: UserKeys.detail(id),
           lists: UserKeys.lists(),

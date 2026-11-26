@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import type { InviteDto } from '@/api/generated/models/types/invite-dto'
-
 import { formatExpiry, inviteStateOf } from './invite-state'
 
 const expiresAt = '2026-08-16T07:00:00Z'
@@ -20,8 +18,11 @@ describe('the state of an invite', () => {
     const longAgo = '2020-01-15T12:00:00Z'
     const farAhead = '2099-01-15T12:00:00Z'
 
-    expect(inviteStateOf({ status: 'Pending', isExpired: false, expiresAt: longAgo } as InviteDto)).toBe('Pending')
-    expect(inviteStateOf({ status: 'Pending', isExpired: true, expiresAt: farAhead } as InviteDto)).toBe('Expired')
+    const pastButNotExpired = { status: 'Pending', isExpired: false, expiresAt: longAgo } as const
+    const futureButExpired = { status: 'Pending', isExpired: true, expiresAt: farAhead } as const
+
+    expect(inviteStateOf(pastButNotExpired)).toBe('Pending')
+    expect(inviteStateOf(futureButExpired)).toBe('Expired')
   })
 })
 

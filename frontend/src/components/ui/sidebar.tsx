@@ -14,6 +14,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { SidebarLeft01Icon } from "@hugeicons/core-free-icons"
 
 import { cn } from "@/lib/utils"
+import { isText, isUpdater } from "@/components/ui/prop-guards"
 import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-variants"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,12 +36,23 @@ import {
   type SidebarContextProps,
 } from "@/components/ui/use-sidebar"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+// The SPA has no server render to read a cookie, and a cookie goes to the BFF with each request, so the open state
+// is in localStorage, as the theme is.
+const SIDEBAR_STORAGE_KEY = "sidebar-open"
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
+function readStoredOpen(): boolean | undefined {
+  const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+
+  if (stored === "true") return true
+
+  if (stored === "false") return false
+
+  return undefined
+}
 
 // Context for submenu groups to enable shared layoutId for animations
 const SidebarMenuSubContext = React.createContext<string | null>(null)
@@ -63,19 +75,20 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen)
+  const [_open, _setOpen] = React.useState(() => readStoredOpen() ?? defaultOpen)
   const open = openProp ?? _open
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
+      const openState = isUpdater(value) ? value(open) : value
+
       if (setOpenProp) {
         setOpenProp(openState)
       } else {
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(openState))
     },
     [setOpenProp, open]
   )
@@ -98,6 +111,7 @@ function SidebarProvider({
     }
 
     window.addEventListener("keydown", handleKeyDown)
+
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
 
@@ -122,13 +136,11 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
+        style={{
+          "--sidebar-width": SIDEBAR_WIDTH,
+          "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+          ...style,
+        }}
         className={cn(
           "group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
           className
@@ -181,11 +193,9 @@ function Sidebar({
         data-slot="sidebar"
         data-mobile="true"
         className="max-w-[85vw] bg-sidebar p-0 text-sidebar-foreground data-[side=left]:w-(--sidebar-width) data-[side=right]:w-(--sidebar-width)"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-          } as React.CSSProperties
-        }
+        style={{
+          "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+        }}
         side={side}
         showCloseButton={false}
         {...props}
@@ -460,7 +470,7 @@ function SidebarMenuButtonTooltip({
     return children
   }
 
-  const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip
+  const tooltipProps = isText(tooltip) ? { children: tooltip } : tooltip
 
   return (
     <TooltipTrigger isDisabled={state !== "collapsed" || isMobile}>
@@ -614,11 +624,9 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={{
+          "--skeleton-width": width,
+        }}
       />
     </div>
   )

@@ -39,6 +39,7 @@ const CalendarZoomContext = createContext<CalendarZoomContextValue | null>(null)
 function useCalendarState() {
   const calendarState = useContext(AriaCalendarStateContext)
   const rangeState = useContext(AriaRangeCalendarStateContext)
+
   return calendarState ?? rangeState
 }
 
@@ -53,14 +54,17 @@ function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderPro
 
   const [view, setView] = useState<CalendarView>("days")
   const [viewYear, setViewYear] = useState(currentYear)
+
   const [viewDecadeStart, setViewDecadeStart] = useState(
     Math.floor(currentYear / 12) * 12
   )
 
   const focusedYear = state?.focusedDate?.year
   const [shownFocusedYear, setShownFocusedYear] = useState(focusedYear)
+
   if (focusedYear !== shownFocusedYear) {
     setShownFocusedYear(focusedYear)
+
     if (focusedYear !== undefined) {
       setViewYear(focusedYear)
       setViewDecadeStart(Math.floor(focusedYear / 12) * 12)
@@ -114,6 +118,7 @@ function pickerItemClassName(fixedHeight: boolean) {
 function pickedKey(keys: AriaSelection, selectedKey: number | null): number | null {
   if (keys === "all") return selectedKey
   const [key] = keys
+
   return key === undefined ? selectedKey : Number(key)
 }
 
@@ -137,6 +142,7 @@ function MonthPickerGrid() {
       state.focusedDate.day,
       getDaysInMonth(zoomContext.viewYear, monthIndex)
     )
+
     const newDate = new CalendarDate(zoomContext.viewYear, monthIndex, safeDay)
     state.setFocusedDate(newDate)
     // The month button unmounts. Move focus to the day cell, so that the keyboard and Escape still work.
@@ -150,6 +156,7 @@ function MonthPickerGrid() {
 
   const handleSelectionChange = (keys: AriaSelection) => {
     const month = pickedKey(keys, selectedMonth)
+
     if (month !== null) handleMonthSelect(month)
   }
 
@@ -184,6 +191,7 @@ function YearPickerGrid() {
 
   // useMemo must be called before any early returns (Rules of Hooks)
   const viewDecadeStart = zoomContext?.viewDecadeStart ?? 0
+
   const years = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => viewDecadeStart + i)
   }, [viewDecadeStart])
@@ -199,6 +207,7 @@ function YearPickerGrid() {
 
   const handleSelectionChange = (keys: AriaSelection) => {
     const year = pickedKey(keys, selectedYear)
+
     if (year !== null) handleYearSelect(year)
   }
 
@@ -241,6 +250,7 @@ function CalendarContent({ children }: CalendarContentProps) {
 
   keepRangeOpenInPicker(rangeState)
   const picker = zoomContext.view === "months" ? <MonthPickerGrid /> : <YearPickerGrid />
+
   if (!zoomContext.fixedHeight) {
     return picker
   }
@@ -273,8 +283,10 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
     if (zoomContext?.view === "months") {
       return zoomContext.viewYear.toString()
     }
+
     if (zoomContext?.view === "years") {
       const start = zoomContext.viewDecadeStart
+
       return `${start} - ${start + 11}`
     }
 

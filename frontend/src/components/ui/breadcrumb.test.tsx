@@ -22,6 +22,7 @@ test.each([320, 375])('a long trail stays on one line in a %i px header and trun
       </div>
     </header>
   )
+
   const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
   const screen = await render(<RouterProvider router={router} />)
   await expect.element(screen.getByRole('link', { name: 'Work orders' })).toBeVisible()
@@ -53,6 +54,7 @@ test('a BreadcrumbLink as the last item is the current page: disabled, not an an
       </BreadcrumbList>
     </Breadcrumb>
   )
+
   const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
   const screen = await render(<RouterProvider router={router} />)
 
@@ -82,7 +84,9 @@ async function renderWorkOrderTrail(width: number) {
       </div>
     </header>
   )
+
   const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
+
   return render(<RouterProvider router={router} />)
 }
 
@@ -125,8 +129,8 @@ test('a current page that fits is a disabled link, not a button', async () => {
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
 })
 
-test('a current page that truncated under an earlier name is a link when it fits', async () => {
-  const trail = (width: number, name: string) => (
+function currentPageTrail(width: number, name: string) {
+  return (
     <header style={{ width }} className="flex h-16 items-center gap-2">
       <div className="flex min-w-0 items-center gap-2 px-4">
         <Breadcrumb>
@@ -139,15 +143,55 @@ test('a current page that truncated under an earlier name is a link when it fits
       </div>
     </header>
   )
-  const screen = await render(trail(160, workOrder))
+}
+
+test('a current page that truncated under an earlier name is a link when it fits', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
   await expect.element(screen.getByRole('button', { name: workOrder })).toBeVisible()
 
-  await screen.rerender(trail(1280, 'Home'))
+  await screen.rerender(currentPageTrail(1280, 'Home'))
   await expect.element(screen.getByRole('link', { name: 'Home' })).toBeVisible()
-  await screen.rerender(trail(1280, workOrder))
+  await screen.rerender(currentPageTrail(1280, workOrder))
 
   await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
+})
+
+test('a current page that truncated in a narrow header is a link when the header gets wide enough for its name', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
+  await expect.element(screen.getByRole('button', { name: workOrder })).toBeVisible()
+
+  await screen.rerender(currentPageTrail(1280, workOrder))
+
+  await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
+})
+
+test('a focused current page that truncated stays a button with the focus when the header gets wide enough for its name', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
+  const current = screen.getByRole('button', { name: workOrder })
+  await expect.element(current).toBeVisible()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(current).toHaveFocus()
+
+  await screen.rerender(currentPageTrail(1280, workOrder))
+  await new Promise(requestAnimationFrame)
+  await new Promise(requestAnimationFrame)
+
+  await expect.element(current).toHaveFocus()
+})
+
+test('the open popover of a current page that truncated stays open when the header gets wide enough for its name', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
+  await screen.getByRole('button', { name: workOrder }).click()
+  const popover = screen.getByRole('dialog', { name: 'Current page' })
+  await expect.element(popover).toBeVisible()
+
+  await screen.rerender(currentPageTrail(1280, workOrder))
+  await new Promise(requestAnimationFrame)
+  await new Promise(requestAnimationFrame)
+
+  await expect.element(popover).toBeVisible()
 })
 
 test('a current page with no room left on the line moves to the next line and shows its name', async () => {
@@ -169,10 +213,11 @@ test('a current page with no room left on the line moves to the next line and sh
     </div>,
     { wrapper: ({ children }) => <RouterProvider router={createRouter({ routeTree: createRootRoute({ component: () => children }), history: createMemoryHistory() })} /> },
   )
+
   const current = screen.getByRole('link', { name: 'Demo' })
   await expect.element(current).toBeVisible()
 
-  const name = current.element() as HTMLElement
+  const name = current.element()
   const first = screen.getByRole('link', { name: 'Work orders' }).element().getBoundingClientRect()
   const crumb = screen.getByRole('link', { name: 'North yard compressors' }).element().getBoundingClientRect()
   expect(crumb.top).toBe(first.top)

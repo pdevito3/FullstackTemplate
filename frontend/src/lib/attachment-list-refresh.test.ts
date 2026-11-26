@@ -32,12 +32,15 @@ describe('refreshBeforeUrlsExpire', () => {
   const isStaleAt = (now: number) => {
     vi.useFakeTimers({ now })
     const client = new QueryClient()
+
     const options = queryOptions({
       queryKey: ['files'],
       queryFn: () => Promise.resolve({ attachments: [expiringAt('2026-05-20T15:30:00Z')] }),
       ...refreshBeforeUrlsExpire,
     })
+
     client.setQueryData(options.queryKey, { attachments: [expiringAt('2026-05-20T15:15:00Z')] }, { updatedAt: loadedAt })
+
     return new QueryObserver(client, options).getCurrentResult().isStale
   }
 

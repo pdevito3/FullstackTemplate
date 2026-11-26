@@ -30,6 +30,7 @@ const stale = new ProblemDetailsError({
 
 async function renderForm(onSave = vi.fn().mockResolvedValue(undefined), onLoadLatest = vi.fn()) {
   const screen = await render(<WorkshopEditForm workshop={workshop} refetchError={null} onSave={onSave} onLoadLatest={onLoadLatest} />)
+
   return {
     screen,
     onSave,
@@ -48,16 +49,20 @@ test('the Tab key goes through the fields in the order of the form: Title, Start
       <WorkshopEditForm workshop={workshop} refetchError={null} onSave={vi.fn()} onLoadLatest={vi.fn()} />
     </>,
   )
+
   const save = screen.getByRole('button', { name: 'Save' })
   const startsAt = screen.getByRole('group', { name: 'Starts at' }).element()
   const stops: string[] = []
 
   await userEvent.click(screen.getByRole('button', { name: 'Before the form' }))
+
   for (let tab = 0; tab < 20; tab++) {
     await userEvent.tab()
     const focused = document.activeElement!
+
     if (focused === save.element()) break
     const stop = startsAt.contains(focused) ? 'Starts at' : (focused.getAttribute('name') ?? focused.tagName)
+
     if (stops[stops.length - 1] !== stop) stops.push(stop)
   }
 
@@ -144,10 +149,12 @@ test('after a stale save, keeps each edit that the latest save did not change, a
 })
 
 test('shows a failed read of the workshop once, in the stale alert after a stale save', async () => {
-  const refetchError = answerError(500, '')
+  const refetchError = answerError(500, null)
+
   const screen = await render(
     <WorkshopEditForm workshop={workshop} refetchError={refetchError} onSave={vi.fn().mockRejectedValue(stale)} onLoadLatest={vi.fn()} />,
   )
+
   const failure = screen.getByText(/^The latest workshop did not load\./)
 
   await expect.element(failure).toBeVisible()
@@ -167,6 +174,7 @@ test('shows each validation message of the Server on its field', async () => {
     status: 422,
     errors: { title: ['A workshop with this title already starts at this time.'], status: ['Only a draft can be edited.'] },
   })
+
   const form = await renderForm(vi.fn().mockRejectedValue(refused))
 
   await userEvent.click(form.save)
@@ -183,6 +191,7 @@ test('puts the focus on the field that the Server refused, so a keyboard user is
     status: 422,
     errors: { capacity: ['The venue has room for 15 people.'] },
   })
+
   const form = await renderForm(vi.fn().mockRejectedValue(refused))
 
   await userEvent.click(form.save)
@@ -198,6 +207,7 @@ test('puts the focus in the start when the Server refuses the start', async () =
     status: 422,
     errors: { startsAt: ['Choose a start after today.'] },
   })
+
   const form = await renderForm(vi.fn().mockRejectedValue(refused))
 
   await userEvent.click(form.save)

@@ -18,6 +18,7 @@ export const usersPaths = {
 
 const problemAt = (method: MockRoute['method'], path: string, problem: Buildable<ProblemDetails>): MockRoute => {
   const body = problem.build()
+
   return { method, path, status: body.status ?? 500, body }
 }
 
@@ -25,12 +26,14 @@ export const usersApi = {
   currentOf(identity: Identity): MockRoute[] {
     if (!identity.signedIn) return []
     const name = identity.claims.find((claim) => claim.type === 'name')?.value ?? null
+
     return [usersApi.currentIs({ identifier: actorSubject, name })]
   },
 
   /** The current user. The user is not an operator of the jobs dashboard unless the test says so. */
   currentIs({ canOpenJobDashboard = false, ...user }: Omit<CurrentUserDto, 'canOpenJobDashboard'> & Partial<Pick<CurrentUserDto, 'canOpenJobDashboard'>>): MockRoute {
     const body: CurrentUserDto = { ...user, canOpenJobDashboard }
+
     return { method: 'get', path: usersPaths.current, status: 200, body }
   },
 
@@ -63,11 +66,13 @@ export const usersApi = {
 
   oneIs(user: Buildable<UserDto>): MockRoute {
     const body = user.build()
+
     return { method: 'get', path: usersPaths.one(body.id), status: 200, body }
   },
 
   roleChanges(user: Buildable<UserDto>): MockRoute {
     const body = user.build()
+
     return { method: 'put', path: usersPaths.roles(body.id), status: 200, body }
   },
 

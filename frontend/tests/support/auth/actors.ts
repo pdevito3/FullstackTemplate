@@ -19,6 +19,7 @@ export const as = {
   /** A user that the identity provider knows and the Server does not, as each user of a new database. */
   userWithNoTenant: (name = 'Ada Lovelace', subject = actorSubject): Identity => {
     const [givenName, familyName] = name.split(' ')
+
     return {
       signedIn: true,
       hasTenant: false,

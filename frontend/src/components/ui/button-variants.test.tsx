@@ -13,6 +13,7 @@ test.each(['light', 'dark'])('a link styled with buttonVariants has the border o
       </a>
     </div>,
   )
+
   const buttonBorder = getComputedStyle(screen.getByRole('button', { name: 'Save' }).element()).borderTopColor
   const linkBorder = getComputedStyle(screen.getByRole('link', { name: 'Details' }).element()).borderTopColor
 

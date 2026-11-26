@@ -1,8 +1,9 @@
 import { test as base, expect, type Request } from '@playwright/test'
+import * as z from 'zod'
 import { bffApi } from './api/bff-api'
 import { membershipApi } from './api/membership-api'
 import { usersApi } from './api/users-api'
-import { isMockedPath, requestRecorder, type HttpMethod, type MockRoute, type ServedRequest } from './api/mock-route'
+import { isMockedPath, requestRecorder, type HttpMethod, type MockRoute, type RequestBody, type ServedRequest } from './api/mock-route'
 import { as, type Identity } from './auth/actors'
 
 export interface Api {
@@ -22,9 +23,9 @@ export interface Api {
 
 // `postDataJSON` throws on a body that is not JSON. That leaves the route unfulfilled and the test
 // times out, so a recorder must not let it throw.
-function postBody(request: Request): unknown {
+function postBody(request: Request): RequestBody {
   try {
-    return request.postDataJSON()
+    return z.json().parse(request.postDataJSON())
   } catch {
     return request.postData() ?? undefined
   }
@@ -42,12 +43,16 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
       const served = requestRecorder()
       const missed: string[] = []
       const holds: (() => void)[] = []
+
       const newHold = () => {
         let release = () => {}
+
         const heldUntil = new Promise<void>((resolve) => {
           release = resolve
         })
+
         holds.push(release)
+
         return { heldUntil, release }
       }
 
@@ -63,18 +68,18 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
           if (!match) {
             missed.push(`${method.toUpperCase()} ${url.pathname}`)
             await route.fulfill({ status: 501, body: `No mock for ${method} ${url.pathname}` })
+
             return
           }
 
           served.add(match.method, url, new Headers(await request.allHeaders()), postBody(request))
           await match.heldUntil
-          await route.fulfill({
-            status: match.status,
-            headers: match.headers,
-            ...(match.body === undefined
-              ? {}
-              : { contentType: 'application/json', body: JSON.stringify(match.body) }),
-          })
+          const { status, headers } = match
+          await route.fulfill(
+            match.body === undefined
+              ? { status, headers }
+              : { status, headers, contentType: 'application/json', body: JSON.stringify(match.body) },
+          )
         },
       )
 
@@ -83,6 +88,7 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
         hold: (...added) => {
           const { heldUntil, release } = newHold()
           routes.push(...added.map((route) => ({ ...route, heldUntil })))
+
           return release
         },
         holdPageSource: async (file) => {
@@ -91,11 +97,13 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
             await heldUntil
             await route.fallback()
           })
+
           return release
         },
         failPageSource: async (file) => {
           let failing = true
           await page.route(file, (route) => (failing ? route.abort() : route.fallback()))
+
           return () => {
             failing = false
           }

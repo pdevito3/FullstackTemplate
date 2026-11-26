@@ -90,6 +90,7 @@ function InviteRows({ page, onPageChange, onRevokeSettled }: InviteListProps & {
           <TableBody>
             {invites.map((invite) => {
               const state = inviteStateOf(invite)
+
               return (
                 <TableRow key={invite.id} id={invite.id}>
                   <TableCell className="whitespace-normal wrap-anywhere">

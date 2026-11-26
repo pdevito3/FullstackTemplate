@@ -237,6 +237,24 @@ public class ApiProxyTests
     }
 
     [Test]
+    public async Task a_connection_to_the_server_that_times_out_gives_502()
+    {
+        // Arrange
+        using var server = new SilentServer();
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["services:server:https:0"] = server.Url,
+        });
+        using var browser = app.CreateBrowser();
+
+        // Act
+        var response = await browser.GetApiAsync("/api/v1/items").WaitAsync(TimeSpan.FromSeconds(30));
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
+    }
+
+    [Test]
     public async Task a_server_that_does_not_answer_gives_504_at_the_limit()
     {
         // Arrange

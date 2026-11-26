@@ -95,8 +95,9 @@ const BreadcrumbLink = createRouterLink(function BreadcrumbLinkHost({
 
 /**
  * When the name truncates, the current page becomes a button that opens the
- * full name in a popover, because a Tooltip does not open on touch. It stays a
- * button until the name changes, so a resize does not unmount a focused button.
+ * full name in a popover, because a Tooltip does not open on touch. When the
+ * name fits again, it goes back to the disabled link, except while the button
+ * has the focus or its popover is open, so a resize does not take the focus.
  */
 function BreadcrumbPage(props: { className?: string; children?: string }) {
   return <CurrentPage key={props.children} {...props} />
@@ -104,14 +105,22 @@ function BreadcrumbPage(props: { className?: string; children?: string }) {
 
 function CurrentPage({ className, children }: { className?: string; children?: string }) {
   const [isTruncated, setIsTruncated] = React.useState(false)
+
   const measure = React.useCallback((element: HTMLElement | null) => {
     if (!element) return
+
     const observer = new ResizeObserver(() => {
-      if (element.scrollWidth > element.clientWidth) setIsTruncated(true)
+      const truncates = element.scrollWidth > element.clientWidth
+      const isInUse = element.closest('[data-slot="breadcrumb-page"]')?.matches(':focus-within, [aria-expanded="true"]')
+
+      if (truncates || !isInUse) setIsTruncated(truncates)
     })
+
     observer.observe(element)
+
     return () => observer.disconnect()
   }, [])
+
   const pageClassName = cn("truncate font-normal text-foreground", className)
 
   if (!isTruncated) {
@@ -128,6 +137,7 @@ function CurrentPage({ className, children }: { className?: string; children?: s
       </span>
     )
   }
+
   return (
     <PopoverTrigger>
       <ButtonPrimitive
@@ -136,6 +146,7 @@ function CurrentPage({ className, children }: { className?: string; children?: s
         className="group/page flex h-11 min-w-0 cursor-default items-center text-left outline-none"
       >
         <span
+          ref={measure}
           className={cn(
             "-mx-1 rounded-sm px-1 py-0.5 group-focus-visible/page:ring-2 group-focus-visible/page:ring-ring/50",
             pageClassName

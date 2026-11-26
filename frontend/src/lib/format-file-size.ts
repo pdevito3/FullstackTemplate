@@ -9,7 +9,9 @@ export function formatFileSize(bytes: number, locale?: string): string {
   if (bytes < 1000) {
     return new Intl.NumberFormat(locale, { style: 'unit', unit: 'byte', unitDisplay: 'long' }).format(bytes)
   }
+
   const kilobytes = bytes / KILOBYTE
   const [value, unit] = Math.round(kilobytes * 10) < 10_000 ? [kilobytes, 'kilobyte'] : [bytes / MEGABYTE, 'megabyte']
+
   return new Intl.NumberFormat(locale, { style: 'unit', unit, maximumFractionDigits: 1 }).format(value)
 }

@@ -33,35 +33,46 @@ class UnexplainedFailureError extends Error {
   }
 }
 
-const kindOfEmptyAnswer: Partial<Record<number, UnexplainedKind>> = {
-  401: 'sign-in-rejected',
-  504: 'timed-out',
-}
+const kindOfEmptyAnswer = new Map<number, UnexplainedKind>([
+  [401, 'sign-in-rejected'],
+  [504, 'timed-out'],
+])
 
-export function answerError(status: number, body: unknown): ProblemDetailsError | UnexplainedFailureError {
-  if (isProblemDetails(body)) return new ProblemDetailsError(body)
-  return new UnexplainedFailureError(kindOfEmptyAnswer[status] ?? 'server-fault', `The answer has status ${status} and no problem details.`)
+export function answerError(status: number, problem: ProblemDetails | null): ProblemDetailsError | UnexplainedFailureError {
+  if (problem) return new ProblemDetailsError(problem)
+
+  return new UnexplainedFailureError(kindOfEmptyAnswer.get(status) ?? 'server-fault', `The answer has status ${status} and no problem details.`)
 }
 
 export function requestError(error: AxiosError): ProblemDetailsError | UnexplainedFailureError {
-  if (error.response) return answerError(error.response.status, error.response.data)
+  if (error.response) {
+    const { status, data } = error.response
+
+    return answerError(status, isProblemDetails(data) ? data : null)
+  }
+
   return new UnexplainedFailureError(error.code === AxiosError.ETIMEDOUT ? 'timed-out' : 'no-answer', error.message)
 }
 
 function refusalTextOf({ status, detail, title }: ProblemDetails): string | null {
   if ((status ?? 500) >= 500) return null
+
   return detail || title || null
 }
 
-function failureOf(error: unknown): Failure {
-  if (error instanceof UnexplainedFailureError) return { kind: error.kind }
-  if (!isProblemDetailsError(error)) return { kind: 'app-fault' }
-  if (error.problemDetails.status === 401) return { kind: 'sign-in-rejected' }
-  const text = refusalTextOf(error.problemDetails)
+function failureOf(cause: unknown): Failure {
+  if (cause instanceof UnexplainedFailureError) return { kind: cause.kind }
+
+  if (!isProblemDetailsError(cause)) return { kind: 'app-fault' }
+
+  if (cause.problemDetails.status === 401) return { kind: 'sign-in-rejected' }
+  const text = refusalTextOf(cause.problemDetails)
+
   return text === null ? { kind: 'server-fault' } : { kind: 'refused', text }
 }
 
-export function failureText(error: unknown): string {
-  const failure = failureOf(error)
+export function failureText(cause: unknown): string {
+  const failure = failureOf(cause)
+
   return failure.kind === 'refused' ? failure.text : textOf[failure.kind]
 }

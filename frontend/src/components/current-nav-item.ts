@@ -24,10 +24,12 @@ export function useCurrentNavItem<TUrl extends string>(urls: readonly TUrl[]): C
   const matches = (to: string, fuzzy: boolean) => matchRoute({ to, fuzzy }) !== false
 
   const page = urls.find((url) => matches(url, false))
+
   if (page) return { url: page, current: "page" }
 
   const section = urls
     .filter((url) => matches(url, true))
     .reduce<TUrl | undefined>((best, url) => (best && segmentCount(best) >= segmentCount(url) ? best : url), undefined)
+
   return section ? { url: section, current: "true" } : undefined
 }

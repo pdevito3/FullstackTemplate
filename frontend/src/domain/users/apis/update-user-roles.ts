@@ -14,6 +14,7 @@ export function useUpdateUserRoles(id: string) {
     onMutate: () => queryClient.cancelQueries({ queryKey: UserKeys.detail(id) }),
     onSuccess: (user) => {
       queryClient.setQueryData(UserKeys.detail(id), user)
+
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: UserKeys.lists() }),
         refreshCallerMembership(queryClient),

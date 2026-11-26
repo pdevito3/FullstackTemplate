@@ -21,15 +21,17 @@ interface Claim {
 export class SessionChangedError extends Error {}
 
 /** A 409 or a 410 after the own submit can mean that an earlier submit of this user won. */
-const canBeAnEarlierWin = (error: unknown) =>
-  isProblemDetailsError(error) && (error.status === 409 || error.status === 410)
+const canBeAnEarlierWin = (cause: unknown) =>
+  isProblemDetailsError(cause) && (cause.status === 409 || cause.status === 410)
 
 /** The preview names the tenant only by its name, and the name of a tenant is unique. */
 async function joined(queryClient: QueryClient, { identifier, tenantName }: Claim): Promise<boolean> {
   try {
     const user = await queryClient.fetchQuery(callerRecordQuery(identifier))
+
     if (!user) return false
     const tenant = await getTenant({ path: { id: user.tenantId }, options: { suppressErrorToast: true } })
+
     return tenant.name === tenantName
   } catch {
     return false
@@ -44,8 +46,10 @@ export function useClaimInvite() {
     mutationFn: async (claim: Claim) => {
       // The Server binds the new user to the session, and another tab can have changed the session since the last read.
       const claims = await queryClient.fetchQuery({ ...authClaimsQuery, staleTime: 0 })
+
       if (subOfClaims(claims) !== claim.identifier) throw new SessionChangedError()
       const body = { ...claim.values, token: readInviteToken() ?? '' }
+
       try {
         await claimInvite({ body, options: { suppressErrorToast: true } })
       } catch (error) {

@@ -34,7 +34,9 @@ const tokenLimit = maxLengthOf(inviteTokenDtoSchema.shape.token)
 
 function linkOfTheTab(sub: string | undefined): TabLink {
   const token = sub ? inviteTokenFor(sub) : null
+
   if (!token) return 'none'
+
   return token.length <= tokenLimit ? 'fits' : 'too-long'
 }
 
@@ -68,17 +70,22 @@ function Join({ membership, headingRef }: { membership: Membership; headingRef: 
       // The new session replaces this form, or the root route goes to the login, so this is not a failure to show.
       if (error instanceof SessionChangedError) {
         headingRef.current?.focus()
+
         return
       }
+
       const status = isProblemDetailsError(error) ? error.status : undefined
+
       if (isProblemDetailsError(error) && (status === 404 || status === 410)) {
         forgetInviteToken()
         setRefusedLink(failureText(error))
       }
+
       // These refusals replace the form, and the focus must not fall to the body.
       if (status === 404 || status === 409 || status === 410) headingRef.current?.focus()
       throw error
     }
+
     Notification.success(`You joined ${tenantName}.`)
     await navigate({ to: '/' })
   }
@@ -125,6 +132,7 @@ function JoinContent({ view, onRetryPreview, onClaim }: JoinContentProps) {
       return <QueryError title="The invite did not load." error={view.error} onRetry={onRetryPreview} />
     case 'claimable': {
       const { preview, profile } = view
+
       return (
         <div className="flex flex-col gap-6">
           <section aria-label="Invite">

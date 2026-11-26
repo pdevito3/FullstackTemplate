@@ -78,12 +78,14 @@ export function SharedComponents() {
 }
 
 const root = createRootRoute({ component: AppRoot.options.component })
+
 const page = createRoute({
   getParentRoute: () => root,
   path: '/',
   component: SharedComponents,
   staticData: { breadcrumb: 'Shared components' },
 })
+
 const router = createRouter({
   routeTree: root.addChildren([page]),
   history: createMemoryHistory({ initialEntries: ['/'] }),

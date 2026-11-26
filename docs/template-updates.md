@@ -171,6 +171,10 @@ A recurring job now deletes each object in storage that no live row names (see [
 - Give the put of each attachment entity of the app to `AttachmentStorage.AddAsync`.
 - For a file that is not an attachment, such as an export, put it under a prefix other than `tenants/`. Suppress RS0030 on the method that puts it, with a justification, and add the file to the list of `BannedApiSuppressionTests`.
 
+### The update that adds the anti-slop lint rules
+
+`pnpm lint` now runs the anti-slop rules on the TypeScript files of the SPA (see [Lint guards](frontend/code-style.md#lint-guards)). After the merge, the lint can fail in the code of the app. Run `pnpm exec eslint . --fix` in `frontend/`. It adds only the blank lines of `anti-slop/require-readable-spacing`. Correct each other error by hand, as its message tells. Do not turn a rule off to make the lint pass.
+
 ## Keep the next update small
 
 - When you find a fault in the template, report it as an issue of the template, and get the fix with the next update. A fix that you copy by hand gives a conflict when the fix of the template comes.

@@ -57,11 +57,15 @@ function useStickyHeight(side: keyof ScrollPadding) {
 
   React.useLayoutEffect(() => {
     const element = ref.current
+
     if (!element || !setScrollPadding) return
+
     const setHeight = (height: number) =>
       setScrollPadding((padding) => (padding[side] === height ? padding : { ...padding, [side]: height }))
+
     const observer = new ResizeObserver(() => setHeight(element.offsetHeight))
     observer.observe(element)
+
     return () => {
       observer.disconnect()
       setHeight(0)

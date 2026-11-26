@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { Text } from 'react-aria-components'
 // The UNSTABLE_ toast APIs can change in a minor release. package.json pins
 // react-aria-components to ~1.22.1 for this reason (notification.ts uses them too).
@@ -37,12 +36,16 @@ const hiddenToastSizePx = 1
 function pauseWhileHidden(toast: QueuedToast<ToastMessage>) {
   return (element: HTMLElement | null) => {
     if (!element) return
+
     const observer = new ResizeObserver(([entry]) => {
       const [{ inlineSize, blockSize }] = entry.borderBoxSize
+
       if (inlineSize > hiddenToastSizePx && blockSize > hiddenToastSizePx) toastQueue.markShown(toast)
       else toastQueue.markHidden(toast)
     })
+
     observer.observe(element)
+
     return () => observer.disconnect()
   }
 }
@@ -50,10 +53,13 @@ function pauseWhileHidden(toast: QueuedToast<ToastMessage>) {
 function publishToastRegionHeight(region: HTMLDivElement | null) {
   if (!region) return
   const root = document.documentElement
+
   const observer = new ResizeObserver(([entry]) => {
     root.style.setProperty('--toast-region-height', `${entry.borderBoxSize[0].blockSize}px`)
   })
+
   observer.observe(region)
+
   return () => {
     observer.disconnect()
     root.style.removeProperty('--toast-region-height')
@@ -88,7 +94,7 @@ export function Toaster() {
           toast={toast}
           ref={pauseWhileHidden(toast)}
           data-slot="toast"
-          style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' } as CSSProperties}
+          style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' }}
           className={cn(
             'bg-card text-card-foreground border border-border',
             'shadow-lg rounded-lg px-4 py-3',

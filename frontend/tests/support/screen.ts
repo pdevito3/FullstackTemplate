@@ -5,6 +5,7 @@ const visuallyHiddenSizePx = 1
 
 export async function takesUpSpace(element: Locator): Promise<boolean> {
   const box = await element.boundingBox()
+
   return box !== null && box.width > visuallyHiddenSizePx && box.height > visuallyHiddenSizePx
 }
 

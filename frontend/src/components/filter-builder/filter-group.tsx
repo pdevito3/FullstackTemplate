@@ -51,6 +51,7 @@ export function FilterGroup({
     'border-l-chart-4 bg-chart-4/5',
     'border-l-chart-5 bg-chart-5/5',
   ]
+
   const depthColor = depthColors[depth % depthColors.length]
 
   return (

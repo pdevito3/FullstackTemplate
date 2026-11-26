@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { test, expect, type Locator, type Page, type Request } from '@playwright/test'
+import * as z from 'zod'
 import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
 import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
 
@@ -41,9 +42,11 @@ async function becomesVisible(locator: Locator, timeout: number): Promise<boolea
 async function expandSwaggerTag(page: Page, tag: string) {
   const section = page.locator('.opblock-tag-section').filter({ has: page.locator(`.opblock-tag[data-tag="${tag}"]`) })
   await expect(section).toBeVisible()
+
   if (!(await section.getAttribute('class'))?.includes('is-open')) {
     await section.locator('.opblock-tag').click()
   }
+
   await expect(section).toHaveClass(/\bis-open\b/)
 }
 
@@ -73,9 +76,17 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
     if (idp.passwordSelector) {
       await page.locator(idp.passwordSelector).fill(idp.password!)
     }
+
     await page.locator(idp.submitSelector).click()
   }
 }
+
+const spansSchema = z.array(
+  z.looseObject({
+    timestamp: z.string(),
+    attributes: z.looseObject({ 'url.path': z.string().optional(), 'app.auth.scheme': z.string().optional() }),
+  }),
+)
 
 /**
  * The number of server spans of the current user call with a DPoP proof since `startedAt`. The server tags the span
@@ -87,8 +98,10 @@ function dpopSpansOfCurrentUserSince(startedAt: number): number {
     ['aspire', 'otel', 'spans', '--search', 'app.auth.scheme', '--format', 'Json', '--apphost', '../FullstackTemplate.AppHost'],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
   )
+
   const json = output.split('\n').find((line) => line.startsWith('[{') || line === '[]')
-  const spans = JSON.parse(json ?? '[]') as { timestamp: string; attributes: Record<string, string> }[]
+  const spans = spansSchema.parse(JSON.parse(json ?? '[]'))
+
   return spans.filter(
     (span) =>
       Date.parse(span.timestamp) >= startedAt &&
@@ -137,6 +150,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await expect
         .poll(async () => (await returnLink.isVisible()) || (await idpLoginForm.isVisible()), { timeout: 30000 })
         .toBe(true)
+
       if (await returnLink.isVisible()) {
         await returnLink.click()
       }
@@ -172,6 +186,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const location = (await loginResponse).headers()['location']
       expect(location).toBeTruthy()
       const authorizeParameters = [...new URL(location).searchParams.keys()].sort()
+
       if (currentIdp.capabilities.pushedAuthorization) {
         expect(authorizeParameters).toEqual(['client_id', 'request_uri'])
       } else {
@@ -225,11 +240,13 @@ async function followLinkFromAnotherSite(page: Page, target: string) {
   await page.goto(otherSite)
   const navigation = page.waitForRequest((request) => request.url() === target && request.isNavigationRequest())
   await page.getByRole('link', { name: 'Open the app' }).click()
+
   return navigation
 }
 
 async function sentSessionCookie(request: Request) {
   const cookie = (await request.allHeaders())['cookie'] ?? ''
+
   return cookie.split(';').some((pair) => pair.trim().startsWith(`${sessionCookieName}=`))
 }
 
@@ -244,6 +261,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
 
     // The browser must send these two cookies on the cross-site GET from the identity provider to /signin-oidc
     const loginCookies = await context.cookies()
+
     for (const prefix of ['.AspNetCore.Correlation.', '.AspNetCore.OpenIdConnect.Nonce.']) {
       const cookie = loginCookies.find((c) => c.name.startsWith(prefix))
       expect(cookie, `${prefix} cookie`).toBeDefined()
@@ -264,6 +282,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
   test('should show the signed-in user on a deep link from another site', async ({ page }) => {
     await signInThroughSpa(page)
     const deepLink = new URL('/about', page.url()).toString()
+
     // The root layout of the SPA that the cross-site link loads calls /bff/user same-site, with the cookie
     const user = page.waitForResponse(
       (response) => new URL(response.url()).pathname === '/bff/user' && page.url() === deepLink,
@@ -294,10 +313,12 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
 
     // The same call from the SPA is same-site, so it has the cookie and succeeds
     await page.goto('/')
+
     const sameSiteStatus = await page.evaluate(
       async (url) => (await fetch(url, { headers: { 'X-CSRF': '1' } })).status,
       apiUrl,
     )
+
     expect(sameSiteStatus).toBe(200)
   })
 })
@@ -354,16 +375,20 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     await modalAuthorizeButton.first().click()
 
     let popup: import('@playwright/test').Page
+
     try {
       popup = await popupPromise
     } catch {
       // If no popup appears, OAuth might be configured differently or blocked
       // Close modal and skip this test
       const closeButton = page.locator('.modal-ux button.btn-done, .modal-ux button[aria-label="Close"]')
+
       if (await closeButton.first().isVisible()) {
         await closeButton.first().click()
       }
+
       test.skip(true, 'OAuth popup was blocked or did not appear')
+
       return
     }
 
@@ -383,6 +408,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
       timeout: 15000,
     })
     const closeButton = page.locator('.modal-ux button.btn-done')
+
     if (await closeButton.isVisible()) {
       await closeButton.click()
     }
@@ -398,6 +424,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     if (!(await secureEndpoint.getAttribute('class'))?.includes('is-open')) {
       await secureEndpoint.locator('.opblock-summary').click()
     }
+
     await expect(secureEndpoint).toHaveClass(/\bis-open\b/)
     // Swagger UI resolves an operation after it opens. An Execute before that fails with
     // OperationNotFoundError and sends no request. The response example shows the resolved schema.
@@ -405,6 +432,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
 
     // Step 10: Click "Try it out" button if visible (might be auto-enabled)
     const tryItOutButton = secureEndpoint.getByRole('button', { name: 'Try it out' })
+
     if (await becomesVisible(tryItOutButton, 1000)) {
       await tryItOutButton.click()
     }
@@ -438,25 +466,41 @@ test.describe(`Provider discovery - ${currentIdp.name}`, () => {
 
     const response = await request.get(`${authority!.replace(/\/$/, '')}/.well-known/openid-configuration`)
     expect(response.status()).toBe(200)
-    const discovery = (await response.json()) as Record<string, unknown>
+    const discovery = discoverySchema.parse(await response.json())
 
     const live: IdpCapabilities = {
-      revocation: typeof discovery.revocation_endpoint === 'string',
+      revocation: discovery.revocation_endpoint !== undefined,
       issuerParameter: discovery.authorization_response_iss_parameter_supported === true,
       backChannelLogout: discovery.backchannel_logout_supported === true,
-      endSession: typeof discovery.end_session_endpoint === 'string',
-      pushedAuthorization: typeof discovery.pushed_authorization_request_endpoint === 'string',
-      dpop: Array.isArray(discovery.dpop_signing_alg_values_supported) && discovery.dpop_signing_alg_values_supported.length > 0,
+      endSession: discovery.end_session_endpoint !== undefined,
+      pushedAuthorization: discovery.pushed_authorization_request_endpoint !== undefined,
+      dpop: (discovery.dpop_signing_alg_values_supported ?? []).length > 0,
     }
+
     expect(live).toEqual(currentIdp.capabilities)
   })
 })
 
+const discoverySchema = z.object({
+  authorization_endpoint: z.string(),
+  token_endpoint: z.string(),
+  end_session_endpoint: z.string().optional(),
+  revocation_endpoint: z.string().optional(),
+  pushed_authorization_request_endpoint: z.string().optional(),
+  authorization_response_iss_parameter_supported: z.boolean().optional(),
+  backchannel_logout_supported: z.boolean().optional(),
+  dpop_signing_alg_values_supported: z.array(z.string()).optional(),
+})
+
+type Discovery = z.infer<typeof discoverySchema>
+
 function requiredEnv(name: string): string {
   const value = process.env[name]
+
   if (!value) {
     throw new Error(`${name} is not set. pnpm test:e2e:stack sets it from the stack.`)
   }
+
   return value
 }
 
@@ -464,16 +508,18 @@ function requiredEnv(name: string): string {
  * Calls the identity provider with Node fetch, not the request fixture of Playwright, so that the tokens and the admin
  * credentials stay out of the trace. Returns the status and the JSON body.
  */
-async function callIdp(url: string, init: RequestInit = {}): Promise<{ status: number; body: Record<string, unknown> }> {
+async function callIdp(url: string, init: RequestInit = {}): Promise<{ status: number; body: z.core.util.JSONType }> {
   const response = await fetch(url, init)
   const text = await response.text()
-  return { status: response.status, body: text ? (JSON.parse(text) as Record<string, unknown>) : {} }
+
+  return { status: response.status, body: text ? z.json().parse(JSON.parse(text)) : {} }
 }
 
-async function readDiscovery(): Promise<Record<string, unknown>> {
+async function readDiscovery(): Promise<Discovery> {
   const { status, body } = await callIdp(`${requiredEnv('AUTHORITY').replace(/\/$/, '')}/.well-known/openid-configuration`)
   expect(status).toBe(200)
-  return body
+
+  return discoverySchema.parse(body)
 }
 
 // The status of /bff/user for the session cookie of the page
@@ -481,13 +527,20 @@ async function bffUserStatus(page: Page): Promise<number> {
   return page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
 }
 
+const bffClaimsSchema = z.array(z.object({ type: z.string(), value: z.union([z.string(), z.number()]) }))
+
+async function bffClaim(page: Page, type: string): Promise<string | undefined> {
+  const answer: unknown = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json())
+  const value = bffClaimsSchema.parse(answer).find((claim) => claim.type === type)?.value
+
+  return value === undefined ? undefined : String(value)
+}
+
 // The sid claim of the BFF session, the id of the session at the identity provider
 async function bffSessionId(page: Page): Promise<string> {
-  const claims = await page.evaluate(
-    async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
-  )
-  const sid = claims.find((claim) => claim.type === 'sid')?.value
+  const sid = await bffClaim(page, 'sid')
   expect(sid, 'the sid claim of the BFF session').toBeTruthy()
+
   return sid!
 }
 
@@ -509,8 +562,10 @@ async function endKeycloakSession(sessionId: string) {
       password: requiredEnv('IDP_ADMIN_PASSWORD'),
     }),
   })
+
   expect(adminToken.status, 'the Keycloak admin token request').toBe(200)
-  const headers = { Authorization: `Bearer ${adminToken.body.access_token as string}` }
+  const { access_token: accessToken } = z.object({ access_token: z.string() }).parse(adminToken.body)
+  const headers = { Authorization: `Bearer ${accessToken}` }
   const session = `${keycloakUrl}/admin/realms/${realm}/sessions/${encodeURIComponent(sessionId)}`
 
   const online = await fetch(session, { method: 'DELETE', headers })
@@ -530,7 +585,7 @@ async function endAuthentikSessions(email: string) {
 
   const sessions = await callIdp(`${api}/core/authenticated_sessions/?user__username=${encodeURIComponent(email)}`, { headers })
   expect(sessions.status, 'the Authentik session list').toBe(200)
-  const results = sessions.body.results as { uuid: string }[]
+  const { results } = z.object({ results: z.array(z.object({ uuid: z.string() })) }).parse(sessions.body)
   expect(results.length, 'the Authentik sessions of the user').toBeGreaterThan(0)
 
   for (const session of results) {
@@ -561,6 +616,8 @@ test.describe(`Back-channel logout - ${currentIdp.name}`, () => {
   })
 })
 
+const tokenAnswerSchema = z.object({ refresh_token: z.string().optional(), error: z.string().optional() })
+
 function base64Url(bytes: Buffer): string {
   return bytes.toString('base64url')
 }
@@ -586,7 +643,7 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
     // login, so it answers 400 and does not redeem the code.
     const callback = page.waitForRequest((request) => request.url().startsWith(`${redirectUri}?`), { timeout: 30000 })
 
-    const authorizeUrl = new URL(discovery.authorization_endpoint as string)
+    const authorizeUrl = new URL(discovery.authorization_endpoint)
     authorizeUrl.search = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
@@ -603,22 +660,25 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
     const code = callbackUrl.searchParams.get('code')
     expect(code, 'the authorization code').toBeTruthy()
 
-    const tokenRequest = (form: Record<string, string>) =>
-      callIdp(discovery.token_endpoint as string, {
+    const tokenRequest = async (form: Record<string, string>) => {
+      const { status, body } = await callIdp(discovery.token_endpoint, {
         method: 'POST',
         headers: { Authorization: authorization },
         body: new URLSearchParams(form),
       })
 
+      return { status, body: tokenAnswerSchema.parse(body) }
+    }
+
     const issued = await tokenRequest({ grant_type: 'authorization_code', code: code!, redirect_uri: redirectUri, code_verifier: codeVerifier })
     expect(issued.status, 'the code exchange').toBe(200)
-    const firstRefreshToken = issued.body.refresh_token as string | undefined
-    expect(typeof firstRefreshToken, 'the first refresh token').toBe('string')
+    const firstRefreshToken = issued.body.refresh_token
+    expect(firstRefreshToken, 'the first refresh token').toEqual(expect.any(String))
 
     const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: firstRefreshToken! })
     expect(refreshed.status, 'the first refresh').toBe(200)
-    const secondRefreshToken = refreshed.body.refresh_token as string | undefined
-    expect(typeof secondRefreshToken, 'the rotated refresh token').toBe('string')
+    const secondRefreshToken = refreshed.body.refresh_token
+    expect(secondRefreshToken, 'the rotated refresh token').toEqual(expect.any(String))
     // Compare without the values, so that a failure does not print a token
     expect(secondRefreshToken !== firstRefreshToken, 'the refresh gives a new refresh token').toBe(true)
 
@@ -627,9 +687,11 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
   })
 })
 
+const jwtPayloadSchema = z.object({ iat: z.number() })
+
 // The payload of a JWT, read with no signature check. The caller reads only claims, never prints the token.
-function jwtPayload(token: string): Record<string, unknown> {
-  return JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')) as Record<string, unknown>
+function jwtPayload(token: string): z.infer<typeof jwtPayloadSchema> {
+  return jwtPayloadSchema.parse(JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')))
 }
 
 // A GET through the BFF proxy with the session cookie of the page, as the SPA sends it
@@ -665,17 +727,15 @@ test.describe(`BFF refresh - ${currentIdp.name}`, () => {
     expect(await bffApiStatus(page, '/api/v1/users/me'), 'the second API call, with the rotated refresh token').toBe(200)
     expect(await bffUserStatus(page), 'the BFF session after the refreshes').toBe(200)
 
-    const claims = await page.evaluate(
-      async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
-    )
-    const logoutUrl = claims.find((claim) => claim.type === 'bff:logout_url')?.value
+    const logoutUrl = await bffClaim(page, 'bff:logout_url')
     expect(logoutUrl, 'the bff:logout_url claim').toBeTruthy()
-    const endSession = page.waitForRequest((request) => request.url().startsWith(discovery.end_session_endpoint as string), { timeout: 30000 })
+    const endSessionEndpoint = z.string().parse(discovery.end_session_endpoint)
+    const endSession = page.waitForRequest((request) => request.url().startsWith(endSessionEndpoint), { timeout: 30000 })
     await page.goto(logoutUrl!)
     const idTokenHint = new URL((await endSession).url()).searchParams.get('id_token_hint')
     expect(idTokenHint, 'the id_token_hint of the logout').toBeTruthy()
 
-    const iat = jwtPayload(idTokenHint!).iat as number
+    const { iat } = jwtPayload(idTokenHint!)
     // One second of tolerance for the clock of the provider container
     expect(iat, 'the iat of the stored ID token is from the refresh of the second call').toBeGreaterThanOrEqual(secondCallStart - 1)
   })
@@ -701,8 +761,10 @@ test.describe(`Refresh lock - ${currentIdp.name}`, () => {
       // no-store, because Chrome holds a second GET of the same URL until the first one ends, for its cache
       const call = async () =>
         (await fetch('/api/v1/users/me', { headers: { 'X-CSRF': '1' }, cache: 'no-store' })).status
+
       return Promise.all([call(), call()])
     })
+
     expect(statuses, 'the two API calls at the same time').toEqual([200, 200])
     expect(await bffUserStatus(page), 'the BFF session after the two calls').toBe(200)
     expect(await bffApiStatus(page, '/api/v1/users/me'), 'an API call after the two calls').toBe(200)

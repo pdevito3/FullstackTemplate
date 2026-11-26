@@ -16,11 +16,13 @@ export function useVenueSearch(search: string) {
       // The list says that a next page failed, and how to ask for it again. A page that the list already has can fail
       // only when the list loads again. The list then has no message, so that failure keeps its toast.
       const isNextPage = pageParam > 1 && !client.getQueryData<InfiniteData<unknown, number>>(queryKey)?.pageParams.includes(pageParam)
+
       const result = await getVenueList({
         query: { filters: containsText<VenueDto>('name', search), pageNumber: pageParam, pageSize: VENUE_PAGE_SIZE },
         signal,
         options: { suppressErrorToast: isNextPage },
       })
+
       return { venues: result.data, pagination: parsePagination(result) }
     },
     placeholderData: keepPreviousData,

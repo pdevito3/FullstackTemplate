@@ -15,6 +15,7 @@ class WorkshopAttachmentBuilder {
 
   static create() {
     const n = next()
+
     return new WorkshopAttachmentBuilder(
       signed({
         id: `00000000-0000-4000-a000-${String(n).padStart(12, '0')}`,
@@ -51,6 +52,7 @@ function signed(
   { preview = attachment.previewUrl != null } = {},
 ): AttachmentDto {
   const signature = `expires=${encodeURIComponent(attachment.urlsExpireAt)}`
+
   return {
     ...attachment,
     downloadUrl: `https://storage.test/files/${attachment.id}?download&${signature}`,

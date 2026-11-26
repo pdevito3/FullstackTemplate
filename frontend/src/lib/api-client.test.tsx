@@ -1,18 +1,17 @@
 import { AxiosError, AxiosHeaders, CanceledError, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as z from 'zod'
 
 import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
 import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
-import { Notification } from '@/components/notification'
+import { toastQueue } from '@/components/notification'
 import { apiClient, onUnauthorized } from '@/lib/api-client'
 import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 import { failureText } from '@/lib/request-failure'
 
-vi.mock('@/components/notification', () => ({
-  Notification: { error: vi.fn() },
-}))
+const shownToasts = () => toastQueue.visibleToasts.map(({ content }) => content)
 
 const tenantId = '0b9d5d8e-2f8a-4a43-9d36-5c3f6f4f0a11'
 
@@ -27,7 +26,7 @@ const validationProblem = {
 function respond(
   config: InternalAxiosRequestConfig,
   status: number,
-  data: unknown,
+  data: z.core.util.JSONType,
   headers: Record<string, string> = {},
 ): Promise<AxiosResponse> {
   const response: AxiosResponse = {
@@ -37,8 +36,11 @@ function respond(
     headers: new AxiosHeaders({ 'content-type': status >= 400 ? 'application/problem+json' : 'application/json', ...headers }),
     config,
   }
+
   const validateStatus = config.validateStatus ?? ((s: number) => s >= 200 && s < 300)
+
   if (validateStatus(status)) return Promise.resolve(response)
+
   return Promise.reject(new AxiosError(`Request failed with status code ${status}`, undefined, config, undefined, response))
 }
 
@@ -56,7 +58,7 @@ beforeEach(() => {
 
 afterEach(() => {
   apiClient.defaults.adapter = originalAdapter
-  vi.mocked(Notification.error).mockClear()
+  toastQueue.clear()
 })
 
 describe('apiClient with a generated client', () => {
@@ -73,32 +75,32 @@ describe('apiClient with a generated client', () => {
   it('shows the detail of a 422 in a toast and rejects with a ProblemDetailsError', async () => {
     adapter.mockImplementation((config) => respond(config, 422, validationProblem))
 
-    const error = await addTenant({ body: { name: '' } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: '' } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
-    expect((error as ProblemDetailsError).status).toBe(422)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith('Please provide a name.')
+    expect(error).toHaveProperty('status', 422)
+    expect(shownToasts()).toEqual([{ type: 'error', message: 'Please provide a name.' }])
     expect(checkSession).not.toHaveBeenCalled()
   })
 
   it('does not show a toast when suppressErrorToast is true', async () => {
     adapter.mockImplementation((config) => respond(config, 422, validationProblem))
 
-    const error = await addTenant({ body: { name: '' }, options: { suppressErrorToast: true } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: '' }, options: { suppressErrorToast: true } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 
   it('does not show a toast for a cancelled request', async () => {
     // A real adapter rejects with a CanceledError when the signal aborts, for example when TanStack Query drops an old query
     adapter.mockImplementation((config) => Promise.reject(new CanceledError(undefined, undefined, config)))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(AxiosError)
-    expect((error as AxiosError).code).toBe(AxiosError.ERR_CANCELED)
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(error).toHaveProperty('code', AxiosError.ERR_CANCELED)
+    expect(shownToasts()).toEqual([])
   })
 
   it('returns an error status as a result, with no toast, when throwOnError is false', async () => {
@@ -108,7 +110,7 @@ describe('apiClient with a generated client', () => {
 
     expect(result.status).toBe(422)
     expect(result.error).toEqual(validationProblem)
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 })
 
@@ -116,6 +118,7 @@ describe('a generated list client', () => {
   // A list endpoint has a name that ends in List, and kubb.config.ts makes its client return the full response
   it('returns the full response, so that parsePagination can read the X-Pagination header', async () => {
     const tenants = [{ id: tenantId, name: 'Acme' }]
+
     const pagination = {
       totalCount: 11,
       pageSize: 10,
@@ -127,6 +130,7 @@ describe('a generated list client', () => {
       hasPrevious: true,
       hasNext: false,
     }
+
     adapter.mockImplementation((config) =>
       respond(config, 200, tenants, { 'X-Pagination': JSON.stringify(pagination) }),
     )
@@ -147,11 +151,11 @@ describe('apiClient with a fault of the Server', () => {
   ])('shows the text of the SPA, not %s, for a 5xx problem', async (_, problem) => {
     adapter.mockImplementation((config) => respond(config, problem.status, problem))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect(failureText(error)).toBe(serverFault)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
+    expect(shownToasts()).toEqual([{ type: 'error', message: serverFault }])
   })
 
   it.each([
@@ -162,12 +166,12 @@ describe('apiClient with a fault of the Server', () => {
   ])('shows the text of the SPA for an answer with %s and no problem', async (_, status, body) => {
     adapter.mockImplementation((config) => respond(config, status, body))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).toBeInstanceOf(Error)
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     expect(failureText(error)).toBe(serverFault)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
+    expect(shownToasts()).toEqual([{ type: 'error', message: serverFault }])
   })
 })
 
@@ -177,24 +181,25 @@ describe('apiClient with a 401 or with no answer', () => {
     checkSession.mockResolvedValue(true)
     adapter.mockImplementation((config) => respond(config, 401, ''))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     expect(checkSession).toHaveBeenCalledOnce()
-    expect(Notification.error).not.toHaveBeenCalled()
+    expect(shownToasts()).toEqual([])
   })
 
   it('checks the session for a 401, and shows a toast when the session lives', async () => {
     checkSession.mockResolvedValue(false)
     adapter.mockImplementation((config) => respond(config, 401, ''))
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     const signInRejected =
       'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
     expect(failureText(error)).toBe(signInRejected)
     expect(checkSession).toHaveBeenCalledOnce()
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(signInRejected)
+    expect(shownToasts()).toEqual([{ type: 'error', message: signInRejected }])
   })
 
   it('does not check the session for a 401 of the session check itself', async () => {
@@ -210,22 +215,22 @@ describe('apiClient with a 401 or with no answer', () => {
       Promise.reject(new AxiosError('Network Error', AxiosError.ERR_NETWORK, config)),
     )
 
-    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+    const error = await getTenant({ path: { id: tenantId } }).catch((cause: unknown) => cause)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     const noAnswer = 'The app could not reach the server. Check your connection, then try again.'
     expect(failureText(error)).toBe(noAnswer)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(noAnswer)
+    expect(shownToasts()).toEqual([{ type: 'error', message: noAnswer }])
   })
   const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
 
   it('says that the server did not answer in time for a 504 of the BFF', async () => {
     adapter.mockImplementation((config) => respond(config, 504, ''))
 
-    const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: 'Acme' } }).catch((cause: unknown) => cause)
 
     expect(failureText(error)).toBe(timedOut)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
+    expect(shownToasts()).toEqual([{ type: 'error', message: timedOut }])
   })
 
   it('says the same for a request that the app stops at its time limit', async () => {
@@ -233,10 +238,10 @@ describe('apiClient with a 401 or with no answer', () => {
       Promise.reject(new AxiosError(`timeout of ${config.timeout}ms exceeded`, AxiosError.ETIMEDOUT, config)),
     )
 
-    const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
+    const error = await addTenant({ body: { name: 'Acme' } }).catch((cause: unknown) => cause)
 
     expect(failureText(error)).toBe(timedOut)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
+    expect(shownToasts()).toEqual([{ type: 'error', message: timedOut }])
   })
 
   it('gives a request a time limit of 35 s, and an upload 10 min', async () => {

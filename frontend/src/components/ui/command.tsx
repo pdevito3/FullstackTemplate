@@ -23,6 +23,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SearchIcon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 
 import {
   Dialog,
@@ -46,6 +47,7 @@ function Command({
   style?: React.CSSProperties
 }) {
   const { contains } = useFilter({ sensitivity: "base" })
+
   return (
     <div
       data-slot="command"
@@ -208,7 +210,9 @@ type CommandItemProps<T extends object = object> = Omit<
 
 function ownsFocus(item: Element) {
   const focused = item.ownerDocument.activeElement
+
   if (!focused) return false
+
   return (
     item.closest('[data-slot="command"]')?.contains(focused) ||
     focused === item.closest('[role="dialog"]')
@@ -254,7 +258,7 @@ function CommandItem<T extends object>({
         )
       )}
       textValue={
-        textValue || (typeof children === "string" ? children : undefined)
+        textValue || (isText(children) ? children : undefined)
       }
     >
       {composeRenderProps(children, (children) => (
@@ -294,4 +298,5 @@ export {
   CommandShortcut,
   CommandSeparator,
 }
+
 export type { CommandItemProps }

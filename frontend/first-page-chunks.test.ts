@@ -1,28 +1,32 @@
 import type { Rollup } from 'vite'
 import { describe, expect, it } from 'vitest'
 
-import { firstPageChunks } from './first-page-chunks'
+import { firstPageChunks, type BundleFields } from './first-page-chunks'
 
 type ChunkInput = { isEntry?: boolean; imports?: string[]; dynamicImports?: string[]; bytes?: number; code?: string }
 
-function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
-  const outputs: Record<string, unknown> = {
-    'index.css': { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) },
-  }
-  for (const [fileName, chunk] of Object.entries(chunks)) {
-    outputs[fileName] = {
-      type: 'chunk',
+type OutputInput =
+  | Pick<Rollup.OutputAsset, 'type' | 'fileName' | 'source'>
+  | Pick<Rollup.OutputChunk, 'type' | 'fileName' | 'isEntry' | 'imports' | 'dynamicImports' | 'code'>
+
+function bundleOf(chunks: Record<string, ChunkInput>): BundleFields {
+  return Object.fromEntries([
+    ['index.css', { type: 'asset', fileName: 'index.css', source: 'x'.repeat(5000) }],
+    ...Object.entries(chunks).map(([fileName, chunk]): [string, OutputInput] => [
       fileName,
-      isEntry: chunk.isEntry ?? false,
-      imports: chunk.imports ?? [],
-      dynamicImports: chunk.dynamicImports ?? [],
-      code: chunk.code ?? 'x'.repeat(chunk.bytes ?? 1000),
-    }
-  }
-  return outputs as Rollup.OutputBundle
+      {
+        type: 'chunk',
+        fileName,
+        isEntry: chunk.isEntry ?? false,
+        imports: chunk.imports ?? [],
+        dynamicImports: chunk.dynamicImports ?? [],
+        code: chunk.code ?? 'x'.repeat(chunk.bytes ?? 1000),
+      },
+    ]),
+  ] satisfies [string, OutputInput][])
 }
 
-const namesOf = (bundle: Rollup.OutputBundle) => firstPageChunks(bundle).map((chunk) => chunk.fileName).sort()
+const namesOf = (bundle: BundleFields) => firstPageChunks(bundle).map((chunk) => chunk.fileName).sort()
 
 describe('firstPageChunks', () => {
   it('counts the entry and each chunk that it imports, also through another chunk', () => {

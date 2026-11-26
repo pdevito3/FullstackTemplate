@@ -10,18 +10,22 @@ async function currentAt(path: string, urls: readonly string[] = navUrls) {
   function CurrentItem() {
     return <output>{JSON.stringify(useCurrentNavItem(urls) ?? null)}</output>
   }
+
   const rootRoute = createRootRoute({ component: CurrentItem, notFoundComponent: () => null })
+
   const routeTree = rootRoute.addChildren(
     ['/', '/about', '/start-tenant', '/projects', '/projects/new', '/projects/$id', '/projects/$id/edit'].map((routePath) =>
       createRoute({ getParentRoute: () => rootRoute, path: routePath }),
     ),
   )
+
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [path] }) })
   const screen = await render(<RouterProvider router={router} />)
   const output = screen.getByRole('status')
   await expect.element(output).toBeInTheDocument()
-  const current = JSON.parse(output.element().textContent ?? '') as unknown
+  const current: unknown = JSON.parse(output.element().textContent ?? '')
   await screen.unmount()
+
   return current
 }
 

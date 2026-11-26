@@ -8,8 +8,10 @@ export function quoteText(value: string): string {
   if (!value.includes('"')) {
     return `"${value}"`
   }
+
   const longestRun = Math.max(...(value.match(/"+/g) ?? []).map((run) => run.length))
   const delimiter = '"'.repeat(Math.max(3, longestRun + 1))
+
   return `${delimiter} ${value} ${delimiter}`
 }
 
@@ -20,5 +22,6 @@ export function quoteText(value: string): string {
  */
 export function containsText<T>(field: Extract<keyof T, string>, text: string): string | undefined {
   const trimmed = text.trim()
+
   return trimmed ? `${field} @=* ${quoteText(trimmed)}` : undefined
 }

@@ -18,6 +18,7 @@ for (const { screen, property, scroll, rises } of straightPaths) {
       const demo = filterDemoPage(page)
       await demo.open()
       await demo.at.addFilterMenu.click()
+
       if (scroll) await demo.scrollPropertyList(scroll, property)
       await demo.hoverProperty(property)
       const field = demo.at.dateSegment(property, 'Date', 'month')

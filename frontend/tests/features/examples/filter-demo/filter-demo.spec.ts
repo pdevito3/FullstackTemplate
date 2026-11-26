@@ -110,6 +110,7 @@ for (const viewport of [
         await demo.openOn(dayInASixWeekMonth)
 
         await demo.chooseProperty('Created Date')
+
         if (mode === 'Between') await demo.chooseBetween('Created Date')
 
         expect(await demo.sidewaysScrollOf('Created Date')).toBe(0)
@@ -120,6 +121,7 @@ for (const viewport of [
         const lastMode = await demo.edgesOf(demo.at.button('Created Date', 'Between'))
         expect(calendar.left).toBeCloseTo(firstMode.left, 0)
         expect(calendar.right).toBeCloseTo(lastMode.right, 0)
+
         if (mode === 'Between') {
           const endDate = await demo.edgesOf(demo.at.dateField('Created Date', 'End date'))
           expect(endDate.right).toBeCloseTo(lastMode.right, 0)
@@ -216,6 +218,7 @@ test.describe('the Status control on a touch screen', () => {
     await demo.chooseProperty('Status')
 
     await expect(demo.at.onlyButtons('Status')).toHaveCount(5)
+
     for (const only of await demo.at.onlyButtons('Status').all()) await expect(only).toHaveCSS('opacity', '1')
   })
 })
@@ -663,6 +666,7 @@ test.describe('the filter builder after the focused button goes away', () => {
     await demo.open()
     await demo.at.toolbarButton('Urgent Bugs').click()
     await demo.at.toolbarButton('Group Filters').click()
+
     for (const value of ['Bug', 'Urgent']) {
       await demo.select(demo.at.selectFilter(`Labels | Has | ${value}`))
     }
@@ -758,6 +762,7 @@ test.describe('a filter group on a 390 px phone', () => {
     await demo.at.toolbarButton('Complex Nested Query').click()
 
     const badge = await demo.edgesOf(demo.at.groupBadge(1))
+
     for (const action of ['Ungroup', 'Delete group'] as const) {
       const button = await demo.edgesOf(demo.at.groupAction(1, action))
       expect(button.top, action).toBeLessThan(badge.bottom)
@@ -780,6 +785,7 @@ test.describe('a nested filter group on a 320 px phone with a 24 px font', () =>
       for (const action of ['Ungroup', 'Delete group'] as const) {
         expect(await demo.overlapOf(demo.at.groupBadge(depth), demo.at.groupAction(depth, action)), `depth ${depth} ${action}`).toBeNull()
       }
+
       expect(await demo.overflowOf(demo.at.group(depth)), `depth ${depth}`).toBeLessThanOrEqual(0)
       const header = await demo.edgesOf(demo.at.groupHeader(depth))
       expect((await demo.edgesOf(demo.at.groupBadge(depth))).right, `depth ${depth} badge`).toBeLessThanOrEqual(header.right)
@@ -837,9 +843,11 @@ test.describe('a filter group with one short filter on a desktop', () => {
     await demo.open()
     await demo.at.toolbarButton('Urgent Bugs').click()
     await demo.at.toolbarButton('Group Filters').click()
+
     for (const value of ['Bug', 'Urgent']) {
       await demo.select(demo.at.selectFilter(`Labels | Has | ${value}`))
     }
+
     await demo.at.groupSelected.click()
 
     await demo.at.removeFilterNamed('Labels | Has | Urgent').click()

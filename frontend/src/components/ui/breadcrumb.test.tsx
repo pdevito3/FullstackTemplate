@@ -22,6 +22,7 @@ test.each([320, 375])('a long trail stays on one line in a %i px header and trun
       </div>
     </header>
   )
+
   const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
   const screen = await render(<RouterProvider router={router} />)
   await expect.element(screen.getByRole('link', { name: 'Work orders' })).toBeVisible()
@@ -53,6 +54,7 @@ test('a BreadcrumbLink as the last item is the current page: disabled, not an an
       </BreadcrumbList>
     </Breadcrumb>
   )
+
   const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
   const screen = await render(<RouterProvider router={router} />)
 
@@ -82,7 +84,9 @@ async function renderWorkOrderTrail(width: number) {
       </div>
     </header>
   )
+
   const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
+
   return render(<RouterProvider router={router} />)
 }
 
@@ -139,6 +143,7 @@ test('a current page that truncated under an earlier name is a link when it fits
       </div>
     </header>
   )
+
   const screen = await render(trail(160, workOrder))
   await expect.element(screen.getByRole('button', { name: workOrder })).toBeVisible()
 
@@ -169,10 +174,11 @@ test('a current page with no room left on the line moves to the next line and sh
     </div>,
     { wrapper: ({ children }) => <RouterProvider router={createRouter({ routeTree: createRootRoute({ component: () => children }), history: createMemoryHistory() })} /> },
   )
+
   const current = screen.getByRole('link', { name: 'Demo' })
   await expect.element(current).toBeVisible()
 
-  const name = current.element() as HTMLElement
+  const name = current.element()
   const first = screen.getByRole('link', { name: 'Work orders' }).element().getBoundingClientRect()
   const crumb = screen.getByRole('link', { name: 'North yard compressors' }).element().getBoundingClientRect()
   expect(crumb.top).toBe(first.top)

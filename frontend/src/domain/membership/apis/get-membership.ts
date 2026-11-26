@@ -6,7 +6,7 @@ import type { InitiateUserAndTenantDto } from '@/api/generated/models/types/init
 import type { UserDto } from '@/api/generated/models/types/user-dto'
 import { authClaimsQuery } from '@/domain/auth/apis/get-user'
 import type { BffClaim } from '@/domain/auth/types'
-import { isProblemDetailsError, type ProblemDetailsError } from '@/lib/problem-details'
+import { isProblemDetails, isProblemDetailsError, type ProblemDetailsError } from '@/lib/problem-details'
 import { answerError, failureText } from '@/lib/request-failure'
 
 import { MembershipKeys } from './membership.keys'
@@ -24,6 +24,7 @@ export type Membership =
 /** The `sub` of the signed-in person, once the membership is known. */
 export function subOf(membership: Membership): string | undefined {
   if (membership.status === 'member') return membership.user.identifier
+
   return membership.status === 'no-tenant' ? membership.profile.identifier : undefined
 }
 
@@ -33,6 +34,7 @@ export const subOfClaims = (claims: BffClaim[] | null | undefined) => (claims ? 
 
 function profileOf(identifier: string, claims: BffClaim[]): StartTenantProfile {
   const email = claim(claims, 'email') ?? ''
+
   return {
     identifier,
     firstName: claim(claims, 'given_name') ?? '',
@@ -50,9 +52,11 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
     signal,
     options: { suppressErrorToast: true },
   })
+
   if (result.status === 200) return result.data
+
   if (result.status === 404) return null
-  throw answerError(result.status, result.error)
+  throw answerError(result.status, isProblemDetails(result.error) ? result.error : null)
 }
 
 /** A refusal of the Server does not change on an immediate retry. */
@@ -76,6 +80,7 @@ export function useMembership(): Membership {
   // A refetch with no data sets the query back to pending and clears the error. The failure must stay on the page until
   // the answer comes, or the focused Try Again goes away.
   const [lastError, setLastError] = useState<unknown>(null)
+
   if (user.error && user.error !== lastError) setLastError(user.error)
 
   // A failed refetch keeps the data of the last answer, and that answer is still good to show.
@@ -84,10 +89,13 @@ export function useMembership(): Membership {
       ? { status: 'error', message: CHECK_FAILED, retry: () => void claims.refetch() }
       : { status: 'loading' }
   }
+
   if (!claims.data || !identifier) return { status: 'error', message: CHECK_FAILED }
+
   if (user.data === undefined) {
     // A hook that mounts during a check has no failure to show until the answer comes.
     if (user.errorUpdateCount === 0 || lastError === null) return { status: 'loading' }
+
     return {
       status: 'error',
       message: isRefusal(lastError) ? failureText(lastError) : CHECK_FAILED,
@@ -95,6 +103,7 @@ export function useMembership(): Membership {
       retry: () => void user.refetch(),
     }
   }
+
   return user.data
     ? { status: 'member', user: user.data }
     : { status: 'no-tenant', profile: profileOf(identifier, claims.data) }

@@ -17,6 +17,7 @@ export function lazyControl(load: () => Promise<ComponentType<FilterControlProps
   return function LazyControl(props: FilterControlProps) {
     // Each control keeps its own lazy component, so a failed Try again in one control does not break a control that loaded.
     const [shown, setShown] = useState(() => ({ Control: Loaded, attempt: 0 }))
+
     const tryAgain = () => {
       Loaded = newLazy()
       setShown({ Control: Loaded, attempt: shown.attempt + 1 })

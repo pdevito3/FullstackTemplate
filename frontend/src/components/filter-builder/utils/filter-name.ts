@@ -2,7 +2,7 @@ import { toCalendarDate, type CalendarDateTime } from '@internationalized/date'
 
 import { browserTimeZone, formatDate as formatCalendarDate, formatInstant } from '@/lib/zoned-time'
 
-import type { DateValue, Filter } from '../types'
+import { isDateValue, isNumberValue, isTextValue, type DateValue, type Filter } from '../types'
 import { getOperatorLabel } from './operators'
 
 /**
@@ -12,6 +12,7 @@ export function formatFilterValue(filter: Filter): string {
   const value = filter.controlType === 'multiselect' && filter.selectedLabels
     ? filter.selectedLabels
     : filter.value
+
   return formatValue(value)
 }
 
@@ -28,52 +29,52 @@ function formatValue(
 ): string {
   if (Array.isArray(value)) {
     if (value.length === 0) return 'None'
+
     if (value.length === 1) return value[0]
+
     // Show actual values if less than 4
     if (value.length < 4) return value.join(', ')
+
     return `${value.length} selected`
   }
 
-  if (typeof value === 'boolean') {
-    return value ? 'True' : 'False'
-  }
-
-  if (typeof value === 'number') {
-    return value.toString()
-  }
-
-  if (typeof value === 'string') {
-    return value
-  }
-
-  // DateValue
-  if (typeof value === 'object' && 'mode' in value) {
-    const dateValue = value as DateValue
+  if (isDateValue(value)) {
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+
     const formatDate = (date: Date | CalendarDateTime) =>
       date instanceof Date
-        ? formatInstant(date, dateValue.timeZone ?? browserTimeZone(), options)
+        ? formatInstant(date, value.timeZone ?? browserTimeZone(), options)
         : formatCalendarDate(toCalendarDate(date), options)
 
-    switch (dateValue.mode) {
+    switch (value.mode) {
       case 'before':
-        return `Before ${formatDate(dateValue.startDate)}`
+        return `Before ${formatDate(value.startDate)}`
       case 'after':
-        return `After ${formatDate(dateValue.startDate)}`
+        return `After ${formatDate(value.startDate)}`
       case 'on':
-        return formatDate(dateValue.startDate)
+        return formatDate(value.startDate)
       case 'excluding':
-        return `Excluding ${formatDate(dateValue.startDate)}`
+        return `Excluding ${formatDate(value.startDate)}`
       case 'between':
-        if (dateValue.endDate) {
-          const range = `${formatDate(dateValue.startDate)} - ${formatDate(dateValue.endDate)}`
-          return dateValue.exclude ? `Excluding ${range}` : range
+        if (value.endDate) {
+          const range = `${formatDate(value.startDate)} - ${formatDate(value.endDate)}`
+
+          return value.exclude ? `Excluding ${range}` : range
         }
-        return `From ${formatDate(dateValue.startDate)}`
+
+        return `From ${formatDate(value.startDate)}`
       default:
         return 'Unknown date'
     }
   }
+
+  if (value === true) return 'True'
+
+  if (value === false) return 'False'
+
+  if (isNumberValue(value)) return value.toString()
+
+  if (isTextValue(value)) return value
 
   return 'Unknown'
 }

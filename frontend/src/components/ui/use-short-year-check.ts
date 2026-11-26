@@ -11,17 +11,20 @@ export const shortYearMessage = "Enter a 4-digit year."
 export function useShortYearCheck(date: AriaDateValue | null) {
   const isShort = date != null && !isTypedInFull(date)
   const [isMarked, setIsMarked] = useState(false)
+
   if (isMarked && !isShort) setIsMarked(false)
 
   const isPressingRef = useRef(false)
   useEffect(() => {
     const handlePointerDown = () => { isPressingRef.current = true }
     const handlePointerUp = () => { isPressingRef.current = false }
+
     document.addEventListener("pointerdown", handlePointerDown, true)
     document.addEventListener("pointerup", handlePointerUp, true)
     document.addEventListener("pointercancel", handlePointerUp, true)
     // A context menu takes the pointerup, so the press ends when the menu opens.
     document.addEventListener("contextmenu", handlePointerUp, true)
+
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true)
       document.removeEventListener("pointerup", handlePointerUp, true)
@@ -33,6 +36,7 @@ export function useShortYearCheck(date: AriaDateValue | null) {
   const onBlur = () => {
     if (!isShort) return
     const mark = () => setIsMarked(true)
+
     if (isPressingRef.current) runAfterPressEnds(mark)
     else mark()
   }
@@ -44,10 +48,12 @@ export function useShortYearCheck(date: AriaDateValue | null) {
 // move the pressed button down, and the press would miss. So it shows after the press.
 function runAfterPressEnds(callback: () => void) {
   const pressEnd = new AbortController()
+
   const run = () => {
     pressEnd.abort()
     callback()
   }
+
   document.addEventListener("pointerup", run, { signal: pressEnd.signal })
   document.addEventListener("pointercancel", run, { signal: pressEnd.signal })
 }

@@ -11,8 +11,11 @@ const PAGES_WITH_ANOTHER_WAY_IN = ['/join', '/sign-in-failed', '/sign-out-failed
 // The text of a string expression. `$` stands for each part that only the run knows, as it does in a route path.
 function textOf(node: ts.Expression): string {
   if (ts.isStringLiteralLike(node)) return node.text
+
   if (ts.isTemplateExpression(node)) return node.head.text + node.templateSpans.map((span) => `$${span.literal.text}`).join('')
+
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) return textOf(node.left) + textOf(node.right)
+
   return '$'
 }
 
@@ -20,15 +23,20 @@ function textOf(node: ts.Expression): string {
 function factsOf(file: string, text: string) {
   const strings: string[] = []
   let routeId: string | undefined
+
   const visit = (node: ts.Node) => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && /^create(Lazy)?FileRoute$/.test(node.expression.text)) {
       routeId = textOf(node.arguments[0])
+
       return
     }
+
     if (ts.isStringLiteralLike(node) || ts.isTemplateExpression(node) || ts.isBinaryExpression(node)) strings.push(textOf(node))
     ts.forEachChild(node, visit)
   }
+
   visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false, ts.ScriptKind.TSX))
+
   return { routeId, strings }
 }
 
@@ -50,6 +58,7 @@ const urlOf = (routeId: string) =>
 const goesTo = (url: string, text: string) => {
   const want = url.split('/')
   const got = text.split(/[?#]/)[0].replace(/(?<=.)\/$/, '').split('/')
+
   return want.length === got.length && want.every((segment, index) => (segment.includes('$') ? got[index] !== '' : segment === got[index]))
 }
 
@@ -62,12 +71,15 @@ const goesTo = (url: string, text: string) => {
 // page to the list above.
 it('the URL of each page outside the examples is in the code that the wipe keeps', () => {
   const routeIds = sourceFiles.flatMap(({ routeId }) => routeId ?? [])
+
   const noLink = sourceFiles.flatMap(({ file, routeId }) => {
     // A layout route is no page of its own. Its child routes are.
     if (!routeId || routeIds.some((other) => other.startsWith(`${routeId}/`))) return []
     const url = urlOf(routeId)
+
     if (PAGES_WITH_ANOTHER_WAY_IN.includes(url)) return []
     const others = sourceFiles.filter((other) => other.file !== file)
+
     return others.some((other) => other.strings.some((text) => goesTo(url, text))) ? [] : [`${url} (${file})`]
   })
 

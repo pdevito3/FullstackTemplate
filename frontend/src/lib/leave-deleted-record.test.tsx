@@ -17,6 +17,7 @@ function DetailPage({ readRoom, leave }: { readRoom: () => Promise<string>; leav
   const room = useQuery({ queryKey: detail, queryFn: readRoom })
   const remove = useMutation({ mutationFn: async () => {} })
   const handleDelete = () => remove.mutate(undefined, { onSuccess: () => leaveDeletedRecord(queryClient, { detail, lists, leave }) })
+
   return (
     <>
       <h1>{room.data ?? 'Loading room'}</h1>
@@ -29,6 +30,7 @@ function DetailPage({ readRoom, leave }: { readRoom: () => Promise<string>; leav
 
 function ListPage({ onShown }: { onShown: () => void }) {
   useEffect(onShown, [onShown])
+
   return <h1>Rooms</h1>
 }
 
@@ -36,17 +38,22 @@ async function renderDetailPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   client.setQueryData(list, [])
   const readRoom = vi.fn(async () => 'Old Room')
+
   function Pages() {
     const [listShown, setListShown] = useState<{ onShown: () => void } | null>(null)
     const leave = () => new Promise<void>((resolve) => setTimeout(() => setListShown({ onShown: resolve }), 50))
+
     return listShown ? <ListPage onShown={listShown.onShown} /> : <DetailPage readRoom={readRoom} leave={leave} />
   }
+
   const screen = await render(
     <QueryClientProvider client={client}>
       <Pages />
     </QueryClientProvider>,
   )
+
   await expect.element(screen.getByRole('heading', { name: 'Old Room' })).toBeVisible()
+
   return { client, readRoom, screen }
 }
 

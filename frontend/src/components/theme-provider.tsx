@@ -16,6 +16,7 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(() => {
     // The theme script in index.html reads an unknown value as "system" too.
     const stored = localStorage.getItem(storageKey)
+
     return stored === "dark" || stored === "light" || stored === "system" ? stored : defaultTheme
   })
 
@@ -31,6 +32,7 @@ export function ThemeProvider({
         : "light"
 
       root.classList.add(systemTheme)
+
       return
     }
 
@@ -50,6 +52,7 @@ export function ThemeProvider({
     }
 
     mediaQuery.addEventListener("change", handleChange)
+
     return () => mediaQuery.removeEventListener("change", handleChange)
   }, [theme])
 

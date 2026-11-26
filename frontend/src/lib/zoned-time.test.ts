@@ -19,8 +19,10 @@ import {
 const chicago = parseTimeZone('America/Chicago')
 const kiritimati = parseTimeZone('Pacific/Kiritimati')
 const pagoPago = parseTimeZone('Pacific/Pago_Pago')
+
 // 10:30 UTC on August 15 is 23:30 on August 14 in Pago Pago and 00:30 on August 16 in Kiritimati.
 const threeDatesAtOnce = new Date('2026-08-15T10:30:00Z')
+
 // On November 1, 2026, Chicago shows 01:00 to 02:00 twice: first at UTC-5, then at UTC-6.
 const firstOneThirty = new Date('2026-11-01T06:30:00Z')
 const secondOneThirty = new Date('2026-11-01T07:30:00Z')
@@ -71,6 +73,7 @@ describe('parseTimeZone', () => {
           super(locale, options)
         }
       }
+
       vi.stubGlobal('Intl', { ...Intl, DateTimeFormat: RefusingDateTimeFormat })
 
       expect(() => parseTimeZone(id)).not.toThrow()

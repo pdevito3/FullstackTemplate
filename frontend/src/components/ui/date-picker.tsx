@@ -18,6 +18,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 import { todayAt, type TimeZone } from "@/lib/zoned-time"
 
 import { Button } from "@/components/ui/button"
@@ -136,7 +137,7 @@ function JollyDatePicker<T extends AriaDateValue>({
       )}
       {!yearCheck.isShortYear && errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
-          {typeof errorMessage === "function" ? "" : errorMessage}
+          {isText(errorMessage) ? errorMessage : ""}
         </Text>
       )}
     </DatePicker>
@@ -236,7 +237,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       )}
       {!isShortYear && errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
-          {typeof errorMessage === "function" ? "" : errorMessage}
+          {isText(errorMessage) ? errorMessage : ""}
         </Text>
       )}
     </DateRangePicker>
@@ -249,4 +250,5 @@ export {
   JollyDatePicker,
   JollyDateRangePicker,
 }
+
 export type { JollyDatePickerProps, JollyDateRangePickerProps }

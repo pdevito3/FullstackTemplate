@@ -6,63 +6,63 @@ import type { OperatorType, ControlType, LogicalOperator } from '../types'
  */
 export const Operators = {
   // Equality operators
-  EQUALS: '==' as OperatorType,
-  NOT_EQUALS: '!=' as OperatorType,
-  EQUALS_CASE_INSENSITIVE: '==*' as OperatorType,
-  NOT_EQUALS_CASE_INSENSITIVE: '!=*' as OperatorType,
+  EQUALS: '==',
+  NOT_EQUALS: '!=',
+  EQUALS_CASE_INSENSITIVE: '==*',
+  NOT_EQUALS_CASE_INSENSITIVE: '!=*',
 
   // Comparison operators
-  GREATER_THAN: '>' as OperatorType,
-  LESS_THAN: '<' as OperatorType,
-  GREATER_THAN_OR_EQUAL: '>=' as OperatorType,
-  LESS_THAN_OR_EQUAL: '<=' as OperatorType,
+  GREATER_THAN: '>',
+  LESS_THAN: '<',
+  GREATER_THAN_OR_EQUAL: '>=',
+  LESS_THAN_OR_EQUAL: '<=',
 
   // String operators
-  STARTS_WITH: '_=' as OperatorType,
-  STARTS_WITH_CASE_INSENSITIVE: '_=*' as OperatorType,
-  NOT_STARTS_WITH: '!_=' as OperatorType,
-  NOT_STARTS_WITH_CASE_INSENSITIVE: '!_=*' as OperatorType,
-  ENDS_WITH: '_-=' as OperatorType,
-  ENDS_WITH_CASE_INSENSITIVE: '_-=*' as OperatorType,
-  NOT_ENDS_WITH: '!_-=' as OperatorType,
-  NOT_ENDS_WITH_CASE_INSENSITIVE: '!_-=*' as OperatorType,
-  CONTAINS: '@=' as OperatorType,
-  CONTAINS_CASE_INSENSITIVE: '@=*' as OperatorType,
-  NOT_CONTAINS: '!@=' as OperatorType,
-  NOT_CONTAINS_CASE_INSENSITIVE: '!@=*' as OperatorType,
+  STARTS_WITH: '_=',
+  STARTS_WITH_CASE_INSENSITIVE: '_=*',
+  NOT_STARTS_WITH: '!_=',
+  NOT_STARTS_WITH_CASE_INSENSITIVE: '!_=*',
+  ENDS_WITH: '_-=',
+  ENDS_WITH_CASE_INSENSITIVE: '_-=*',
+  NOT_ENDS_WITH: '!_-=',
+  NOT_ENDS_WITH_CASE_INSENSITIVE: '!_-=*',
+  CONTAINS: '@=',
+  CONTAINS_CASE_INSENSITIVE: '@=*',
+  NOT_CONTAINS: '!@=',
+  NOT_CONTAINS_CASE_INSENSITIVE: '!@=*',
 
   // Phonetic operators
-  SOUNDS_LIKE: '~~' as OperatorType,
-  NOT_SOUNDS_LIKE: '!~' as OperatorType,
+  SOUNDS_LIKE: '~~',
+  NOT_SOUNDS_LIKE: '!~',
 
   // Existence operators
-  HAS: '^$' as OperatorType,
-  HAS_CASE_INSENSITIVE: '^$*' as OperatorType,
-  NOT_HAS: '!^$' as OperatorType,
-  NOT_HAS_CASE_INSENSITIVE: '!^$*' as OperatorType,
+  HAS: '^$',
+  HAS_CASE_INSENSITIVE: '^$*',
+  NOT_HAS: '!^$',
+  NOT_HAS_CASE_INSENSITIVE: '!^$*',
 
   // Collection operators
-  IN: '^^' as OperatorType,
-  IN_CASE_INSENSITIVE: '^^*' as OperatorType,
-  NOT_IN: '!^^' as OperatorType,
-  NOT_IN_CASE_INSENSITIVE: '!^^*' as OperatorType,
+  IN: '^^',
+  IN_CASE_INSENSITIVE: '^^*',
+  NOT_IN: '!^^',
+  NOT_IN_CASE_INSENSITIVE: '!^^*',
 
   // Count operators
-  COUNT_EQUALS: '#==' as OperatorType,
-  COUNT_NOT_EQUALS: '#!=' as OperatorType,
-  COUNT_GREATER_THAN: '#>' as OperatorType,
-  COUNT_LESS_THAN: '#<' as OperatorType,
-  COUNT_GREATER_THAN_OR_EQUAL: '#>=' as OperatorType,
-  COUNT_LESS_THAN_OR_EQUAL: '#<=' as OperatorType,
-} as const
+  COUNT_EQUALS: '#==',
+  COUNT_NOT_EQUALS: '#!=',
+  COUNT_GREATER_THAN: '#>',
+  COUNT_LESS_THAN: '#<',
+  COUNT_GREATER_THAN_OR_EQUAL: '#>=',
+  COUNT_LESS_THAN_OR_EQUAL: '#<=',
+} as const satisfies Record<string, OperatorType>
 
 /**
  * Logical operator constants for fluent, type-safe references
  */
 export const LogicalOperators = {
-  AND: 'AND' as LogicalOperator,
-  OR: 'OR' as LogicalOperator,
-} as const
+  AND: 'AND',
+  OR: 'OR',
+} as const satisfies Record<string, LogicalOperator>
 
 export interface OperatorMetadata {
   symbol: OperatorType
@@ -362,4 +362,20 @@ export function getOperatorLabel(operator: OperatorType): string {
  */
 export function operatorSupportsCaseSensitivity(operator: OperatorType): boolean {
   return `${operator}*` in OPERATORS
+}
+
+function isOperatorType(symbol: string): symbol is OperatorType {
+  return Object.values(OPERATORS).some((op) => op.symbol === symbol)
+}
+
+export function caseInsensitiveOperator(operator: OperatorType): OperatorType | undefined {
+  const variant = `${operator}*`
+
+  return isOperatorType(variant) ? variant : undefined
+}
+
+export function baseOperator(operator: OperatorType): OperatorType {
+  const base = operator.endsWith('*') ? operator.slice(0, -1) : operator
+
+  return isOperatorType(base) ? base : operator
 }

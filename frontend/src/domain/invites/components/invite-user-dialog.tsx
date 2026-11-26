@@ -51,6 +51,7 @@ function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
     defaultValues: { role: 'User' as const, email: '', requireEmailMatch: false },
     shouldFocusError: false,
   })
+
   const serverErrors = useServerErrors(form, INVITE_USER_FIELDS)
   const id = useId()
   const { errors } = form.formState
@@ -62,6 +63,7 @@ function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
     if (creating.current) return
     creating.current = true
     serverErrors.clear()
+
     try {
       await add.mutateAsync({ ...values, email: email.trim() || null })
     } catch (error) {

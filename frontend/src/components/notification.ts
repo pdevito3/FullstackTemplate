@@ -29,10 +29,12 @@ class ShownToastQueue<T> extends ToastQueue<T> {
   markShown(toast: QueuedToast<T>): void {
     const wasHidden = this.#visibility.get(toast) === 'hidden'
     this.#visibility.set(toast, 'shown')
+
     if (!wasHidden || !toast.timer || !toast.timeout) return
     // React Aria starts the timer again when a toast mounts again, and reset does not clear a running timer.
     toast.timer.pause()
     toast.timer.reset(toast.timeout)
+
     if (this.#isPaused) toast.timer.pause()
   }
 
@@ -43,6 +45,7 @@ class ShownToastQueue<T> extends ToastQueue<T> {
 
   override resumeAll(): void {
     this.#isPaused = false
+
     for (const toast of this.visibleToasts) {
       if (this.#visibility.get(toast) !== 'shown' || !toast.timer) continue
       // A toast that mounts while the toasts pause starts its timer anyway, and resume does not clear a running timer.
@@ -67,6 +70,7 @@ export const toastQueue = new ShownToastQueue<ToastMessage>({
       const transition = document.startViewTransition(() => {
         flushSync(fn)
       })
+
       // The browser skips the animation and rejects `ready` when a later transition starts or the page is hidden.
       // The update still runs.
       // `finished` and `updateCallbackDone` reject only when the update throws, so leave them unhandled.
@@ -79,11 +83,14 @@ export const toastQueue = new ShownToastQueue<ToastMessage>({
 
 function createToast(message: string, type: ToastType, options?: NotificationOptions): string {
   const { description, duration = type === 'error' ? 6000 : 5000 } = options ?? {}
+
   // While a toast is visible, the same toast again shows nothing. A query that retries does not show its error once for each attempt.
   const shown = toastQueue.visibleToasts.find(
     ({ content }) => content.message === message && content.type === type && content.description === description,
   )
+
   if (shown) return shown.key
+
   return toastQueue.add({ message, type, description }, { timeout: duration })
 }
 

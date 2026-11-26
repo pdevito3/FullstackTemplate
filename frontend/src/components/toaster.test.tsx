@@ -32,10 +32,12 @@ afterEach(async () => {
 // after the test measures it.
 async function animationsFinished(): Promise<void> {
   await Promise.all(startViewTransition.mock.results.map(({ value }) => value.finished))
+
   // The line above the dialog footer follows the scroll of the dialog, so its animation finishes only at the end.
   const animations = document.getAnimations().filter(
     (animation) => !(animation instanceof CSSAnimation && animation.animationName === 'dialog-footer-edge'),
   )
+
   await Promise.all(animations.map((animation) => animation.finished))
 }
 
@@ -47,6 +49,7 @@ async function resizeObserverCallbacks(): Promise<void> {
       observer.disconnect()
       resolve()
     })
+
     observer.observe(document.body)
   })
 }
@@ -59,7 +62,9 @@ function boxOf(text: string): DOMRect {
 function clickTargetAt(x: number, y: number, target: Element): 'target' | 'toast region' | undefined {
   const region = document.querySelector('[data-slot="toast-region"]')
   const hit = document.elementsFromPoint(x, y).find((element) => target.contains(element) || region?.contains(element))
+
   if (!hit) return undefined
+
   return target.contains(hit) ? 'target' : 'toast region'
 }
 
@@ -99,6 +104,7 @@ interface OpenPanelProps {
 
 function OpenPanel({ panel }: OpenPanelProps) {
   const [isOpen, setIsOpen] = useState(true)
+
   return panel({ isOpen, onOpenChange: setIsOpen })
 }
 
@@ -313,6 +319,7 @@ test('on a desktop, two toasts do not cover the button of a wide centered dialog
 
   const continueButton = dialog.getByRole('button', { name: 'Continue' }).element()
   const { left, right, top, height } = continueButton.getBoundingClientRect()
+
   for (const x of [left + 1, right - 1]) expect(clickTargetAt(x, top + height / 2, continueButton)).toBe('target')
   const upperToast = Math.min(boxOf('Something went wrong').top, boxOf('Changes saved').top)
   expect(upperToast - centeredDialogBox().bottom).toBe(8)
@@ -335,6 +342,7 @@ test('on a desktop, a dialog taller than the room above two toasts gets shorter 
 
   const continueButton = dialog.getByRole('button', { name: 'Continue' }).element()
   const { left, right, top, height } = continueButton.getBoundingClientRect()
+
   for (const x of [left + 1, right - 1]) expect(clickTargetAt(x, top + height / 2, continueButton)).toBe('target')
   expect(centeredDialogBox().top).toBe(32)
   expect(Math.min(boxOf('Something went wrong').top, boxOf('Changes saved').top) - centeredDialogBox().bottom).toBe(8)

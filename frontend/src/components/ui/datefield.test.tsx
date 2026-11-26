@@ -13,6 +13,7 @@ test('date field: a short year is marked after the focus leaves the field, until
       <button type="button">Next</button>
     </>,
   )
+
   const year = screen.getByRole('spinbutton', { name: 'year, Due date' })
 
   await page.getByRole('spinbutton', { name: 'month, Due date' }).click()

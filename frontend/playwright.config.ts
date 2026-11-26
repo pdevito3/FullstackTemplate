@@ -1,4 +1,4 @@
-import { createServer } from 'node:net'
+import { createServer, type AddressInfo } from 'node:net'
 import { defineConfig, devices } from '@playwright/test'
 
 /**
@@ -16,14 +16,17 @@ async function freePort(): Promise<number> {
     const server = createServer()
     server.once('error', reject)
     server.listen(0, () => {
-      const { port } = server.address() as { port: number }
+      // SAFETY: a server that listens on a TCP port, not on a pipe, gives an AddressInfo once it listens.
+      const { port } = server.address() as AddressInfo
       server.close(() => resolve(port))
     })
   })
 }
 
 process.env.FUNCTIONAL_PORT ??= String(await freePort())
+
 process.env.FUNCTIONAL_DEV_PORT ??= String(await freePort())
+
 const port = Number(process.env.FUNCTIONAL_PORT)
 const devPort = Number(process.env.FUNCTIONAL_DEV_PORT)
 const baseURL = `http://localhost:${port}`

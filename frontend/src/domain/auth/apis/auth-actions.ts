@@ -16,6 +16,7 @@ const maxReturnUrlLength = 2048
 export function returnUrlOf({ pathname, search, hash }: Pick<Location, 'pathname' | 'search' | 'hash'>): string {
   if (pathname.startsWith('//') || pathname.startsWith('/\\')) return '/'
   const safeHash = /token/i.test(hash) ? '' : hash
+
   return [pathname + search + safeHash, pathname].find((url) => url.length <= maxReturnUrlLength) ?? '/'
 }
 

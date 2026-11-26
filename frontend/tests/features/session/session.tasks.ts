@@ -3,10 +3,19 @@ import { openAndWaitForLogin } from '@tests/support/answers'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
+// page.exposeFunction adds these to the window of the page of a test that asks for them, so a page can have none
+declare global {
+  interface Window {
+    reportRender?: () => void
+    reportToast?: () => void
+  }
+}
+
 export const blankPage = 'data:text/html,blank'
 
 export function sessionPage(page: Page) {
   const at = session(page)
+
   const answered = (path: string) =>
     page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === path)
 
@@ -20,13 +29,13 @@ export function sessionPage(page: Page) {
         rendered = true
       })
       await page.addInitScript(() => {
-        const report = (window as unknown as { reportRender: () => void }).reportRender
         new MutationObserver(() => {
-          if (document.getElementById('root')?.hasChildNodes()) report()
+          if (document.getElementById('root')?.hasChildNodes()) window.reportRender?.()
         }).observe(document, { childList: true, subtree: true })
       })
 
       await openAndWaitForLogin(page, path)
+
       return { rendered }
     },
 
@@ -65,9 +74,8 @@ export function sessionPage(page: Page) {
         toasted = true
       })
       await page.evaluate(() => {
-        const report = (window as unknown as { reportToast: () => void }).reportToast
         new MutationObserver(() => {
-          if (document.querySelector('[role="alertdialog"]')) report()
+          if (document.querySelector('[role="alertdialog"]')) window.reportToast?.()
         }).observe(document.body, { childList: true, subtree: true })
       })
 
@@ -75,6 +83,7 @@ export function sessionPage(page: Page) {
       await link.click()
       await login
       await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
+
       return { toasted }
     },
 

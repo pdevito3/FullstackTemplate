@@ -5,15 +5,19 @@
  * This is the standard error response format from .NET APIs with Problem Details enabled.
  */
 
+import * as z from 'zod'
+
 import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
+import type { ValidationProblemDetails } from '@/api/generated/models/types/validation-problem-details'
+import { validationProblemDetailsSchema } from '@/api/generated/models/zod/validation-problem-details'
 
 /**
  * The problem details of the contract, with the member that ASP.NET adds to each body (`traceId`)
- * and the members of a subtype (for example, `errors` on a validation problem).
+ * and the field errors of a validation problem.
  */
 export type ProblemDetails = ContractProblemDetails & {
   traceId?: string
-  [key: string]: unknown
+  errors?: unknown
 }
 
 /**
@@ -53,34 +57,44 @@ export function isProblemDetailsError(error: unknown): error is ProblemDetailsEr
  * Type guard to check if an object is a Problem Details response
  */
 export function isProblemDetails(obj: unknown): obj is ProblemDetails {
-  if (typeof obj !== 'object' || obj === null) {
-    return false
-  }
-  const pd = obj as Record<string, unknown>
   return (
-    typeof pd.type === 'string' &&
-    typeof pd.title === 'string' &&
-    typeof pd.status === 'number'
+    typeof obj === 'object' &&
+    obj !== null &&
+    'type' in obj &&
+    typeof obj.type === 'string' &&
+    'title' in obj &&
+    typeof obj.title === 'string' &&
+    'status' in obj &&
+    typeof obj.status === 'number'
   )
 }
 
 export const STALE_VERSION_PROBLEM_TYPE = 'urn:fullstacktemplate:problem:stale-version'
 
-export function isStaleVersionError(error: unknown): boolean {
-  return isProblemDetailsError(error) && error.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
+export function isStaleVersionError(cause: unknown): boolean {
+  return isProblemDetailsError(cause) && cause.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
 }
 
-export function validationErrorsOf(error: unknown): Record<string, string[]> {
-  if (!isProblemDetailsError(error)) {
+// Each field is parsed on its own, so that one field with a bad value does not drop the messages of the other fields
+const errorsSchema = z.record(z.string(), z.unknown())
+const messagesSchema = validationProblemDetailsSchema.shape.errors.valueType
+
+export function validationErrorsOf(cause: unknown): ValidationProblemDetails['errors'] {
+  if (!isProblemDetailsError(cause)) {
     return {}
   }
-  const { errors } = error.problemDetails
-  if (typeof errors !== 'object' || errors === null) {
+
+  const errors = errorsSchema.safeParse(cause.problemDetails.errors)
+
+  if (!errors.success) {
     return {}
   }
+
   return Object.fromEntries(
-    Object.entries(errors).filter(
-      (entry): entry is [string, string[]] => Array.isArray(entry[1]) && entry[1].every((m) => typeof m === 'string'),
-    ),
+    Object.entries(errors.data).flatMap(([field, value]): [string, string[]][] => {
+      const messages = messagesSchema.safeParse(value)
+
+      return messages.success ? [[field, messages.data]] : []
+    }),
   )
 }

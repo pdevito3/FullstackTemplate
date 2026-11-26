@@ -5,7 +5,7 @@ interface DeletedRecord {
   /** The lists that showed the record, such as `RoomKeys.lists()`. */
   lists: QueryKey
   /** Goes to the page after the delete, such as `() => navigate({ to: '/rooms' })`. */
-  leave: () => Promise<unknown>
+  leave: () => Promise<void>
 }
 
 /**

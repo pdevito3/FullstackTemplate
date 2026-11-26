@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { Button } from '@/components/ui/button'
-import type { Filter, FilterControlProps } from '../types'
+import type { FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
 
 type BooleanFilterProps = Pick<FilterControlProps, 'config' | 'initialFilter' | 'onSubmit'>
@@ -13,6 +13,7 @@ export function BooleanFilter({ config, initialFilter, onSubmit }: BooleanFilter
   const currentValue = initialFilter?.operator === Operators.NOT_EQUALS ? !initialFilter.value : initialFilter?.value
   const isPressed = (value: boolean) => (initialFilter ? currentValue === value : undefined)
   const labelId = useId()
+
   const handleSubmit = (selectedValue: boolean) => {
     onSubmit({
       propertyKey,
@@ -20,7 +21,7 @@ export function BooleanFilter({ config, initialFilter, onSubmit }: BooleanFilter
       controlType: 'boolean',
       operator: Operators.EQUALS,
       value: selectedValue,
-    } as Omit<Filter, 'id'>)
+    })
   }
 
   return (

@@ -25,21 +25,21 @@ import { firstPageChunks } from './first-page-chunks'
 // Rollup also puts the dependencies of a library in its chunk. If the entry
 // imports one of them, the full chunk loads on the first page. After you add a
 // group, look at the modulepreload links in dist/index.html.
-const vendorChunks: Record<string, string[]> = {
+const vendorChunks = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
   query: ['@tanstack/react-query', '@tanstack/query-core'],
   motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
   // The router does not split validateSearch, so a route that checks its search with zod loads zod on the first page
   zod: ['zod'],
-}
+} satisfies Record<string, string[]>
 
 function vendorChunk(id: string): string | undefined {
   const match = id.match(/.*\/node_modules\/((?:@[^/]+\/)?[^/]+)\//)
+
   if (!match) return undefined
-  return Object.keys(vendorChunks).find((chunk) =>
-    vendorChunks[chunk].includes(match[1]),
-  )
+
+  return Object.entries(vendorChunks).find(([, packages]) => packages.includes(match[1]))?.[0]
 }
 
 const firstPageBudgetKb = 950
@@ -50,6 +50,7 @@ const failOverFirstPageBudget: Plugin = {
   writeBundle(_, bundle) {
     const loaded = firstPageChunks(bundle)
     const totalKb = loaded.reduce((sum, chunk) => sum + chunk.sizeKb, 0)
+
     if (totalKb > firstPageBudgetKb) {
       this.error(
         `The first page loads ${totalKb.toFixed(2)} kB, over the budget of ${firstPageBudgetKb} kB: ` +
@@ -77,6 +78,7 @@ const failStalledBffRequests: ProxyOptions['configure'] = (proxy) => {
         ),
       )
     }, bffTimeoutMs)
+
     proxyReq.on('response', () => clearTimeout(timer))
     proxyReq.on('close', () => clearTimeout(timer))
   })
@@ -148,7 +150,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js', 'first-page-chunks.test.ts', 'long-test-names.test.ts', 'refuse-prettier-hook.test.ts'],
+          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'tools/eslint/anti-slop/**/*.test.ts', 'eslint.config.test.js', 'first-page-chunks.test.ts', 'long-test-names.test.ts', 'refuse-prettier-hook.test.ts'],
           // A zone far from UTC, so that a test that takes a date from UTC or from the machine fails on every machine.
           // See docs/frontend/testing.md, section "Time zones".
           env: { TZ: 'Pacific/Pago_Pago' },

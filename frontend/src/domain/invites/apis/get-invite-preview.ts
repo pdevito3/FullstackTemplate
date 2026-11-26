@@ -7,7 +7,7 @@ import { forgetInviteToken, readInviteToken } from '../invite-link'
 import { InviteKeys } from './invite.keys'
 
 /** A 404 or a 410 means that the link is dead for each person, so the tab must not keep it. */
-const linkIsDead = (error: unknown) => isRefusal(error) && (error.status === 404 || error.status === 410)
+const linkIsDead = (cause: unknown) => isRefusal(cause) && (cause.status === 404 || cause.status === 410)
 
 export function useInvitePreview({ enabled }: { enabled: boolean }) {
   return useQuery({

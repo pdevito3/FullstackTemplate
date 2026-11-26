@@ -17,6 +17,7 @@ function useDialogDescriptionId(id?: string) {
 
   React.useLayoutEffect(() => {
     register?.(descriptionId)
+
     return () => register?.(undefined)
   }, [register, descriptionId])
 

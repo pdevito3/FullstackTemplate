@@ -17,7 +17,9 @@ export function untilRefresh(attachments: readonly ExpiringUrls[] | undefined, f
   if (!attachments?.length) {
     return false
   }
+
   const earliest = Math.min(...attachments.map((a) => Date.parse(a.urlsExpireAt)))
+
   return Math.min(Math.max(earliest - REFRESH_MARGIN_MS - from, 1_000), MAX_TIMER_DELAY_MS)
 }
 

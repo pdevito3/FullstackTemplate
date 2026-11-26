@@ -7,6 +7,7 @@ import type { AnyRouter, NavigateOptions } from "@tanstack/react-router"
  */
 export function hrefNavigateOptions(router: AnyRouter, href: string): NavigateOptions {
   const url = new URL(href, window.location.href)
+
   return router.getMatchedRoutes(url.pathname).foundRoute
     ? { href }
     : { href: url.href, reloadDocument: true }

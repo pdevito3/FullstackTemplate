@@ -1,15 +1,17 @@
 import { AxiosError } from 'axios'
 import { describe, expect, it } from 'vitest'
 
-import { ProblemDetailsError } from '@/lib/problem-details'
+import { ProblemDetailsError, type ProblemDetails } from '@/lib/problem-details'
 import { answerError, failureText, requestError } from '@/lib/request-failure'
 
-const problem = (body: Record<string, unknown>) => new ProblemDetailsError({ type: 'urn:test', title: 'Title', ...body })
+const problem = (body: ProblemDetails) => new ProblemDetailsError({ type: 'urn:test', title: 'Title', ...body })
 
 const serverFault = 'The server could not complete the request. Try again in a moment.'
 const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
+
 const signInRejected =
   'The server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
 const appFault = 'The app has a fault. Reload the page, then try again.'
 
 describe('failureText of a refusal of the Server', () => {
@@ -29,7 +31,7 @@ describe('failureText of a refusal of the Server', () => {
 
   it('gives the sign-in text for a 401, also with a problem', () => {
     expect(failureText(problem({ status: 401, detail: 'The token expired.' }))).toBe(signInRejected)
-    expect(failureText(answerError(401, ''))).toBe(signInRejected)
+    expect(failureText(answerError(401, null))).toBe(signInRejected)
   })
 })
 
@@ -44,15 +46,15 @@ describe('failureText of a failure with no text for the user', () => {
   })
 
   it.each([
-    ['no body', 502, ''],
-    ['a message field', 503, { message: 'Down for maintenance.' }],
-    ['no body, as for a path that the BFF does not have', 404, ''],
-  ])('gives the text of a fault of the Server for an answer with %s', (_, status, body) => {
-    expect(failureText(answerError(status, body))).toBe(serverFault)
+    ['a 502', 502],
+    ['a 503', 503],
+    ['a 404, as for a path that the BFF does not have', 404],
+  ])('gives the text of a fault of the Server for %s with no problem details', (_, status) => {
+    expect(failureText(answerError(status, null))).toBe(serverFault)
   })
 
   it('says that the server did not answer in time for a 504 with no body and for the time limit of the app', () => {
-    expect(failureText(answerError(504, ''))).toBe(timedOut)
+    expect(failureText(answerError(504, null))).toBe(timedOut)
     expect(failureText(requestError(new AxiosError('timeout of 35000ms exceeded', AxiosError.ETIMEDOUT)))).toBe(timedOut)
   })
 

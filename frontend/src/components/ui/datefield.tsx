@@ -19,6 +19,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { isText } from "@/components/ui/prop-guards"
 import { Label } from "@/components/ui/label"
 import { dateInputVariants } from "@/components/ui/date-input-variants"
 import { shortYearMessage, useShortYearCheck } from "@/components/ui/use-short-year-check"
@@ -130,7 +131,7 @@ function JollyDateField<T extends AriaDateValue>({
       )}
       {!yearCheck.isShortYear && errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
-          {typeof errorMessage === "function" ? "" : errorMessage}
+          {isText(errorMessage) ? errorMessage : ""}
         </Text>
       )}
     </DateField>
@@ -167,7 +168,7 @@ function JollyTimeField<T extends AriaTimeValue>({
       )}
       {errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
-          {typeof errorMessage === "function" ? "" : errorMessage}
+          {isText(errorMessage) ? errorMessage : ""}
         </Text>
       )}
     </TimeField>
@@ -182,4 +183,5 @@ export {
   JollyDateField,
   JollyTimeField,
 }
+
 export type { DateInputProps, JollyDateFieldProps, JollyTimeFieldProps }

@@ -32,6 +32,7 @@ function optionsWithPick(venues: VenueDto[], pick: VenueDto | undefined): VenueD
   if (!pick) {
     return venues
   }
+
   return venues.some((venue) => venue.id === pick.id)
     ? venues.map((venue) => (venue.id === pick.id ? pick : venue))
     : [pick, ...venues]
@@ -39,6 +40,7 @@ function optionsWithPick(venues: VenueDto[], pick: VenueDto | undefined): VenueD
 
 function emptyText(results: { isPending: boolean; isError: boolean }) {
   if (results.isError) return 'The venues did not load. Close the list, then open it to try again.'
+
   return results.isPending ? 'Loading venues' : 'No venue found.'
 }
 
@@ -62,6 +64,7 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
 
   const handleSelectionChange = (key: Key | null) => {
     const venue = options.find((option) => option.id === key)
+
     if (venue) queryClient.setQueryData(VenueKeys.detail(venue.id), venue)
     onChange(venue?.id ?? '')
   }

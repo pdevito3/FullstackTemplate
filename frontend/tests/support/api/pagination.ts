@@ -1,5 +1,6 @@
 export function paginationHeaders(total: number, pageNumber = 1, pageSize = 10) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
   return {
     'X-Pagination': JSON.stringify({
       totalCount: total,

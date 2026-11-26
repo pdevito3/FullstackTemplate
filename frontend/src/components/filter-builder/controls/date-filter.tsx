@@ -1,6 +1,6 @@
 import { useId, useState, useMemo } from 'react'
 import { CalendarDate, parseTime, toCalendarDate, toCalendarDateTime, type CalendarDateTime } from '@internationalized/date'
-import type { RangeValue, DateValue as AriaDateValue } from 'react-aria-components'
+import type { RangeValue } from 'react-aria-components'
 import { Button } from '@/components/ui/button'
 import { JollyCalendar, JollyRangeCalendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,7 +17,7 @@ import {
   wallClockAt,
   type TimeZone,
 } from '@/lib/zoned-time'
-import type { DateValue, Filter, FilterControlProps } from '../types'
+import { isDateValue, type DateValue, type FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
 import { FilterControlFooter } from './filter-control-footer'
 
@@ -48,7 +48,7 @@ export function DateFilter({
 }: FilterControlProps) {
   // 'date' for date-only, 'datetime' for date+time
   const { propertyKey, propertyLabel, dateType = 'date', timeZone } = config
-  const initialDateValue = initialFilter?.value as DateValue | undefined
+  const initialDateValue = isDateValue(initialFilter?.value) ? initialFilter.value : undefined
   const placeZone = initialDateValue?.timeZone ?? timeZone
   const zone = placeZone ?? browserTimeZone()
   // Show time inputs for any datetime variant
@@ -62,16 +62,18 @@ export function DateFilter({
     if (initialDateValue?.startDate) {
       return dateAt(initialDateValue.startDate, zone)
     }
+
     return undefined
   }, [initialDateValue, zone])
 
-  const initialDateRange = useMemo((): RangeValue<AriaDateValue> | null => {
+  const initialDateRange = useMemo((): RangeValue<CalendarDate> | null => {
     if (initialDateValue?.mode === 'between' && initialDateValue.endDate) {
       return {
         start: dateAt(initialDateValue.startDate, zone),
         end: dateAt(initialDateValue.endDate, zone),
       }
     }
+
     return null
   }, [initialDateValue, zone])
 
@@ -80,24 +82,29 @@ export function DateFilter({
       ? 'on'
       : initialDateValue?.mode || 'on'
   )
+
   // null, not undefined, so that the calendar is controlled from the first render.
   const [date, setDate] = useState<CalendarDate | null>(initialCalendarDate ?? null)
-  const [dateRange, setDateRange] = useState<RangeValue<AriaDateValue> | null>(initialDateRange)
+  const [dateRange, setDateRange] = useState<RangeValue<CalendarDate> | null>(initialDateRange)
+
   const [exclude, setExclude] = useState(
     initialDateValue?.mode === 'excluding'
       ? true
       : initialDateValue?.exclude || false
   )
+
   // Time state for datetime mode
   const [startTime, setStartTime] = useState<string>(
     initialDateValue?.startDate ? timeAt(initialDateValue.startDate, zone) : '00:00'
   )
+
   const [endTime, setEndTime] = useState<string>(
     initialDateValue?.endDate ? timeAt(initialDateValue.endDate, zone) : '23:59'
   )
 
-  const startCalendarDate = mode === 'between' ? (dateRange?.start as CalendarDate | undefined) : date
-  const endCalendarDate = mode === 'between' ? (dateRange?.end as CalendarDate | undefined) : undefined
+  const startCalendarDate = mode === 'between' ? dateRange?.start : date
+  const endCalendarDate = mode === 'between' ? dateRange?.end : undefined
+
   const instantOf = (date: CalendarDate, time: string) =>
     isDateTime ? instantAt(typedWallClock(date, time), zone) : startOfDayAt(date, zone)
 
@@ -139,11 +146,7 @@ export function DateFilter({
           }
         : {
             ...dates,
-            mode: (exclude ? 'excluding' : mode) as
-              | 'before'
-              | 'after'
-              | 'on'
-              | 'excluding',
+            mode: exclude ? 'excluding' : mode,
             timeZone: placeZone,
           }
 
@@ -153,7 +156,7 @@ export function DateFilter({
       controlType: 'date',
       operator: Operators.EQUALS,
       value: dateValue,
-    } as Omit<Filter, 'id'>)
+    })
   }
 
   const modes: { value: DateMode; label: string }[] = [

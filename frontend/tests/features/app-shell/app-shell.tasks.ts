@@ -114,7 +114,9 @@ export function appShellPage(page: Page) {
 
     async verticalCenter(locator: Locator) {
       const box = await locator.boundingBox()
+
       if (!box) throw new Error('The element has no box')
+
       return box.y + box.height / 2
     },
 

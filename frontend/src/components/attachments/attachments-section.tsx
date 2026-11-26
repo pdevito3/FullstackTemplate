@@ -42,6 +42,7 @@ export function AttachmentsSection({ list, upload, remove, canManage, emptyText 
 
   const handleSelect = (files: FileList | null) => {
     const file = files?.[0]
+
     if (file) {
       uploadAbort.current = new AbortController()
       upload.mutate({ file, signal: uploadAbort.current.signal }, { onSuccess: () => Notification.success('File uploaded') })

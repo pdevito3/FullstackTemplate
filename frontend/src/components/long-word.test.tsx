@@ -53,7 +53,9 @@ function FilesOfOneLongFileType() {
       attachments: [],
     }),
   })
+
   const noWrite = { mutate: () => {}, reset: () => {}, isPending: false }
+
   return <AttachmentsSection list={list} upload={noWrite} remove={noWrite} canManage emptyText="No files." />
 }
 
@@ -68,43 +70,55 @@ function textLines(text: Element): DOMRect[] {
   const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT)
   const range = document.createRange()
   const lines: DOMRect[] = []
+
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     range.selectNodeContents(node)
     const lineHeight = parseFloat(getComputedStyle(node.parentElement!).lineHeight)
+
     for (const { left, top, width, height } of range.getClientRects()) {
       const lineBox = Number.isNaN(lineHeight) ? height : lineHeight
       lines.push(new DOMRect(left, top - Math.floor((lineBox - height) / 2), width, lineBox))
     }
   }
+
   return lines
 }
 
 function textOverflow(text: Element, box: Element): string | undefined {
   const lines = textLines(text)
+
   if (lines.length === 0) return 'the text shows no line'
   const left = Math.min(...lines.map((line) => line.left))
   const right = Math.max(...lines.map((line) => line.right))
   const top = Math.min(...lines.map((line) => line.top))
   const bottom = Math.max(...lines.map((line) => line.bottom))
   const boxRect = box.getBoundingClientRect()
+
   if (right > boxRect.right + 0.5 || left < boxRect.left - 0.5) {
     return `the text spans ${Math.round(left)} to ${Math.round(right)}, its box ${Math.round(boxRect.left)} to ${Math.round(boxRect.right)}`
   }
+
   if (bottom > boxRect.bottom + 0.5 || top < boxRect.top - 0.5) {
     return `the text spans ${Math.round(top)} to ${Math.round(bottom)} down, its box ${Math.round(boxRect.top)} to ${Math.round(boxRect.bottom)}`
   }
+
   if (right > window.innerWidth + 0.5) return `the text ends at ${Math.round(right)}, past the window`
   const { fontSize, lineHeight } = getComputedStyle(text)
+
   if (new Set(lines.map((line) => Math.round(line.top))).size > 1 && parseFloat(lineHeight) < 1.2 * parseFloat(fontSize)) {
     return `the text wraps with a line height of ${lineHeight} for a font size of ${fontSize}`
   }
+
   for (const close of box.querySelectorAll('[data-slot$="-close"]')) {
     const button = close.getBoundingClientRect()
+
     const covered = lines.some(
       (line) => line.left < button.right && line.right > button.left && line.top < button.bottom && line.bottom > button.top,
     )
+
     if (covered) return 'the close button covers the text'
   }
+
   return undefined
 }
 
@@ -117,6 +131,7 @@ async function openAnimationsEnded() {
 async function expectLongWordToFit(textSelector: string, boxSelectors: string | string[], count: number) {
   await expect.poll(() => document.querySelectorAll(textSelector).length).toBe(count)
   await openAnimationsEnded()
+
   for (const text of document.querySelectorAll(textSelector)) {
     for (const boxSelector of [boxSelectors].flat()) {
       const box = text.closest(boxSelector)

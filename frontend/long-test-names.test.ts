@@ -4,13 +4,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { expect, test } from 'vitest'
+import * as z from 'zod'
 
-interface JsonReport {
-  testResults: {
-    message: string
-    assertionResults: { title: string; status: string; failureMessages: string[] }[]
-  }[]
-}
+const jsonReportSchema = z.object({
+  testResults: z.array(
+    z.object({
+      message: z.string(),
+      assertionResults: z.array(z.object({ title: z.string(), status: z.string(), failureMessages: z.array(z.string()).nullable() })),
+    }),
+  ),
+})
 
 const attachments = join(import.meta.dirname, 'node_modules/.vite-long-test-names/attachments')
 
@@ -23,18 +26,21 @@ function childEnv() {
 // the path of the test file in it.
 test('a component test file with test names longer than a file name reports each test, and keeps the trace and the screenshot', { timeout: 180_000 }, () => {
   const dir = mkdtempSync(join(tmpdir(), 'long-test-names-'))
+
   try {
     const report = join(dir, 'report.json')
     rmSync(attachments, { recursive: true, force: true })
+
     const run = spawnSync(
       'pnpm',
       ['exec', 'vitest', 'run', '--config', 'long-test-names.config.ts', '--reporter=default', '--reporter=json', `--outputFile=${report}`],
       // spawnSync blocks the event loop, so the timeout of the test cannot stop a child that hangs.
       { cwd: import.meta.dirname, env: childEnv(), encoding: 'utf8', timeout: 150_000 },
     )
+
     const output = `${run.stdout}${run.stderr}`
     expect(run.error, output).toBeUndefined()
-    const [file] = (JSON.parse(readFileSync(report, 'utf8')) as JsonReport).testResults
+    const [file] = jsonReportSchema.parse(JSON.parse(readFileSync(report, 'utf8'))).testResults
 
     expect(output).not.toContain('ENAMETOOLONG')
     expect(file.message).toBe('')
@@ -43,7 +49,7 @@ test('a component test file with test names longer than a file name reports each
       ['passes and', 'passed'],
       ['runs after', 'passed'],
     ])
-    expect(file.assertionResults[0].failureMessages.join()).toContain('expected 1 to be 2')
+    expect(file.assertionResults[0].failureMessages?.join()).toContain('expected 1 to be 2')
     const kept = readdirSync(attachments, { recursive: true, encoding: 'utf8' })
     expect(kept.filter((path) => path.endsWith('.zip'))).toHaveLength(1)
     expect(kept.filter((path) => path.startsWith('failure-screenshots') && path.endsWith('.png'))).toHaveLength(1)

@@ -28,7 +28,10 @@ interface RequireTenantProps {
  */
 export function RequireTenant({ purpose, children }: RequireTenantProps) {
   const { status } = useMembership()
+
   if (status === 'loading') return <Skeleton role="status" aria-label="Loading your account" className="h-64 max-w-lg" />
+
   if (status === 'no-tenant') return <StartTenantPrompt purpose={purpose} />
+
   return children
 }

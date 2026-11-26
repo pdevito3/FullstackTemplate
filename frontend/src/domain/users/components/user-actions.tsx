@@ -42,6 +42,7 @@ const CONTROLS: Record<UserAction, ActionControl | null> = {
 export function UserActions({ user, pendingAction, onChangeRole, onDelete }: UserActionsProps) {
   const controls = user.allowedActions.flatMap((action) => {
     const control = CONTROLS[action]
+
     return control ? [{ action, Control: control }] : []
   })
 
@@ -81,6 +82,7 @@ function ChangeRoleForm({ user, onChangeRole }: Pick<UserActionsProps, 'user' | 
     resolver: zodResolver(updateUserRoleDtoSchema),
     defaultValues: { role: user.role },
   })
+
   const handleConfirm = () =>
     void form.handleSubmit(({ role }) => {
       if (role !== user.role) onChangeRole(role)

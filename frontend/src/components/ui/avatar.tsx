@@ -39,6 +39,7 @@ function AvatarImage({
   // The result belongs to the src that loaded. A new src is "loading" until its own load or error event.
   const [result, setResult] = React.useState<ImageResult | null>(null)
   let state: ImageState = "loading"
+
   if (!src) state = "error"
   else if (result?.src === src) state = result.state
 

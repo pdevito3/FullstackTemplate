@@ -1,4 +1,5 @@
 import type { AxiosResponse } from 'axios'
+import * as z from 'zod'
 
 import type { PaginationMetadata } from '@/api/generated/models/types/pagination-metadata'
 import { paginationMetadataSchema } from '@/api/generated/models/zod/pagination-metadata'
@@ -18,14 +19,16 @@ const paginationHeader = 'x-pagination'
  */
 export function parsePagination(result: { response: Pick<AxiosResponse, 'headers'> }): PaginationMetadata {
   // A header name is case-insensitive, but a property lookup on the headers is not.
-  const header: unknown = Object.entries(result.response.headers).find(
-    ([name]) => name.toLowerCase() === paginationHeader,
-  )?.[1]
-  if (typeof header !== 'string') {
+  const header = z.string().safeParse(
+    Object.entries(result.response.headers).find(([name]) => name.toLowerCase() === paginationHeader)?.[1],
+  )
+
+  if (!header.success) {
     throw new Error(`The response has no ${paginationHeader} header.`)
   }
+
   // The schema rejects a header that does not have the shape of the contract, so a caller does not read a wrong type.
-  return paginationMetadataSchema.parse(JSON.parse(header))
+  return paginationMetadataSchema.parse(JSON.parse(header.data))
 }
 
 /**

@@ -22,6 +22,7 @@ class WorkshopBuilder {
   static create() {
     const n = next()
     const venue = aVenue().build()
+
     return new WorkshopBuilder({
       id: `00000000-0000-4000-9000-${String(n).padStart(12, '0')}`,
       venueId: venue.id,
@@ -50,6 +51,7 @@ class WorkshopBuilder {
   }
   at(venue: { build(): { id: string; timeZone: string } }) {
     const { id, timeZone } = venue.build()
+
     return this.with({ venueId: id, venueTimeZone: timeZone })
   }
   inStatus(status: WorkshopDtoStatusEnumKey) {

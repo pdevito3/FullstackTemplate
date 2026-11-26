@@ -26,7 +26,7 @@ const LABELS: Record<WorkshopCommand, string> = {
 }
 
 const isCommand = (action: WorkshopDtoAllowedActionsEnumKey): action is WorkshopCommand =>
-  !(NOT_COMMANDS as readonly WorkshopDtoAllowedActionsEnumKey[]).includes(action)
+  !NOT_COMMANDS.some((notCommand) => notCommand === action)
 
 interface WorkshopActionsProps {
   workshop: WorkshopDto
@@ -58,6 +58,7 @@ export function WorkshopActions({ workshop, pendingAction, onAction }: WorkshopA
             {LABELS[action]}
           </Button>
         )
+
         return action === 'Cancel' ? (
           <ConfirmCancel key={action} onConfirm={() => onAction(action)}>
             {button}

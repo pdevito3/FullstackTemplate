@@ -22,7 +22,9 @@ async function renderGate() {
     }),
     history: createMemoryHistory(),
   })
+
   const queryClient = new QueryClient()
+
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

@@ -44,6 +44,7 @@ export function FilterPropertyMenu({ options, onAddFilter, triggerRef }: FilterP
   // The menu closes by itself after an action.
   const handleAction = (key: Key) => {
     const config = options.find((opt) => opt.propertyKey === key)
+
     if (config && surfaceOf(config.controlType, hasRoomForSubmenus) === 'dialog') {
       setDialogProperty(config)
     }
@@ -144,6 +145,7 @@ function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemP
   // A dialog control opens after the menu closes, so its item has no submenu.
   if (surface === 'dialog') {
     const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].addMenuSurface === 'submenu'
+
     return (
       <DropdownMenuItem id={config.propertyKey} textValue={config.propertyLabel}>
         {config.propertyLabel}

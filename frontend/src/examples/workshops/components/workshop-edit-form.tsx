@@ -35,7 +35,7 @@ function valuesOf(workshop: WorkshopDto) {
 interface WorkshopEditFormProps {
   workshop: WorkshopDto
   refetchError: unknown
-  onSave: (body: WorkshopForUpdateDto) => Promise<unknown>
+  onSave: (body: WorkshopForUpdateDto) => Promise<void>
   onLoadLatest: () => Promise<WorkshopDto>
 }
 
@@ -49,10 +49,13 @@ export function WorkshopEditForm({ workshop, refetchError, onSave, onLoadLatest 
     serverErrors.clear()
     latest.clear()
     const body = toWorkshopBody(values, zone)
+
     if (!body) {
       form.setError('startsAt', { message: springGapMessage(zone) }, { shouldFocus: true })
+
       return
     }
+
     try {
       await onSave({ ...body, version: values.version })
     } catch (error) {
@@ -62,6 +65,7 @@ export function WorkshopEditForm({ workshop, refetchError, onSave, onLoadLatest 
 
   const handleLoadLatest = async () => {
     const loaded = await latest.load(async () => valuesOf(await onLoadLatest()))
+
     if (loaded) serverErrors.clear()
   }
 

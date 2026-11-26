@@ -23,7 +23,7 @@ const FIELD_NAMES = ['venueId', ...WORKSHOP_FIELD_NAMES] as const
 
 interface WorkshopCreateFormProps {
   venueId?: string
-  onSave: (body: WorkshopForCreationDto) => Promise<unknown>
+  onSave: (body: WorkshopForCreationDto) => Promise<void>
 }
 
 export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormProps) {
@@ -34,15 +34,21 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
+
     if (!zone) {
       form.setError('venueId', { message: 'The venue did not load. Pick it again.' }, { shouldFocus: true })
+
       return
     }
+
     const body = toWorkshopBody(values, zone)
+
     if (!body) {
       form.setError('startsAt', { message: springGapMessage(zone) }, { shouldFocus: true })
+
       return
     }
+
     try {
       await onSave({ venueId: values.venueId, ...body })
     } catch (error) {

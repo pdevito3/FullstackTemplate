@@ -25,7 +25,7 @@ export const Route = createFileRoute('/(examples)/filter-demo')({
 })
 
 /** The state card shows a wall clock time as text, not as the fields of its object. */
-function wallClockAsText(_key: string, value: unknown): unknown {
+function wallClockAsText<Value>(_key: string, value: Value): Value | string {
   return value instanceof CalendarDateTime ? value.toString() : value
 }
 

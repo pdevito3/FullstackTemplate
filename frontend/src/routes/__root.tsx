@@ -41,6 +41,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const withoutSession = useRouterState({ select: (state) => state.matches.some((match) => match.staticData.withoutSession) })
+
   return withoutSession ? <Outlet /> : <SessionGate />
 }
 
@@ -49,11 +50,14 @@ function SessionGate() {
 
   // A failed refetch keeps the data of the last answer, and that answer still decides.
   if (claims.data === null) return <GoToLogin />
+
   if (claims.data) return <Layout />
+
   // A refetch with no data sets the query back to pending and clears the error, so the count of errors keeps the alert.
   if (claims.errorUpdateCount > 0) {
     return <SessionCheckFailed isRetrying={claims.isFetching} onRetry={() => void claims.refetch()} />
   }
+
   return null
 }
 
@@ -61,6 +65,7 @@ function GoToLogin() {
   useEffect(() => {
     login(returnUrlOf(window.location))
   }, [])
+
   return null
 }
 
@@ -125,11 +130,13 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
   useEffect(() => {
     const previous = lastPathname.current
     lastPathname.current = pathname
+
     // The first load leaves the focus where the browser puts it.
     if (previous === undefined || previous === pathname || !content.current || !announcement.current) return
     clearTimeout(pendingAnnouncement.current)
     announcement.current.textContent = ''
     const focused = document.activeElement
+
     if (!focused || focused === document.body) {
       return focusStartOfPage(content.current)
     } else {
@@ -148,19 +155,26 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
 // A page that loads its data shows its heading after the navigation. The main landmark holds the focus until then.
 function focusStartOfPage(content: HTMLElement) {
   const heading = content.querySelector('h1')
+
   if (heading) {
     focusWithoutTabStop(heading)
+
     return
   }
+
   const main = content.closest('main')
   focusWithoutTabStop(main)
+
   const observer = new MutationObserver(() => {
     if (document.activeElement !== main) return observer.disconnect()
     const lateHeading = content.querySelector('h1')
+
     if (!lateHeading) return
     observer.disconnect()
     focusWithoutTabStop(lateHeading)
   })
+
   observer.observe(content, { childList: true, subtree: true })
+
   return () => observer.disconnect()
 }

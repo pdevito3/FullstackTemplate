@@ -8,6 +8,7 @@ import { SearchBox } from './search-box'
 function ListPage({ onSearch }: { onSearch: (text: string, base: string) => void }) {
   const [search, setSearch] = useState('')
   const [navigating, setNavigating] = useState<string | null>(null)
+
   return (
     <>
       <SearchBox

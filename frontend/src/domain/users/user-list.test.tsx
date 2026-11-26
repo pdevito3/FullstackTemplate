@@ -33,11 +33,13 @@ async function renderListAt(path: string) {
   ])
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [path] }) })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
   const screen = await render(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+
   return { screen, router }
 }
 

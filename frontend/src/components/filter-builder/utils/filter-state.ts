@@ -29,9 +29,11 @@ export function addFilterToGroup(
           filters: [...item.filters, filter],
         }
       }
+
       if (isFilterGroup(item)) {
         return addFilterToGroupRecursive(item, groupId, filter)
       }
+
       return item
     }),
   }
@@ -51,9 +53,11 @@ function addFilterToGroupRecursive(
           filters: [...item.filters, filter],
         }
       }
+
       if (isFilterGroup(item)) {
         return addFilterToGroupRecursive(item, groupId, filter)
       }
+
       return item
     }),
   }
@@ -73,17 +77,20 @@ function removeFilterRecursive(
   filters: (Filter | FilterGroup)[],
   filterId: string
 ): (Filter | FilterGroup)[] {
-  return filters
-    .filter((item) => item.id !== filterId)
-    .map((item) => {
-      if (isFilterGroup(item)) {
-        return {
+  return filters.flatMap<Filter | FilterGroup>((item) => {
+    if (item.id === filterId) return []
+
+    if (isFilterGroup(item)) {
+      return [
+        {
           ...item,
           filters: removeFilterRecursive(item.filters, filterId),
-        }
-      }
-      return item
-    })
+        },
+      ]
+    }
+
+    return [item]
+  })
 }
 
 /**
@@ -109,12 +116,14 @@ function updateFilterRecursive(
     if (isFilter(item) && item.id === filterId) {
       return { ...item, ...updates }
     }
+
     if (isFilterGroup(item)) {
       return {
         ...item,
         filters: updateFilterRecursive(item.filters, filterId, updates),
       }
     }
+
     return item
   })
 }
@@ -281,6 +290,7 @@ function createGroupFromSelectedRecursive(
         filters: createGroupFromSelectedRecursive(item.filters, filterIds, logicalOperator),
       }
     }
+
     return item
   })
 }
@@ -316,12 +326,14 @@ function toggleGroupOperatorRecursive(
         logicalOperator: item.logicalOperator === LogicalOperators.AND ? LogicalOperators.OR : LogicalOperators.AND,
       }
     }
+
     if (isFilterGroup(item)) {
       return {
         ...item,
         filters: toggleGroupOperatorRecursive(item.filters, groupId),
       }
     }
+
     return item
   })
 }
@@ -344,11 +356,14 @@ function findFilterByIdRecursive(
     if (item.id === filterId) {
       return item
     }
+
     if (isFilterGroup(item)) {
       const found = findFilterByIdRecursive(item.filters, filterId)
+
       if (found) return found
     }
   }
+
   return null
 }
 
@@ -380,6 +395,7 @@ export function moveFilterToGroup(
 ): FilterState {
   // Find the filter
   const filter = findFilterById(state, filterId)
+
   if (!filter || isFilterGroup(filter)) {
     return state
   }
@@ -389,9 +405,9 @@ export function moveFilterToGroup(
 
   // Add to target group (or root if targetGroupId is null)
   if (targetGroupId === null) {
-    newState = addFilter(newState, filter as Filter)
+    newState = addFilter(newState, filter)
   } else {
-    newState = addFilterToGroup(newState, targetGroupId, filter as Filter)
+    newState = addFilterToGroup(newState, targetGroupId, filter)
   }
 
   return newState
@@ -408,9 +424,11 @@ function getAllFilterIdsRecursive(filters: (Filter | FilterGroup)[]): string[] {
   const ids: string[] = []
   filters.forEach((item) => {
     ids.push(item.id)
+
     if (isFilterGroup(item)) {
       ids.push(...getAllFilterIdsRecursive(item.filters))
     }
   })
+
   return ids
 }

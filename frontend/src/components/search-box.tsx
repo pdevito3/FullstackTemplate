@@ -25,6 +25,7 @@ export function SearchBox({ label, placeholder, search, maxLength, onSearch }: S
   const [text, setText] = useState(search)
   const [shownSearch, setShownSearch] = useState(search)
   const [sentSearch, setSentSearch] = useState<string | null>(null)
+
   const sendSearch = useDebouncedCallback((next: string, base: string) => {
     setSentSearch(next)
     onSearch(next, base)
@@ -32,6 +33,7 @@ export function SearchBox({ label, placeholder, search, maxLength, onSearch }: S
 
   if (search !== shownSearch) {
     setShownSearch(search)
+
     if (search === sentSearch) {
       setSentSearch(null)
     } else {

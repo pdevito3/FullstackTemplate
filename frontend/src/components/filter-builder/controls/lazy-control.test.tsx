@@ -20,10 +20,13 @@ function Loaded({ config }: FilterControlProps) {
 function codeOnAFlakyConnection() {
   let connected = false
   let loads = 0
+
   return {
     load: async () => {
       loads++
+
       if (!connected) throw new TypeError('Failed to fetch dynamically imported module: http://localhost/assets/date-filter-1.js')
+
       return Loaded
     },
     reconnect: () => {
@@ -81,6 +84,7 @@ test('keeps a loaded control and what the user typed in it when Try again fails 
   // Arrange
   const code = codeOnAFlakyConnection()
   const Control = lazyControl(code.load)
+
   const twoControls = (surface: FilterControlProps['surface']) => (
     <Suspense>
       {['Due Date', 'Start Date'].map((propertyLabel) => (
@@ -90,6 +94,7 @@ test('keeps a loaded control and what the user typed in it when Try again fails 
       ))}
     </Suspense>
   )
+
   const screen = await render(twoControls('submenu'))
   const section = (name: string) => page.getByRole('region', { name })
   await expect.element(section('Start Date').getByText('This filter did not load.')).toBeVisible()

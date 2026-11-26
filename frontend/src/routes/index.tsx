@@ -50,9 +50,11 @@ function SignedInUser() {
   if (isLoading) {
     return <Skeleton className="h-5 w-48" aria-label="Loading your user" />
   }
+
   if (!user) {
     return <p className="text-sm text-destructive">Your user did not load. Reload the page.</p>
   }
+
   return (
     <p className="min-w-0 text-sm wrap-anywhere">
       Signed in as <span className="font-medium">{user.name ?? user.identifier}</span>

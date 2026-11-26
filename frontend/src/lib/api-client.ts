@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosError } from 'axios'
 
 import type { client as KubbClient } from '@/api/generated/.kubb/client'
 import { Notification } from '@/components/notification'
@@ -49,6 +49,7 @@ const uploadTimeoutMs = 10 * 60_000
 
 apiClient.interceptors.request.use((config) => {
   config.timeout ||= config.data instanceof FormData ? uploadTimeoutMs : requestTimeoutMs
+
   return config
 })
 
@@ -68,7 +69,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     // Get custom config options
-    const config = error.config as AxiosRequestConfig | undefined
+    const config = error.config
     const suppressToast = config?.suppressErrorToast ?? false
 
     // A cancel (for example, TanStack Query aborts an old query) is not an error to show.
@@ -81,6 +82,7 @@ apiClient.interceptors.response.use(
     // The check of the session cannot wait for itself, so its own 401 is a failed check.
     if (error.response?.status === 401 && config?.url !== '/bff/user') {
       if (!(await isSessionEnded()) && !suppressToast) Notification.error(failureText(processedError))
+
       return Promise.reject(processedError)
     }
 
@@ -96,6 +98,7 @@ apiClient.interceptors.response.use(
 // The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
 // Each API version has its own generated folder (src/api/generated, src/api/generated-v2), and each folder has its own client.
 const kubbClients = import.meta.glob<{ client: typeof KubbClient }>('/src/api/generated*/.kubb/client.ts', { eager: true })
+
 for (const { client } of Object.values(kubbClients)) {
   client.setConfig({ transport: apiClient })
 }

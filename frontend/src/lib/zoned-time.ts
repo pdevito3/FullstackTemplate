@@ -21,8 +21,11 @@ export type TimeZone = string & { readonly __brand: 'TimeZone' }
  * Throws a `RangeError` for a zone that the browser does not know.
  */
 export function parseTimeZone(value: string): TimeZone {
-  const zone = PLACE_OF_SYSTEM_V_ID[value.toUpperCase()] ?? value
+  const zone = PLACE_OF_SYSTEM_V_ID.get(value.toUpperCase()) ?? value
   const resolved = new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone
+
+  // SAFETY: Intl.DateTimeFormat threw a RangeError above for a zone that the browser does not know, so the browser knows
+  // both the zone and the name that it resolved the zone to.
   return (resolved.toLowerCase() === zone.toLowerCase() ? resolved : zone) as TimeZone
 }
 
@@ -33,15 +36,17 @@ export function parseTimeZone(value: string): TimeZone {
  * the IDs, but WebKit 27.2 throws a `RangeError` for them, and Chromium names them by a bare offset, for example
  * "GMT-05:00". So a time before 1967 can show with another offset than the Server gives.
  */
-const PLACE_OF_SYSTEM_V_ID: Partial<Record<string, string>> = {
-  EST5EDT: 'America/New_York',
-  CST6CDT: 'America/Chicago',
-  MST7MDT: 'America/Denver',
-  PST8PDT: 'America/Los_Angeles',
-}
+const PLACE_OF_SYSTEM_V_ID = new Map([
+  ['EST5EDT', 'America/New_York'],
+  ['CST6CDT', 'America/Chicago'],
+  ['MST7MDT', 'America/Denver'],
+  ['PST8PDT', 'America/Los_Angeles'],
+])
 
 /** The zone of the browser. Use it only for a time that belongs to the user, not to a place. */
 export function browserTimeZone(): TimeZone {
+  // SAFETY: getLocalTimeZone gives the timeZone of Intl.DateTimeFormat().resolvedOptions(), so the browser knows it. No
+  // code calls setLocalTimeZone, which could put another string there.
   return getLocalTimeZone() as TimeZone
 }
 
@@ -57,8 +62,10 @@ export function timeZoneLabel(zone: TimeZone): string {
         .formatToParts()
         .find((part) => part.type === 'timeZoneName')?.value ?? '',
   )
+
   const name = names.find(isWordName) ?? names[names.length - 1]
-  return CLEAR_NAME_OF_ZONE[name] ?? name
+
+  return CLEAR_NAME_OF_ZONE.get(name) ?? name
 }
 
 /**
@@ -67,13 +74,13 @@ export function timeZoneLabel(zone: TimeZone): string {
  * These are the only such names in a scan of 597 zones. Other Chromium names come from a current ID, as "Sao Paulo Time".
  * "DumontDUrville Time" is the exact tail of its ID, which rule 1 of docs/messages.md refuses.
  */
-const CLEAR_NAME_OF_ZONE: Partial<Record<string, string>> = {
-  'Godthab Time': 'Nuuk Time',
-  'Truk Time': 'Chuuk Time',
-  'Ponape Time': 'Pohnpei Time',
-  'Enderbury Time': 'Canton Island Time',
-  'DumontDUrville Time': "Dumont d'Urville Time",
-}
+const CLEAR_NAME_OF_ZONE = new Map([
+  ['Godthab Time', 'Nuuk Time'],
+  ['Truk Time', 'Chuuk Time'],
+  ['Ponape Time', 'Pohnpei Time'],
+  ['Enderbury Time', 'Canton Island Time'],
+  ['DumontDUrville Time', "Dumont d'Urville Time"],
+])
 
 /**
  * The message for a typed time that the clocks skip in a spring gap, as `instantAt` gives null for it. With no zone, the
@@ -103,6 +110,7 @@ export function wallClockAt(instant: Date, zone: TimeZone): CalendarDateTime {
  */
 export function instantAt(wallClock: CalendarDateTime, zone: TimeZone): Date | null {
   const zoned = toZoned(wallClock, zone, 'earlier')
+
   return toCalendarDateTime(zoned).compare(wallClock) === 0 ? zoned.toDate() : null
 }
 
@@ -116,12 +124,14 @@ export function offsetAt(instant: Date, zone: TimeZone): string {
   const minutes = fromAbsolute(instant.getTime(), zone).offset / 60_000
   const sign = minutes < 0 ? '-' : '+'
   const hours = String(Math.trunc(Math.abs(minutes) / 60)).padStart(2, '0')
+
   return `${sign}${hours}:${String(Math.abs(minutes) % 60).padStart(2, '0')}`
 }
 
 /** True when the wall clock of the place shows the time of the instant twice, as on the night that the clocks go back. */
 export function isRepeatedAt(instant: Date, zone: TimeZone): boolean {
   const wallClock = wallClockAt(instant, zone)
+
   return toZoned(wallClock, zone, 'earlier').compare(toZoned(wallClock, zone, 'later')) !== 0
 }
 
@@ -151,5 +161,6 @@ export function formatInstant(
 ): string {
   const isRepeatedTime = options.hour !== undefined && isRepeatedAt(instant, zone)
   const timeZoneName = isRepeatedTime ? 'shortOffset' : showZone ? 'short' : undefined
+
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: zone, timeZoneName }).format(instant)
 }

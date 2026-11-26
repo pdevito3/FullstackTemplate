@@ -3,14 +3,18 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
+import * as z from 'zod'
 
 const repoRoot = resolve(import.meta.dirname, '..')
 
-type Settings = { hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] } }
+const settingsSchema = z.object({
+  hooks: z.object({ PreToolUse: z.array(z.object({ matcher: z.string(), hooks: z.array(z.object({ command: z.string() })) })) }),
+})
 
 function runHook(command: string) {
-  const settings = JSON.parse(readFileSync(resolve(repoRoot, '.claude/settings.json'), 'utf8')) as Settings
+  const settings = settingsSchema.parse(JSON.parse(readFileSync(resolve(repoRoot, '.claude/settings.json'), 'utf8')))
   const entry = settings.hooks.PreToolUse.find((candidate) => candidate.matcher === 'Bash')
+
   return spawnSync('sh', ['-c', entry?.hooks[0]?.command ?? 'exit 99'], {
     input: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
     env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot },

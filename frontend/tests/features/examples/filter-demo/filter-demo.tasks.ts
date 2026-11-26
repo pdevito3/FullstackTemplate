@@ -10,7 +10,9 @@ interface ToastText {
 
 async function centerOf(element: Locator) {
   const box = await element.boundingBox()
+
   if (!box) throw new Error('The element is not on the page.')
+
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
 }
 
@@ -112,28 +114,37 @@ export function filterDemoPage(page: Page) {
     async pathFrom(property: Locator, target: Locator) {
       const from = await centerOf(property)
       const to = await centerOf(target)
+
       const crossed = await at.propertyList.evaluate((list, { from, to, trigger }) => {
         const inside = (box: DOMRect, x: number, y: number) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
         const listBox = list.getBoundingClientRect()
         const rows = new Map<string, { x: number; y: number }[]>()
+
         for (let step = 0; step <= 200; step++) {
           const x = from.x + ((to.x - from.x) * step) / 200
           const y = from.y + ((to.y - from.y) * step) / 200
+
           if (!inside(listBox, x, y)) continue
+
           for (const row of list.querySelectorAll('[role="menuitem"]')) {
             const name = row.textContent ?? ''
+
             if (name !== trigger && inside(row.getBoundingClientRect(), x, y)) rows.set(name, [...(rows.get(name) ?? []), { x, y }])
           }
         }
+
         return [...rows].map(([name, points]) => ({ name, point: points[Math.floor(points.length / 2)] }))
       }, { from, to, trigger: await property.textContent() })
+
       return { rises: to.y < from.y, to, crossed }
     },
 
     /** A point near the right end of a property, the end nearest to its submenu. */
     async rightEndOf(propertyLabel: string) {
       const box = await at.property(propertyLabel).boundingBox()
+
       if (!box) throw new Error('The property is not on the page.')
+
       return { x: box.x + box.width - 8, y: box.y + box.height / 2 }
     },
 
@@ -158,7 +169,9 @@ export function filterDemoPage(page: Page) {
       await page.evaluate(async (toasts) => {
         // vite.functional.config.ts builds the module of the toast queue of the page to this path.
         const notificationModule: string = '/test/notification.js'
+        // SAFETY: vite.functional.config.ts builds src/components/notification to this path, so the module exports its Notification.
         const { Notification } = (await import(/* @vite-ignore */ notificationModule)) as { Notification: typeof AppNotification }
+
         for (const { message, description } of toasts) Notification.error(message, { description })
       }, toasts)
       await expect(at.toasts).toHaveCount(toasts.length)
@@ -219,8 +232,10 @@ export function filterDemoPage(page: Page) {
     async clearDate(propertyLabel: string, field: string) {
       for (const part of ['year', 'day', 'month'] as const) {
         await at.dateSegment(propertyLabel, field, part).click()
+
         for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace')
       }
+
       await expect(at.dateField(propertyLabel, field)).toHaveText(/^mm.*dd.*yyyy$/)
     },
 
@@ -266,10 +281,13 @@ export function filterDemoPage(page: Page) {
     async cssFiltersAround(propertyLabel: string) {
       return at.control(propertyLabel).evaluate((control) => {
         const filters: string[] = []
+
         for (let element: Element | null = control; element; element = element.parentElement) {
           const { filter } = getComputedStyle(element)
+
           if (filter !== 'none') filters.push(filter)
         }
+
         return filters
       })
     },
@@ -285,6 +303,7 @@ export function filterDemoPage(page: Page) {
         for (let element = control.parentElement; element && element !== document.body; element = element.parentElement) {
           if (getComputedStyle(element).overflowY !== 'visible') return element.getBoundingClientRect().bottom
         }
+
         return control.getBoundingClientRect().bottom
       })
     },
@@ -293,13 +312,16 @@ export function filterDemoPage(page: Page) {
     async lineAboveFooterOf(button: Locator) {
       return button.evaluate((element) => {
         let footer: Element | null = element
+
         while (footer && getComputedStyle(footer).position !== 'sticky') footer = footer.parentElement
+
         if (!footer) throw new Error('The button is not in a sticky footer.')
         const { borderTopWidth, borderTopColor } = getComputedStyle(footer)
         // A canvas reads the alpha of any color syntax, such as the oklab() of an animated color.
         const context = document.createElement('canvas').getContext('2d')!
         context.fillStyle = borderTopColor
         context.fillRect(0, 0, 1, 1)
+
         return parseFloat(borderTopWidth) > 0 && context.getImageData(0, 0, 1, 1).data[3] > 0
       })
     },
@@ -308,9 +330,12 @@ export function filterDemoPage(page: Page) {
     async footerSidesOf(button: Locator) {
       return button.evaluate((element) => {
         let footer: Element | null = element
+
         while (footer && getComputedStyle(footer).position !== 'sticky') footer = footer.parentElement
+
         if (!footer) throw new Error('The button is not in a sticky footer.')
         const { left, right } = footer.getBoundingClientRect()
+
         return { left, right }
       })
     },
@@ -318,11 +343,13 @@ export function filterDemoPage(page: Page) {
     async sidewaysScrollOf(propertyLabel: string) {
       return at.control(propertyLabel).evaluate((control) => {
         let widest = 0
+
         for (const element of [control, ...control.querySelectorAll('*')]) {
           if (['auto', 'scroll'].includes(getComputedStyle(element).overflowX)) {
             widest = Math.max(widest, element.scrollWidth - element.clientWidth)
           }
         }
+
         return widest
       })
     },
@@ -332,6 +359,7 @@ export function filterDemoPage(page: Page) {
       const b = await this.edgesOf(other)
       const width = Math.min(a.right, b.right) - Math.max(a.left, b.left)
       const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+
       return width > 0 && height > 0 ? { width, height } : null
     },
 
@@ -340,6 +368,7 @@ export function filterDemoPage(page: Page) {
       const a = await this.edgesOf(element)
       const b = await this.edgesOf(other)
       const middle = (edges: typeof a) => (edges.top + edges.bottom) / 2
+
       return middle(a) > b.top && middle(a) < b.bottom && middle(b) > a.top && middle(b) < a.bottom
     },
 
@@ -350,12 +379,15 @@ export function filterDemoPage(page: Page) {
         const range = document.createRange()
         let overrun = -Infinity
         const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+
         for (let text = walker.nextNode(); text; text = walker.nextNode()) {
           range.selectNodeContents(text)
+
           for (const rect of range.getClientRects()) {
             if (rect.width > 0) overrun = Math.max(overrun, box.left - rect.left, rect.right - box.right)
           }
         }
+
         return overrun
       })
     },
@@ -367,38 +399,48 @@ export function filterDemoPage(page: Page) {
     async linesOfBadgeAndOfItsContentAsParagraph(element: Locator): Promise<{ badge: string[]; paragraph: string[] }> {
       return element.evaluate((node) => {
         const fontSize = parseFloat(getComputedStyle(node).fontSize)
+
         const linesOf = (root: Node) => {
           const range = document.createRange()
           const lines: { top: number; text: string }[] = []
           const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-          for (let text = walker.nextNode() as Text | null; text; text = walker.nextNode() as Text | null) {
+
+          for (let text = walker.nextNode(); text instanceof Text; text = walker.nextNode()) {
             for (let index = 0; index < text.length; index++) {
               range.setStart(text, index)
               range.setEnd(text, index + 1)
               const rect = range.getClientRects()[0]
+
               if (!rect || rect.width === 0) continue
               let line = lines.find(({ top }) => Math.abs(top - rect.top) <= fontSize / 2)
+
               if (!line) lines.push((line = { top: rect.top, text: '' }))
               line.text += text.data[index]
             }
           }
+
           return lines.sort((a, b) => a.top - b.top).map(({ text }) => text.replace(/\s+/g, ' ').trim()).filter(Boolean)
         }
+
         const paragraph = document.createElement('p')
         paragraph.append(...[...node.childNodes].map((child) => child.cloneNode(true)))
         const style = getComputedStyle(node)
         paragraph.style.cssText = `position:absolute;visibility:hidden;margin:0;width:${node.getBoundingClientRect().width}px`
+
         for (const property of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'overflowWrap'] as const) paragraph.style[property] = style[property]
         document.body.append(paragraph)
         const result = { badge: linesOf(node), paragraph: linesOf(paragraph) }
         paragraph.remove()
+
         return result
       })
     },
 
     async edgesOf(element: Locator) {
       const box = await element.boundingBox()
+
       if (!box) throw new Error('The element is not on the page.')
+
       return { left: box.x, right: box.x + box.width, top: box.y, bottom: box.y + box.height }
     },
 
@@ -406,15 +448,19 @@ export function filterDemoPage(page: Page) {
     async sideMarginsOf(propertyLabel: string) {
       const sheet = await at.control(propertyLabel).boundingBox()
       const close = await at.button(propertyLabel, 'Close').boundingBox()
+
       if (!sheet || !close) throw new Error('The sheet is not on the screen.')
       let left = Infinity
       let right = Infinity
+
       for (const field of await at.fields(propertyLabel).all()) {
         const box = await field.boundingBox()
+
         if (!box || box.width === 0 || (box.x === close.x && box.y === close.y)) continue
         left = Math.min(left, box.x - sheet.x)
         right = Math.min(right, sheet.x + sheet.width - (box.x + box.width))
       }
+
       return { left, right }
     },
 
@@ -428,26 +474,35 @@ export function filterDemoPage(page: Page) {
      */
     async verticalMarginsOf(propertyLabel: string) {
       const sheet = await at.control(propertyLabel).elementHandle()
+
       return at.controlTitle(propertyLabel).evaluate((title, sheet) => {
         const shows = (element: Element) => {
           const { width, height } = element.getBoundingClientRect()
+
           return width > 1 && height > 1
         }
+
         const titleBottom = title.getBoundingClientRect().bottom
         let top = Infinity
         let bottom = -Infinity
+
         for (const element of sheet!.querySelectorAll('*')) {
           const box = element.getBoundingClientRect()
           const isLeaf = ['BUTTON', 'INPUT'].includes(element.tagName) || ![...element.children].some(shows)
+
           if (!isLeaf || !shows(element) || box.top < titleBottom) continue
           top = Math.min(top, box.top)
           bottom = Math.max(bottom, box.bottom)
         }
+
         let scroller: Element = title
+
         while (scroller.parentElement && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY)) {
           scroller = scroller.parentElement
         }
+
         const contentEnd = scroller.getBoundingClientRect().top + scroller.clientTop - scroller.scrollTop + scroller.scrollHeight
+
         return { top: Math.round(top - titleBottom), bottom: Math.round(contentEnd - bottom) }
       }, sheet)
     },

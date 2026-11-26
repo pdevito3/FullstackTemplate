@@ -41,20 +41,27 @@ const overlay = () => document.querySelector('[data-slot="drawer-overlay"]')
 // runner a test can reach its Escape after the slide ended. Hold both events until the test lets the slides end.
 function holdSlides() {
   const held: { target: EventTarget; type: string }[] = []
+
   const hold = (event: Event) => {
     if (!(event.target instanceof Element)) return
+
     if (event.type === 'scrollend' && !event.target.hasAttribute('data-sheet-scroll')) return
     event.stopImmediatePropagation()
     held.push({ target: event.target, type: event.type })
   }
+
   window.addEventListener('scrollend', hold, true)
   window.addEventListener('react-aria-sheet-close', hold, true)
+
   const endSlides = () => {
     window.removeEventListener('scrollend', hold, true)
     window.removeEventListener('react-aria-sheet-close', hold, true)
+
     for (const { target, type } of held.splice(0)) target.dispatchEvent(new Event(type))
   }
+
   onTestFinished(endSlides)
+
   return { endSlides, held }
 }
 
@@ -216,6 +223,7 @@ test('Escape while a drawer slides in over a dialog, twice fast, closes the draw
 
 function MenuDrawerExample() {
   const [isOpen, setOpen] = React.useState(false)
+
   return (
     <>
       <DropdownMenuTrigger>

@@ -5,6 +5,7 @@ import { bffPaths } from './api/bff-api'
 /** The last answer of a GET that fails each try, after which the page shows the error. */
 export function failedLoad(page: Page, path: string) {
   let answers = 0
+
   return page.waitForResponse(
     (r) => r.request().method() === 'GET' && new URL(r.url()).pathname === path && ++answers === QUERY_RETRIES + 1,
   )

@@ -104,14 +104,19 @@ function BreadcrumbPage(props: { className?: string; children?: string }) {
 
 function CurrentPage({ className, children }: { className?: string; children?: string }) {
   const [isTruncated, setIsTruncated] = React.useState(false)
+
   const measure = React.useCallback((element: HTMLElement | null) => {
     if (!element) return
+
     const observer = new ResizeObserver(() => {
       if (element.scrollWidth > element.clientWidth) setIsTruncated(true)
     })
+
     observer.observe(element)
+
     return () => observer.disconnect()
   }, [])
+
   const pageClassName = cn("truncate font-normal text-foreground", className)
 
   if (!isTruncated) {
@@ -128,6 +133,7 @@ function CurrentPage({ className, children }: { className?: string; children?: s
       </span>
     )
   }
+
   return (
     <PopoverTrigger>
       <ButtonPrimitive

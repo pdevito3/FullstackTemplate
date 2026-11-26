@@ -13,6 +13,7 @@ test.each(['light', 'dark'])('a link styled with badgeVariants has the border of
       </a>
     </div>,
   )
+
   const badgeBorder = getComputedStyle(screen.getByText('Beta').element()).borderTopColor
   const linkBorder = getComputedStyle(screen.getByRole('link', { name: 'Release notes' }).element()).borderTopColor
 

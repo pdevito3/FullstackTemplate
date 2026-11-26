@@ -8,10 +8,10 @@ import { aPreview } from '@tests/support/builders/invite-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
-import { browserZone, shortenRequestTimeLimit } from '@tests/support/clock'
+import { shortenRequestTimeLimit } from '@tests/support/clock'
 import { expect, test } from '@tests/support/fixtures'
 import { homePage } from '../home/home.tasks'
-import { joinPage } from './invites.tasks'
+import { inviteExpiryInBrowserZone, joinPage } from './invites.tasks'
 
 const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v'
 const secondToken = 'Z1y2X3w4V5u6T7s8R9q0P1o2N3m4L5k6J7i8H9g0F1e'
@@ -21,12 +21,6 @@ const expired = 'This invite expired. Ask a tenant admin for a new invite.'
 const usedOrRevoked = 'This invite was used or revoked. Ask a tenant admin for a new invite.'
 const alreadyMember = 'Your account already belongs to a tenant.'
 const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
-
-/** `inviteExpiry` of the builder in each zone of the suite. */
-const expiryIn: Record<string, string> = {
-  'Pacific/Kiritimati': 'Jan 16, 2099, 2:00 AM',
-  'Pacific/Pago_Pago': 'Jan 15, 2099, 1:00 AM',
-}
 
 test.describe('a visitor with no session opens an invite link', () => {
   test.use({ actor: as.anonymous() })
@@ -74,7 +68,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
 
     await expect(join.at.detail('Acme')).toBeVisible()
     await expect(join.at.detail('Admin')).toBeVisible()
-    await expect(join.at.detail(expiryIn[browserZone()])).toBeVisible()
+    await expect(join.at.detail(inviteExpiryInBrowserZone())).toBeVisible()
     await expect(join.at.form).toBeVisible()
   })
 

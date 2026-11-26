@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
+import { isText } from "@/components/ui/prop-guards"
 import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
 import { PagerButtons } from "@/components/ui/pager"
 
@@ -66,11 +67,14 @@ function DataTable<TData, TValue>({
 
   // A React Aria table has one header row, so it shows the leaf headers.
   const headers = table.getLeafHeaders().filter((header) => header.column.getIsVisible())
+
   // The selection column holds only a checkbox, so it cannot name the row.
   const rowHeaderIndex = Math.max(
     headers.findIndex((header) => header.column.id !== "select"),
     0
   )
+
+  const searchText = searchKey ? table.getColumn(searchKey)?.getFilterValue() : undefined
 
   return (
     <div className="w-full">
@@ -78,7 +82,7 @@ function DataTable<TData, TValue>({
         {searchKey && (
           <Input
             placeholder={searchPlaceholder}
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+            value={isText(searchText) ? searchText : ""}
             onChange={(event) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }

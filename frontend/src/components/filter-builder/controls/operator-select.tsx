@@ -21,8 +21,10 @@ export function OperatorSelect({ operators, value, onChange, size = 'default' }:
     <Select
       value={value}
       onChange={(key) => {
-        if (key !== null) {
-          onChange(key as OperatorType)
+        const operator = operators.find((op) => op === key)
+
+        if (operator) {
+          onChange(operator)
         }
       }}
       className="flex w-full flex-col gap-2"

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { OperatorType, Filter, FilterControlProps, FilterOption } from '../types'
+import { isListValue, type OperatorType, type FilterControlProps, type FilterOption } from '../types'
 import { getDefaultOperator, Operators, pickOperator } from '../utils/operators'
 import { FilterControlFooter } from './filter-control-footer'
 import { OperatorSelect } from './operator-select'
@@ -24,18 +24,23 @@ export function MultiSelectFilter({
     options = NO_OPTIONS,
     operators: allowedOperators = DEFAULT_OPERATORS,
   } = config
+
   const [searchTerm, setSearchTerm] = useState('')
+
   const [selected, setSelected] = useState<string[]>(
-    (initialFilter?.value as string[]) || []
+    isListValue(initialFilter?.value) ? initialFilter.value : []
   )
+
   const [operator, setOperator] = useState<OperatorType>(
     pickOperator(allowedOperators, initialFilter?.operator ?? getDefaultOperator('multiselect'))
   )
+
   const [matchAll, setMatchAll] = useState(initialFilter?.matchAll || false)
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options
     const lower = searchTerm.toLowerCase()
+
     return options.filter(
       (opt) =>
         opt.label.toLowerCase().includes(lower) ||
@@ -88,7 +93,7 @@ export function MultiSelectFilter({
       value: selected,
       selectedLabels,
       matchAll: matchAll || undefined,
-    } as Omit<Filter, 'id'>)
+    })
   }
 
   return (

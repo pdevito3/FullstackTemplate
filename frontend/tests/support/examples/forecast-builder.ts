@@ -20,6 +20,7 @@ class ForecastBuilder<T extends WeatherForecast> {
 
   static create() {
     const n = next()
+
     return new ForecastBuilder<WeatherForecast>({
       date: day(n),
       temperatureC: 20,

@@ -8,6 +8,7 @@ import { get, type FieldErrors, type FieldValues, type Path, type UseFormReturn 
 export function focusFirstError<T extends FieldValues>(form: UseFormReturn<T>, fields: readonly Path<T>[]) {
   return (errors: FieldErrors<T>) => {
     const first = fields.find((field) => get(errors, field))
+
     if (first) form.setFocus(first)
   }
 }

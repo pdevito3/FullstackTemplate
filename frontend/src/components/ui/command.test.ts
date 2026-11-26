@@ -29,6 +29,7 @@ describe('CommandItemProps', () => {
       children: [createElement('svg'), 'Calendar'],
       textValue: 'Calendar',
     }
+
     expectTypeOf(props).toExtend<CommandItemProps>()
   })
 })

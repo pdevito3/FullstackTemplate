@@ -102,6 +102,10 @@ export function DateFilter({
     initialDateValue?.endDate ? timeAt(initialDateValue.endDate, zone) : '23:59'
   )
 
+  // Exclude means "not on" for On and "not between" for Between. Before and After have no exclude, because not before is
+  // on or after. A tick in On stays in the state, so that it shows again after a look at Before.
+  const canExclude = mode === 'on' || mode === 'between'
+
   const startCalendarDate = mode === 'between' ? dateRange?.start : date
   const endCalendarDate = mode === 'between' ? dateRange?.end : undefined
 
@@ -146,7 +150,7 @@ export function DateFilter({
           }
         : {
             ...dates,
-            mode: exclude ? 'excluding' : mode,
+            mode: canExclude && exclude ? 'excluding' : mode,
             timeZone: placeZone,
           }
 
@@ -192,14 +196,16 @@ export function DateFilter({
         </div>
 
         {/* Exclude checkbox */}
-        <Checkbox
-          isSelected={exclude}
-          onChange={setExclude}
-        >
-          <Label className="text-sm font-medium leading-none">
-            Exclude {mode === 'between' ? 'date range' : 'dates'}
-          </Label>
-        </Checkbox>
+        {canExclude && (
+          <Checkbox
+            isSelected={exclude}
+            onChange={setExclude}
+          >
+            <Label className="text-sm font-medium leading-none">
+              Exclude {mode === 'between' ? 'date range' : 'dates'}
+            </Label>
+          </Checkbox>
+        )}
 
         {/* Calendar with integrated quick selects and date input */}
         {mode === 'between' ? (

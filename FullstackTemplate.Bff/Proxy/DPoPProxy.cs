@@ -94,12 +94,12 @@ public static class DPoPProxy
     }
 
     /// <summary>
-    /// Wraps the forwarder handler with the nonce retry.
+    /// Wraps the forwarder handler with the nonce retry, and each send with the <see cref="ConnectTimeoutHandler"/>.
     /// </summary>
     internal sealed class NonceRetryClientFactory(IServiceProvider services) : ForwarderHttpClientFactory
     {
         protected override HttpMessageHandler WrapHandler(ForwarderHttpClientContext context, HttpMessageHandler handler) =>
-            new NonceRetryHandler(services, base.WrapHandler(context, handler));
+            new NonceRetryHandler(services, new ConnectTimeoutHandler(base.WrapHandler(context, handler)));
     }
 
     /// <summary>

@@ -873,3 +873,73 @@ test.describe('a nested filter group on a 320 px phone', () => {
     }
   })
 })
+
+test.describe('the badge of a date filter', () => {
+  test('says Not between for a Between range with Exclude date range', { tag: '@zone' }, async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Due Date')
+    await demo.chooseBetween('Due Date')
+
+    await demo.typeDate('Due Date', 'Start date', '11032026')
+    await demo.typeDate('Due Date', 'End date', '11202026')
+    await demo.select(demo.at.option('Due Date', 'Exclude date range'))
+    await demo.at.addFilter('Due Date').click()
+
+    await expect(demo.at.editFilterNamed('Due Date | Not between | Nov 3, 2026 - Nov 20, 2026')).toBeVisible()
+  })
+
+  test('says After for an After date', { tag: '@zone' }, async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Updated Date')
+    await demo.at.button('Updated Date', 'After').click()
+
+    await demo.typeDate('Updated Date', 'Date', '11192026')
+    await demo.at.addFilter('Updated Date').click()
+
+    await expect(demo.at.editFilterNamed('Updated Date | After | Nov 19, 2026')).toBeVisible()
+  })
+
+  test('shows the time of a date-time filter', { tag: '@zone' }, async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Scheduled At (Local)')
+
+    await demo.typeDate('Scheduled At (Local)', 'Date', '11192026')
+    await demo.at.time('Scheduled At (Local)', 'Time').fill('10:15')
+    await demo.at.addFilter('Scheduled At (Local)').click()
+
+    await expect(demo.at.editFilterNamed('Scheduled At (Local) | On | Nov 19, 2026, 10:15 AM')).toBeVisible()
+  })
+})
+
+test.describe('Exclude dates of a date filter', () => {
+  test('shows only for On and Between', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Updated Date')
+
+    await expect(demo.at.option('Updated Date', 'Exclude dates')).toBeVisible()
+    await demo.at.button('Updated Date', 'Before').click()
+    await expect(demo.at.option('Updated Date', 'Exclude dates')).toBeHidden()
+    await demo.at.button('Updated Date', 'After').click()
+    await expect(demo.at.option('Updated Date', 'Exclude dates')).toBeHidden()
+    await demo.chooseBetween('Updated Date')
+    await expect(demo.at.option('Updated Date', 'Exclude date range')).toBeVisible()
+  })
+
+  test('does not change a Before date when the user ticked it in On', { tag: '@zone' }, async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Updated Date')
+
+    await demo.select(demo.at.option('Updated Date', 'Exclude dates'))
+    await demo.at.button('Updated Date', 'Before').click()
+    await demo.typeDate('Updated Date', 'Date', '11192026')
+    await demo.at.addFilter('Updated Date').click()
+
+    await expect(demo.at.queryKit).toHaveText('updatedAt < "2026-11-19"')
+    await expect(demo.at.editFilterNamed('Updated Date | Before | Nov 19, 2026')).toBeVisible()
+  })
+})

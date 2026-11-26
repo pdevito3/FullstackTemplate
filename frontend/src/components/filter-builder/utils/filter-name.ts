@@ -1,9 +1,17 @@
-import { toCalendarDate, type CalendarDateTime } from '@internationalized/date'
+import type { CalendarDateTime } from '@internationalized/date'
 
-import { browserTimeZone, formatDate as formatCalendarDate, formatInstant } from '@/lib/zoned-time'
+import { browserTimeZone, formatInstant, formatWallClock } from '@/lib/zoned-time'
 
 import { isDateValue, isNumberValue, isTextValue, type DateValue, type Filter } from '../types'
 import { getOperatorLabel } from './operators'
+
+/**
+ * The operator of a filter as the badge shows it. A date filter shows its mode, not its operator, as the QueryKit
+ * string reads it.
+ */
+export function formatFilterOperator(filter: Filter): string {
+  return isDateValue(filter.value) ? dateModeLabel(filter.value) : getOperatorLabel(filter.operator)
+}
 
 /**
  * The value of a filter as the badge shows it. A multiselect filter shows its selected labels.
@@ -21,7 +29,41 @@ export function formatFilterValue(filter: Filter): string {
  * Accessible names use it, because two filters can have the same property.
  */
 export function getFilterName(filter: Filter): string {
-  return `${filter.propertyLabel} | ${getOperatorLabel(filter.operator)} | ${formatFilterValue(filter)}`
+  return `${filter.propertyLabel} | ${formatFilterOperator(filter)} | ${formatFilterValue(filter)}`
+}
+
+function dateModeLabel(value: DateValue): string {
+  switch (value.mode) {
+    case 'before':
+      return 'Before'
+    case 'after':
+      return 'After'
+    case 'on':
+      return 'On'
+    case 'excluding':
+      return 'Not on'
+    case 'between':
+      if (!value.endDate) return 'On or after'
+
+      return value.exclude ? 'Not between' : 'Between'
+  }
+}
+
+function formatDates(value: DateValue): string {
+  const hasTime = value.dateType !== undefined && value.dateType !== 'date'
+
+  const options: Intl.DateTimeFormatOptions = hasTime
+    ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }
+    : { month: 'short', day: 'numeric', year: 'numeric' }
+
+  const formatDate = (date: Date | CalendarDateTime) =>
+    date instanceof Date
+      ? formatInstant(date, value.timeZone ?? browserTimeZone(), { ...options, showZone: hasTime && Boolean(value.timeZone) })
+      : formatWallClock(date, options)
+
+  return value.mode === 'between' && value.endDate
+    ? `${formatDate(value.startDate)} - ${formatDate(value.endDate)}`
+    : formatDate(value.startDate)
 }
 
 function formatValue(
@@ -38,35 +80,7 @@ function formatValue(
     return `${value.length} selected`
   }
 
-  if (isDateValue(value)) {
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
-
-    const formatDate = (date: Date | CalendarDateTime) =>
-      date instanceof Date
-        ? formatInstant(date, value.timeZone ?? browserTimeZone(), options)
-        : formatCalendarDate(toCalendarDate(date), options)
-
-    switch (value.mode) {
-      case 'before':
-        return `Before ${formatDate(value.startDate)}`
-      case 'after':
-        return `After ${formatDate(value.startDate)}`
-      case 'on':
-        return formatDate(value.startDate)
-      case 'excluding':
-        return `Excluding ${formatDate(value.startDate)}`
-      case 'between':
-        if (value.endDate) {
-          const range = `${formatDate(value.startDate)} - ${formatDate(value.endDate)}`
-
-          return value.exclude ? `Excluding ${range}` : range
-        }
-
-        return `From ${formatDate(value.startDate)}`
-      default:
-        return 'Unknown date'
-    }
-  }
+  if (isDateValue(value)) return formatDates(value)
 
   if (value === true) return 'True'
 

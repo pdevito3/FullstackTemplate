@@ -1,6 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { appShell } from './app-shell.locators'
 
+// The collapsed sidebar is a column of 3rem icons and its padding. The open sidebar is 16rem wide.
+export const collapsedSidebarMaxWidth = 64
+export const openSidebarMinWidth = 192
+
 export function appShellPage(page: Page) {
   const at = appShell(page)
   const warnings: string[] = []
@@ -21,6 +25,29 @@ export function appShellPage(page: Page) {
       await at.sidebarTrigger.click()
       await expect(at.mobileSidebar).toBeVisible()
       await expect.poll(() => at.mobileSidebar.evaluate((sheet) => sheet.getAnimations().length)).toBe(0)
+    },
+
+    async collapseSidebar() {
+      await at.sidebarTrigger.click()
+      await expect.poll(() => this.navigationWidth()).toBeLessThan(collapsedSidebarMaxWidth)
+    },
+
+    async expandSidebar() {
+      await at.sidebarTrigger.click()
+      await expect.poll(() => this.navigationWidth()).toBeGreaterThan(openSidebarMinWidth)
+    },
+
+    async reload() {
+      await page.reload()
+      await expect(at.aboutText).toBeVisible()
+    },
+
+    async navigationWidth() {
+      const box = await at.navigation.boundingBox()
+
+      if (!box) throw new Error('The navigation has no box')
+
+      return box.width
     },
 
     async goOffline() {

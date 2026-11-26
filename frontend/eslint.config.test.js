@@ -476,7 +476,7 @@ export function showOnItsOwn(setError: Form['setError']) {
   })
 })
 
-const SEED_PATH_WITHOUT_TYPE_INFO = 'conformance/seed.ts'
+const SEED_PATH_WITHOUT_TYPE_INFO = 'seed.ts'
 
 const antiSlopSeeds = {
   'anti-slop/no-accumulating-spread': 'export const all = [1, 2].reduce((acc: number[], n) => [...acc, n], [])\n',

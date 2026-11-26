@@ -167,6 +167,33 @@ test('a current page that truncated in a narrow header is a link when the header
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
 })
 
+test('a focused current page that truncated stays a button with the focus when the header gets wide enough for its name', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
+  const current = screen.getByRole('button', { name: workOrder })
+  await expect.element(current).toBeVisible()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(current).toHaveFocus()
+
+  await screen.rerender(currentPageTrail(1280, workOrder))
+  await new Promise(requestAnimationFrame)
+  await new Promise(requestAnimationFrame)
+
+  await expect.element(current).toHaveFocus()
+})
+
+test('the open popover of a current page that truncated stays open when the header gets wide enough for its name', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
+  await screen.getByRole('button', { name: workOrder }).click()
+  const popover = screen.getByRole('dialog', { name: 'Current page' })
+  await expect.element(popover).toBeVisible()
+
+  await screen.rerender(currentPageTrail(1280, workOrder))
+  await new Promise(requestAnimationFrame)
+  await new Promise(requestAnimationFrame)
+
+  await expect.element(popover).toBeVisible()
+})
+
 test('a current page with no room left on the line moves to the next line and shows its name', async () => {
   const screen = await render(
     <div style={{ width: 290 }}>

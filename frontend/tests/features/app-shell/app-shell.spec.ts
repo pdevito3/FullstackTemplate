@@ -5,7 +5,7 @@ import { expect, test } from '@tests/support/fixtures'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { homePage } from '../home/home.tasks'
 import { aboutPageSource } from './app-shell.locators'
-import { appShellPage, iconColumnWidth } from './app-shell.tasks'
+import { appShellPage, collapsedSidebarMaxWidth, openSidebarMinWidth } from './app-shell.tasks'
 
 for (const viewport of [
   { width: 1280, height: 800 },
@@ -133,7 +133,7 @@ test.describe('the sidebar after a reload', () => {
 
     await shell.reload()
 
-    expect(await shell.navigationWidth()).toBeLessThan(iconColumnWidth)
+    expect(await shell.navigationWidth()).toBeLessThan(collapsedSidebarMaxWidth)
   })
 
   test('opens again when the user opened it after a collapse', async ({ page }) => {
@@ -145,7 +145,7 @@ test.describe('the sidebar after a reload', () => {
 
     await shell.reload()
 
-    expect(await shell.navigationWidth()).toBeGreaterThan(iconColumnWidth * 3)
+    expect(await shell.navigationWidth()).toBeGreaterThan(openSidebarMinWidth)
   })
 })
 

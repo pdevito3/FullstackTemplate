@@ -1,8 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { appShell } from './app-shell.locators'
 
-// The collapsed sidebar shows only the icons, in a column of 3rem and its padding. The open sidebar is 16rem wide.
-export const iconColumnWidth = 64
+// The collapsed sidebar is a column of 3rem icons and its padding. The open sidebar is 16rem wide.
+export const collapsedSidebarMaxWidth = 64
+export const openSidebarMinWidth = 192
 
 export function appShellPage(page: Page) {
   const at = appShell(page)
@@ -28,12 +29,12 @@ export function appShellPage(page: Page) {
 
     async collapseSidebar() {
       await at.sidebarTrigger.click()
-      await expect.poll(() => this.navigationWidth()).toBeLessThan(iconColumnWidth)
+      await expect.poll(() => this.navigationWidth()).toBeLessThan(collapsedSidebarMaxWidth)
     },
 
     async expandSidebar() {
       await at.sidebarTrigger.click()
-      await expect.poll(() => this.navigationWidth()).toBeGreaterThan(iconColumnWidth * 3)
+      await expect.poll(() => this.navigationWidth()).toBeGreaterThan(openSidebarMinWidth)
     },
 
     async reload() {

@@ -129,8 +129,8 @@ test('a current page that fits is a disabled link, not a button', async () => {
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
 })
 
-test('a current page that truncated under an earlier name is a link when it fits', async () => {
-  const trail = (width: number, name: string) => (
+function currentPageTrail(width: number, name: string) {
+  return (
     <header style={{ width }} className="flex h-16 items-center gap-2">
       <div className="flex min-w-0 items-center gap-2 px-4">
         <Breadcrumb>
@@ -143,13 +143,25 @@ test('a current page that truncated under an earlier name is a link when it fits
       </div>
     </header>
   )
+}
 
-  const screen = await render(trail(160, workOrder))
+test('a current page that truncated under an earlier name is a link when it fits', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
   await expect.element(screen.getByRole('button', { name: workOrder })).toBeVisible()
 
-  await screen.rerender(trail(1280, 'Home'))
+  await screen.rerender(currentPageTrail(1280, 'Home'))
   await expect.element(screen.getByRole('link', { name: 'Home' })).toBeVisible()
-  await screen.rerender(trail(1280, workOrder))
+  await screen.rerender(currentPageTrail(1280, workOrder))
+
+  await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
+})
+
+test('a current page that truncated in a narrow header is a link when the header gets wide enough for its name', async () => {
+  const screen = await render(currentPageTrail(160, workOrder))
+  await expect.element(screen.getByRole('button', { name: workOrder })).toBeVisible()
+
+  await screen.rerender(currentPageTrail(1280, workOrder))
 
   await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()

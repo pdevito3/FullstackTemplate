@@ -80,11 +80,11 @@ trust_dev_certificate() {
     dotnet dev-certs https --trust
   fi
   # The SSL_CERT_DIR above does not reach a later shell (see register_dotnet_location), so the system store of
-  # OpenSSL also gets the certificate. A new certificate replaces the old one there.
+  # OpenSSL also gets the certificate. The newest one replaces the old one there.
   local cert target=/usr/local/share/ca-certificates/aspnetcore-dev.crt
-  cert="$(find "$HOME/.aspnet/dev-certs/trust" -name 'aspnetcore-localhost-*.pem' -print -quit)"
-  if [ -n "$cert" ] && ! sudo cmp -s "$cert" "$target"; then
-    sudo cp "$cert" "$target"
+  cert="$(ls -t "$HOME"/.aspnet/dev-certs/trust/aspnetcore-localhost-*.pem 2>/dev/null | head -n 1 || true)"
+  if [ -n "$cert" ] && { ! sudo cmp -s "$cert" "$target" || [ "$(stat -c %a "$target")" != 644 ]; }; then
+    sudo install -m 644 "$cert" "$target"
     sudo update-ca-certificates --fresh >/dev/null 2>&1
   fi
 }
@@ -132,8 +132,10 @@ install_buildx() {
     echo "docker buildx is installed."
     return
   fi
-  sudo apt-get update -qq
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-buildx-plugin
+  # A failed install does not fail setup, so Docker still stops before the snapshot. Only the stack needs buildx.
+  { timeout 5m sudo apt-get update -qq &&
+    timeout 5m sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-buildx-plugin; } ||
+    echo "Could not install docker buildx"
 }
 
 install_frontend() {

@@ -27,18 +27,18 @@ A SQL span with no tag gives no help. Compare one trace before and after the rul
 
 ```
 Before:
-PUT api/v{version}/users/{id}/role
-└─ UpdateUserRole.Command            430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
+PUT api/v{version}/users/{id}/roles
+└─ UpdateUserRoles.Command           430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
    ├─ <database>                     412ms
    └─ <database>                       8ms
 
 After:
-PUT api/v{version}/users/{id}/role
-└─ UpdateUserRole.Command            430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
-                                              app.user_id=usr_01J...  app.user.role=Admin
-   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=39
+PUT api/v{version}/users/{id}/roles
+└─ UpdateUserRoles.Command           430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
+                                              app.user_id=usr_01J...  app.user.roles=Admin,User
+   ├─ SQL: users.update_roles.load   412ms   code.file.path=.../UpdateUserRoles.cs  code.line.number=39
    └─ SQL: <the save>                  8ms
-Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@79  CallerTenantId=ten_01J...
+Log: Gave role Admin to user usr_01J...   CallSite=UpdateUserRoles.cs:Handle@62  CallerTenantId=ten_01J...
 ```
 
 ## The support questions
@@ -63,7 +63,7 @@ Write telemetry to answer a question that a person asks during an incident. If n
 1. Tag each EF query with `TagWithOperationCallSite`.
    - Put the tag directly after the `DbSet`. If you build the query in parts, tag the first part.
    - The tag must be on the `IQueryable`, before `ToListAsync` or `FirstOrDefaultAsync`.
-   - Use a constant name in the form `area.operation`, for example `users.update_role.load`. Never put an id or a value in the name.
+   - Use a constant name in the form `area.operation`, for example `users.update_roles.load`. Never put an id or a value in the name.
    - Before you add a name, search the code for it. Each name identifies one query.
    - The build refuses a query on a `DbSet` of `AppDbContext` that has no `TagWithOperationCallSite` (FSTTEL001). The build follows the query through `?:`, `??`, and a `switch` expression.
    - If a method returns an untagged query as an `IQueryable`, also through an `IQueryable` local that the method returns, the build checks each caller of the method and refuses a caller that does not tag the query (FSTTEL003). This check needs the whole project, so the IDE shows it only after a build.
@@ -158,7 +158,7 @@ Production keeps `Information` and higher (`appsettings.json`). Thus a `Debug` l
 
 ## Example
 
-`UpdateUserRole` has this telemetry. A role change gives or removes access, so support needs to find it later.
+`UpdateUserRoles` has this telemetry. A role change gives or removes access, so support needs to find it later.
 
 `Domain/Users/UserMetrics.cs`:
 
@@ -174,13 +174,13 @@ public static class UserMetrics
     public static readonly Counter<long> RoleChanged = Telemetry.Meter.CreateCounter<long>(
         "app.users.role_changed",
         unit: "{user}",
-        description: "Number of role changes, tagged with the new role");
+        description: "Number of roles given to users, tagged with the role");
 }
 ```
 
-`Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs`, the telemetry lines and the lines around them:
+`Domain/Users/Features/UpdateUserRoles/UpdateUserRoles.cs`, the telemetry lines and the lines around them:
 
-<!-- code: FullstackTemplate.Server/Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs -->
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/UpdateUserRoles/UpdateUserRoles.cs -->
 ```csharp
 private readonly ILogger _logger = Log.ForContext<Handler>();
 
@@ -189,21 +189,26 @@ public async Task<UserDto> Handle(Command request, CancellationToken cancellatio
     Activity.Current?.SetTag("app.user_id", request.Id);
 
     var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-    UserAction.UpdateRole().GuardBeforeLoad(caller, request.Id);
-    var newRole = UserRole.Of(request.Role);
-    Activity.Current?.SetTag("app.user.role", newRole.Value);
+    UserAction.UpdateRoles().GuardBeforeLoad(caller, request.Id);
+    var newRoles = request.Roles.Select((r, i) => UserRole.Of(r, $"roles[{i}]")).ToHashSet();
+    Activity.Current?.SetTag("app.user.roles", string.Join(",", newRoles.Select(r => r.Value).Order()));
     // ...
-    var oldRole = user.Role;
-    user.UpdateRole(kept);
+    var added = newRoles.Except(user.CurrentRoles()).ToList();
+    var removed = user.CurrentRoles().Except(newRoles).ToList();
     // ...
+    dbContext.ChangeUser(user, u => u.UpdateRoles(kept));
+
     await dbContext.SaveChangesAsync(ct);
     // ...
 
-    if (newRole != oldRole)
+    foreach (var role in added)
     {
-        _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
-        UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+        _logger.Here().Information("Gave role {Role} to user {UserId}", role.Value, user.Id);
+        UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", role.Value));
     }
+
+    foreach (var role in removed)
+        _logger.Here().Information("Took role {Role} from user {UserId}", role.Value, user.Id);
 
     return user.ToUserDto(caller);
 }
@@ -212,9 +217,9 @@ public async Task<UserDto> Handle(Command request, CancellationToken cancellatio
 The example obeys these rules:
 
 - The id is on the span, and the log has it as a property. The metric has the role only.
-- The role is a value from a fixed set, so it is safe as a metric tag.
+- A role is a value from a fixed set, so it is safe as a metric tag. The span tag joins the sorted names, so it has few values.
 - The log and the metric come after the save. Thus they record only a change that the database kept.
-- A request for the role that the user already has changes no role. Thus it writes no log and counts nothing.
+- A role that the user keeps is not given or taken. Thus it writes no log and counts nothing.
 
 <!-- example:start -->
 `ScheduleWorkshop` tags the kind of a refusal. It logs and counts a status change only after the save, and only when the status changed. Both are in [ScheduleWorkshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs). The counter is in [WorkshopMetrics.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopMetrics.cs).

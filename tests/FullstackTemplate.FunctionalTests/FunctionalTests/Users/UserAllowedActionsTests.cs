@@ -27,7 +27,7 @@ public class UserAllowedActionsTests : TestBase
         var allowedActions = await GetAllowedActionsAsync(other.Id);
 
         // Assert
-        allowedActions.ShouldBe(["Update", "UpdateRole", "AddPermission", "RemovePermission", "Delete"]);
+        allowedActions.ShouldBe(["Update", "UpdateRoles", "AddPermission", "RemovePermission", "Delete"]);
     }
 
     [Test]
@@ -104,7 +104,7 @@ public class UserAllowedActionsTests : TestBase
         SignInAs(admin);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(admin.Id), new { role = "User" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(admin.Id), new UpdateUserRolesDto { Roles = ["User"] });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);

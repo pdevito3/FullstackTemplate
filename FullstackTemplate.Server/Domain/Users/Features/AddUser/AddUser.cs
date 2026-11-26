@@ -30,7 +30,7 @@ public static class AddUser
             caller.Require(Permission.ManageUsers());
             var role = UserRole.Of(request.Dto.Role);
             Activity.Current?.SetTag("app.user.role", role.Value);
-            caller.Require(role.GetDefaultPermissions());
+            caller.Require(role.GetPermissions());
 
             var tenantId = ResolveTenantId(request.Dto.TenantId);
             Activity.Current?.SetTag("app.tenant_id", tenantId);

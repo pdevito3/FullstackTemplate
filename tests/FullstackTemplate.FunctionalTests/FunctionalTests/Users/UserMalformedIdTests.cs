@@ -4,6 +4,7 @@ using System.Net;
 using Shouldly;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using TestUtilities;
@@ -61,7 +62,7 @@ public class UserMalformedIdTests : TestBase
         "GET" => FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(id)),
         "PUT" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(id), new FakeUserForUpdateDto().Generate() with { Version = version }),
         "DELETE" => FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(id)),
-        "role" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(id), new { role = "Admin" }),
+        "role" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(id), new UpdateUserRolesDto { Roles = ["Admin"] }),
         "add-permission" => FactoryClient.PostJsonRequestAsync(
             ApiRoutes.Users.AddPermission(id), new { permission = "manage_tenant" }),
         "remove-permission" => FactoryClient.DeleteRequestAsync(

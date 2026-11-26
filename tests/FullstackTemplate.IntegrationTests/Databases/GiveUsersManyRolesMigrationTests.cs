@@ -1,0 +1,110 @@
+namespace FullstackTemplate.IntegrationTests.Databases;
+
+using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
+using FullstackTemplate.SharedTestHelpers.Utilities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+using NSubstitute;
+using Shouldly;
+
+/// <summary>
+/// The move from one role on the user to many role rows runs on a database of its own, from the migration before it,
+/// with a user who holds a permission that the role does not give and an admin who lacks one that the role gives.
+/// </summary>
+public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
+{
+    private const string PreviousMigration = "20261114220528_IndexWorkshopAttachmentStorageKeyExample";
+    private const string ThisMigration = "20261125192501_GiveUsersManyRoles";
+
+    private readonly PostgresTestDatabase _database = new();
+
+    public async ValueTask DisposeAsync() => await _database.DisposeAsync();
+
+    [Test]
+    public async Task up_gives_each_user_their_role_row_and_keeps_their_permissions_with_overrides()
+    {
+        // Arrange
+        await _database.StartAsync();
+        await using var context = CreateContext();
+        await context.GetService<IMigrator>().MigrateAsync(PreviousMigration);
+        await ExecuteAsync(ArrangeSql());
+        var permissionsBefore = await ReadAsync("SELECT user_id, permission, is_deleted FROM user_permissions",
+            r => (r.GetString(0), r.GetString(1), r.GetBoolean(2)));
+
+        // Act
+        await context.GetService<IMigrator>().MigrateAsync(ThisMigration);
+
+        // Assert
+        var roles = await ReadAsync("SELECT id, user_id, role, is_deleted FROM user_roles",
+            r => (Id: r.GetString(0), UserId: r.GetString(1), Role: r.GetString(2), IsDeleted: r.GetBoolean(3)));
+        roles.Select(r => (r.UserId, r.Role, r.IsDeleted)).ShouldBe(
+            [("usr_member", "User", false), ("usr_admin", "Admin", false), ("usr_deleted", "Admin", true)],
+            ignoreOrder: true);
+        roles.ShouldAllBe(r => EntityId.IsValid(r.Id, UserRoleAssignment.IdPrefix));
+
+        var permissionsAfter = await ReadAsync("SELECT user_id, permission, is_deleted FROM user_permissions",
+            r => (r.GetString(0), r.GetString(1), r.GetBoolean(2)));
+        permissionsAfter.ShouldBe(permissionsBefore, ignoreOrder: true);
+
+        var overrides = await ReadAsync("SELECT id, user_id, permission, granted FROM user_permission_overrides",
+            r => (Id: r.GetString(0), UserId: r.GetString(1), Permission: r.GetString(2), Granted: r.GetBoolean(3)));
+        overrides.Select(o => (o.UserId, o.Permission, o.Granted)).ShouldBe(
+            [("usr_member", "read_users", true), ("usr_admin", "manage_agents", false)], ignoreOrder: true);
+        overrides.ShouldAllBe(o => EntityId.IsValid(o.Id, UserPermissionOverride.IdPrefix));
+    }
+
+    // The admin holds each permission but manage_agents. The deleted admin holds nothing and gets no override.
+    private static string ArrangeSql()
+    {
+        var adminPermissions = Permission.ListNames().Where(p => p != "manage_agents")
+            .Select((p, i) => $"('uperm_admin{i}', 'usr_admin', '{p}', false)");
+        return $"""
+            INSERT INTO tenants (id, name, is_deleted) VALUES ('ten_migration', 'Migration tenant', false);
+            INSERT INTO users (id, tenant_id, first_name, last_name, identifier, username, email, role, is_deleted) VALUES
+                ('usr_member', 'ten_migration', 'Mia', 'Member', 'idp-member', 'mia', 'mia@example.com', 'User', false),
+                ('usr_admin', 'ten_migration', 'Ada', 'Admin', 'idp-admin', 'ada', 'ada@example.com', 'Admin', false),
+                ('usr_deleted', 'ten_migration', 'Dan', 'Deleted', 'idp-deleted', 'dan', 'dan@example.com', 'Admin', true);
+            INSERT INTO user_permissions (id, user_id, permission, is_deleted) VALUES
+                ('uperm_member', 'usr_member', 'read_users', false),
+                {string.Join(",\n    ", adminPermissions)};
+            """;
+    }
+
+    private AppDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(_database.ConnectionString)
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
+            Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()),
+            Substitute.For<IJobWriter>());
+    }
+
+    private async Task ExecuteAsync(string sql)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<List<T>> ReadAsync<T>(string sql, Func<NpgsqlDataReader, T> read)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var rows = new List<T>();
+        while (await reader.ReadAsync())
+            rows.Add(read(reader));
+        return rows;
+    }
+}

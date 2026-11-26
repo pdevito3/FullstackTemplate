@@ -42,8 +42,8 @@ public class EntityGraphTests
 
         // Assert
         users.Length.ShouldBe(2);
-        users[0].Role.ShouldBe(UserRole.Admin());
-        users[1].Role.ShouldBe(UserRole.User());
+        users[0].CurrentRoles().ShouldBe([UserRole.Admin()]);
+        users[1].CurrentRoles().ShouldBe([UserRole.User()]);
     }
 
     [Test]
@@ -60,7 +60,7 @@ public class EntityGraphTests
         // Assert
         users.ShouldHaveSingleItem();
         users[0].FirstName.ShouldBe("Grace");
-        users[0].Role.ShouldBe(UserRole.Admin());
+        users[0].CurrentRoles().ShouldBe([UserRole.Admin()]);
     }
 
     [Test]

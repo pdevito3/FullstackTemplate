@@ -26,6 +26,7 @@ public static class UpdateUser
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update.load")
+                .Include(u => u.UserRoles)
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 

@@ -132,9 +132,9 @@ public class InviteTests
 
         // Assert
         user.TenantId.ShouldBe(invite.TenantId);
-        user.Role.ShouldBe(UserRole.Admin());
+        user.CurrentRoles().ShouldBe([UserRole.Admin()]);
         user.Identifier.ShouldBe("sub-of-ada");
-        user.UserPermissions.Select(p => p.Permission).ShouldBe(UserRole.Admin().GetDefaultPermissions(), ignoreOrder: true);
+        user.UserPermissions.Select(p => p.Permission).ShouldBe(UserRole.Admin().GetPermissions(), ignoreOrder: true);
         invite.Status.ShouldBe(InviteStatus.Claimed());
         invite.ClaimedByUserId.ShouldBe(user.Id);
         invite.DomainEvents.OfType<InviteStatusChanged>().Single().Status.ShouldBe(InviteStatus.Claimed().Value);

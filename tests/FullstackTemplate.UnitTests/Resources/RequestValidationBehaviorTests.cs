@@ -141,10 +141,10 @@ public class RequestValidationBehaviorTests
     {
         // Act
         var exception = await Should.ThrowAsync<RequestValidationException>(
-            () => Send(new UpdateUserRole.Command("usr_1", null!)));
+            () => Send(new UpdateUserRoles.Command("usr_1", null!)));
 
         // Assert
-        exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("role");
+        exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("roles");
     }
 
     [Test]

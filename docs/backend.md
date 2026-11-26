@@ -158,19 +158,19 @@ A command, or a query that reads data that needs a permission, checks a permissi
 | Permission | Handlers that require it |
 |------------|--------------------------|
 | `manage_users` | `AddUser`, `UpdateUser` for another user, `DeleteUser` |
-| `manage_user_access` | `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission` |
+| `manage_user_access` | `UpdateUserRoles`, `AddUserPermission`, `RemoveUserPermission` |
 | `manage_tenant` | `UpdateTenant`, `DeleteTenant` |
 | `manage_agents` | `AddAgent`, `DeleteAgent`, `AddAgentPermission`, `RemoveAgentPermission` |
 | `read_audit_log` | `GetAuditEntryPage` |
 | `read_audit_log_sensitive` | None. `GetAuditEntryPage` shows the sensitive values of the audit log only to a caller with it. |
-| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for another identifier that no user has. `UpdateUser`, `UpdateUserRole`, `AddUserPermission`, and `RemoveUserPermission` for another user, because they return the user. |
+| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for another identifier that no user has. `UpdateUser`, `UpdateUserRoles`, `AddUserPermission`, and `RemoveUserPermission` for another user, because they return the user. |
 | `read_agents` | `GetAgentList`, `GetAgent`. `AddAgentPermission` and `RemoveAgentPermission`, because they return the agent. |
 
 <!-- example:start -->
 The example permission `manage_workshops` is required by `AddVenue`, `AddWorkshop`, `UpdateWorkshop`, `ScheduleWorkshop`, `CancelWorkshop`, and `CompleteWorkshop`. Its migration gives it to the admins that exist: [20261029095936_AddWorkshopsExample.cs](../FullstackTemplate.Server/Databases/Migrations/Examples/20261029095936_AddWorkshopsExample.cs). After the load, the last four commands also check the row: the caller must be the organizer of the workshop, the member who added it, or have `manage_tenant`. A delegated agent is not a member, so it is never the organizer. It changes a workshop only with `manage_tenant`. Thus the example adds no second permission.
 <!-- example:end -->
 
-The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.
+A user has any number of roles. A role is a chunk of permissions: `UserRole.GetPermissions` gives each permission to `Admin` and no permission to `User`. `AddUserPermission` and `RemoveUserPermission` write an override, a permission that the user holds or does not hold whatever their roles, and the last one for a permission wins. The user holds the union of the permissions of their roles, with the permissions that an override adds and without the ones that it removes. `User` computes this set on each change of the roles or the overrides and writes it as the rows of `user_permissions`, and the rows decide. A change of the roles keeps the overrides. The guard does not read the roles.
 
 A caller can give or take away a permission only if they have it. Thus a user with only `manage_users` cannot add or delete an `Admin`, and a user with only `manage_user_access` cannot give or take away `manage_tenant` or change the role of an `Admin`. As a result, a user with only some of the permissions cannot take access away from an admin. `manage_tenant` gives both the rename and the delete of the tenant, so give it only to a user who can delete the tenant.
 

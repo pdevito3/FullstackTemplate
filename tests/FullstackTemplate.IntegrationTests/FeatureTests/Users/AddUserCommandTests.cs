@@ -83,11 +83,12 @@ public class AddUserCommandTests : TestBase
         // Assert
         var userInDb = await testingServiceScope.ExecuteDbContextAsync(db =>
             db.Users
+                .Include(u => u.UserRoles)
                 .Include(u => u.UserPermissions)
                 .FirstOrDefaultAsync(u => u.Id == userReturned.Id));
 
         userInDb.ShouldNotBeNull();
-        userInDb.Role.Value.ShouldBe("Admin");
+        userInDb.UserRoles.Select(r => r.Role.Value).ShouldBe(["Admin"]);
         userInDb.UserPermissions.ShouldNotBeEmpty();
         userInDb.HasPermission(Permission.ManageTenant()).ShouldBeTrue();
     }
@@ -108,11 +109,12 @@ public class AddUserCommandTests : TestBase
         // Assert
         var userInDb = await testingServiceScope.ExecuteDbContextAsync(db =>
             db.Users
+                .Include(u => u.UserRoles)
                 .Include(u => u.UserPermissions)
                 .FirstOrDefaultAsync(u => u.Id == userReturned.Id));
 
         userInDb.ShouldNotBeNull();
-        userInDb.Role.Value.ShouldBe("User");
+        userInDb.UserRoles.Select(r => r.Role.Value).ShouldBe(["User"]);
         userInDb.UserPermissions.ShouldBeEmpty();
     }
 

@@ -2,11 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { ReactElement } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
-import type { UpdateUserRoleDto } from '@/api/generated/models/types/update-user-role-dto'
+import type { UpdateUserRolesDto } from '@/api/generated/models/types/update-user-roles-dto'
 import type { UserDto, UserDtoAllowedActionsEnumKey } from '@/api/generated/models/types/user-dto'
-import { updateUserRoleDtoSchema } from '@/api/generated/models/zod/update-user-role-dto'
+import { updateUserRolesDtoSchema } from '@/api/generated/models/zod/update-user-roles-dto'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { Checkbox, CheckboxGroupWithLabel } from '@/components/ui/checkbox'
 import {
   ResponsiveDialog,
   ResponsiveDialogClose,
@@ -16,7 +16,6 @@ import {
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 import { isUserRole, ROLE_LABELS, USER_ROLES, type UserRole } from './user-role'
 
@@ -25,7 +24,7 @@ export type UserAction = UserDtoAllowedActionsEnumKey
 interface UserActionsProps {
   user: UserDto
   pendingAction?: UserAction
-  onChangeRole: (role: UserRole) => void
+  onChangeRoles: (roles: UserRole[]) => void
   onDelete: () => void
 }
 
@@ -33,13 +32,13 @@ type ActionControl = (props: UserActionsProps) => ReactElement
 
 const CONTROLS: Record<UserAction, ActionControl | null> = {
   Update: null,
-  UpdateRole: ChangeRole,
+  UpdateRoles: ChangeRoles,
   AddPermission: null,
   RemovePermission: null,
   Delete: ConfirmDelete,
 }
 
-export function UserActions({ user, pendingAction, onChangeRole, onDelete }: UserActionsProps) {
+export function UserActions({ user, pendingAction, onChangeRoles, onDelete }: UserActionsProps) {
   const controls = user.allowedActions.flatMap((action) => {
     const control = CONTROLS[action]
     return control ? [{ action, Control: control }] : []
@@ -52,7 +51,7 @@ export function UserActions({ user, pendingAction, onChangeRole, onDelete }: Use
   return (
     <div role="group" aria-label={`Actions for ${user.fullName}`} className="flex flex-wrap gap-2">
       {controls.map(({ action, Control }) => (
-        <Control key={action} user={user} pendingAction={pendingAction} onChangeRole={onChangeRole} onDelete={onDelete} />
+        <Control key={action} user={user} pendingAction={pendingAction} onChangeRoles={onChangeRoles} onDelete={onDelete} />
       ))}
     </div>
   )
@@ -63,68 +62,63 @@ const buttonState = (action: UserAction, pendingAction: UserAction | undefined) 
   isDisabled: pendingAction !== undefined && pendingAction !== action,
 })
 
-function ChangeRole({ user, pendingAction, onChangeRole }: UserActionsProps) {
+function ChangeRoles({ user, pendingAction, onChangeRoles }: UserActionsProps) {
   return (
     <ResponsiveDialogTrigger>
-      <Button variant="outline" {...buttonState('UpdateRole', pendingAction)}>
-        Change role
+      <Button variant="outline" {...buttonState('UpdateRoles', pendingAction)}>
+        Change roles
       </Button>
       <ResponsiveDialog>
-        <ChangeRoleForm user={user} onChangeRole={onChangeRole} />
+        <ChangeRolesForm user={user} onChangeRoles={onChangeRoles} />
       </ResponsiveDialog>
     </ResponsiveDialogTrigger>
   )
 }
 
-function ChangeRoleForm({ user, onChangeRole }: Pick<UserActionsProps, 'user' | 'onChangeRole'>) {
-  const form = useForm<UpdateUserRoleDto>({
-    resolver: zodResolver(updateUserRoleDtoSchema),
-    defaultValues: { role: user.role },
+const sameRoles = (a: readonly UserRole[], b: readonly UserRole[]) =>
+  a.length === b.length && a.every((role) => b.includes(role))
+
+function ChangeRolesForm({ user, onChangeRoles }: Pick<UserActionsProps, 'user' | 'onChangeRoles'>) {
+  const form = useForm<UpdateUserRolesDto>({
+    resolver: zodResolver(updateUserRolesDtoSchema),
+    defaultValues: { roles: user.roles },
   })
   const handleConfirm = () =>
-    void form.handleSubmit(({ role }) => {
-      if (role !== user.role) onChangeRole(role)
+    void form.handleSubmit(({ roles }) => {
+      if (!sameRoles(roles, user.roles)) onChangeRoles(roles)
     })()
 
   return (
     <>
       <ResponsiveDialogHeader>
-        <ResponsiveDialogTitle>Change the role of {user.fullName}</ResponsiveDialogTitle>
+        <ResponsiveDialogTitle>Change the roles of {user.fullName}</ResponsiveDialogTitle>
         <ResponsiveDialogDescription>
-          The new role replaces the permissions of the user with the permissions of that role.
+          The user gets the permissions of each role. A permission that someone added or removed by hand stays as it is.
         </ResponsiveDialogDescription>
       </ResponsiveDialogHeader>
       <div className="pt-3 pb-4">
         <Controller
           control={form.control}
-          name="role"
+          name="roles"
           render={({ field }) => (
-            <Select
+            <CheckboxGroupWithLabel
+              label="Roles"
               value={field.value}
-              onChange={(key) => {
-                if (isUserRole(key)) field.onChange(key)
-              }}
-              className="flex w-full flex-col gap-2"
+              onChange={(keys) => field.onChange(keys.filter(isUserRole))}
             >
-              <Label>Role</Label>
-              <SelectTrigger ref={field.ref} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {USER_ROLES.map((role) => (
-                  <SelectItem key={role} id={role}>
-                    {ROLE_LABELS[role]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {USER_ROLES.map((role) => (
+                <Checkbox key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </Checkbox>
+              ))}
+            </CheckboxGroupWithLabel>
           )}
         />
       </div>
       <ResponsiveDialogFooter>
-        <ResponsiveDialogClose>Keep role</ResponsiveDialogClose>
+        <ResponsiveDialogClose>Keep roles</ResponsiveDialogClose>
         <ResponsiveDialogClose variant="default" onPress={handleConfirm}>
-          Change role
+          Change roles
         </ResponsiveDialogClose>
       </ResponsiveDialogFooter>
     </>

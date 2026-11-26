@@ -1,6 +1,6 @@
 ---
 name: membership-lifecycle
-description: Model-checks tenant membership with TLA+ and TLC - the invite lifecycle (Pending, Claimed, Revoked, and the computed expiry), user provisioning, the role change, permission removal, and delete of a user under the last-manager rule, and tenant delete - over every order of the concurrent requests. Use when you change ClaimInvite, RevokeInvite, Invite, InviteStatus, InitiateUserAndTenant, UpdateUserRole, RemoveUserPermission, DeleteUser, TenantManagers, ManagerCaseLoader, DeleteTenant, TenantOwnedRows, RootLock, RaceRetryBehavior, the xmin version convention, or the users.identifier index, or when you ask whether a race in these flows can make a second user, a user in a deleted tenant, a tenant with no user who can manage it, or an invite with two outcomes.
+description: Model-checks tenant membership with TLA+ and TLC - the invite lifecycle (Pending, Claimed, Revoked, and the computed expiry), user provisioning, the role change, permission removal, and delete of a user under the last-manager rule, and tenant delete - over every order of the concurrent requests. Use when you change ClaimInvite, RevokeInvite, Invite, InviteStatus, InitiateUserAndTenant, UpdateUserRoles, RemoveUserPermission, DeleteUser, TenantManagers, ManagerCaseLoader, DeleteTenant, TenantOwnedRows, RootLock, RaceRetryBehavior, the xmin version convention, or the users.identifier index, or when you ask whether a race in these flows can make a second user, a user in a deleted tenant, a tenant with no user who can manage it, or an invite with two outcomes.
 ---
 
 # Membership lifecycle
@@ -32,7 +32,7 @@ Each action in `model/Membership.tla` names its code. One action is one transact
 | `ClaimSave` | The one `SaveChangesAsync`: user insert, invite update with the xmin check, the `ix_users_identifier` index. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ClaimFindTenant` |
 | `RevokeLoad`, `RevokeSave` | `RevokeInvite.Handler`: the `invites.revoke.load` query and `Invite.Revoke`, then the save with the xmin check. No lock |
 | `DeleteLoad`, `DeleteSave` | `DeleteTenant.Handler`: the exclusive lock, `TenantOwnedRows.LoadAsync`, then one save that soft-deletes the loaded rows and the tenant. A soft delete is an update with the xmin check (`AppDbContext`, `EntityState.Deleted` to `Modified`) |
-| `ChangeFind` | `UpdateUserRole.Handler` to the User role, `RemoveUserPermission.Handler`, or `DeleteUser.Handler`: the `users.update_role.find_tenant`, `users.remove_permission.find_tenant`, or `users.delete.find_tenant` lookup of the tenant of the user, with no lock |
+| `ChangeFind` | `UpdateUserRoles.Handler` to roles that cannot manage the tenant, `RemoveUserPermission.Handler`, or `DeleteUser.Handler`: the `users.update_roles.find_tenant`, `users.remove_permission.find_tenant`, or `users.delete.find_tenant` lookup of the tenant of the user, with no lock |
 | `ChangeLoad` | `RootLock.Tenant.RunExclusiveAsync` on that tenant, the `.load` query of the user, `ManagerCaseLoader.KeepManagerAsync` (`users.load_managers`, then `TenantManagers.Decide` in memory): 404, 422 for the only manager, or no change to who can manage for a demote or a permission removal of a user who is not a manager. The model skips that write |
 | `ChangeSave` | The one `SaveChangesAsync` of the user row with the xmin check: the new role, the permission removal (a child change also updates the user row), or the soft delete that frees the identifier. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ChangeFind` |
 | `InitiateCheck`, `InitiateSave` | `InitiateUserAndTenant.Handler`: `User.CreateFirstOfTenant`, which gives 422 for a first user who cannot manage the tenant, the `users.initiate.identifier_in_use` check, then the save of the tenant and the user, with the index as the backstop |
@@ -83,7 +83,7 @@ Sync commit: `adeb4db0` (#528, the UM-4 change). The model describes these files
 - `FullstackTemplate.Server/Domain/Invites/Invite.cs` - `IsExpiredAt`, `GuardClaimable`, `Claim`, `Revoke`, `MoveTo`
 - `FullstackTemplate.Server/Domain/Invites/InviteStatus.cs` - the `Next` of each status
 - `FullstackTemplate.Server/Domain/Users/Features/InitiateUserAndTenant/InitiateUserAndTenant.cs` - `Handler.Handle`
-- `FullstackTemplate.Server/Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs` - `Handler.Handle`
+- `FullstackTemplate.Server/Domain/Users/Features/UpdateUserRoles/UpdateUserRoles.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Users/Features/RemoveUserPermission/RemoveUserPermission.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Users/Features/DeleteUser/DeleteUser.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Users/TenantManagers.cs` - `CanManage`, `Decide`, `KeepsAManager`, `ManagerChange.PermissionsAfter`

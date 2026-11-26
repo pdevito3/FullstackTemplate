@@ -390,8 +390,8 @@ public class UserReadAccessTests : TestBase
         SignInAs(member);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(other.Id),
-            new UpdateUserRoleDto { Role = "User" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(other.Id),
+            new UpdateUserRolesDto { Roles = ["User"] });
 
         // Assert
         await ShouldBeForbiddenAsync(result, ReadUsersDenial);

@@ -13,7 +13,7 @@ export const member: UserDto = {
   identifier: 'bob',
   email: 'bob@example.com',
   username: 'bob',
-  role: 'User',
+  roles: ['User'],
   permissions: [],
   allowedActions: [],
   version: 1,

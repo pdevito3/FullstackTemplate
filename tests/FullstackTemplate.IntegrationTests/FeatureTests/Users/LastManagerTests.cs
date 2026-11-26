@@ -25,11 +25,11 @@ public class LastManagerTests : TestBase
         testingServiceScope.SetUserWithDefaults(identifier: admin.Identifier);
 
         // Act
-        var act = () => testingServiceScope.SendAsync(new UpdateUserRole.Command(admin.Id, "User"));
+        var act = () => testingServiceScope.SendAsync(new UpdateUserRoles.Command(admin.Id, ["User"]));
 
         // Assert
         var refusal = await act.ShouldThrowAsync<ValidationException>();
-        refusal.Property.ShouldBe("role");
+        refusal.Property.ShouldBe("roles");
         refusal.Message.ShouldBe(TenantManagers.LastManagerMessage);
         (await ManagerIdsAsync(testingServiceScope, tenant.Id)).ShouldBe([admin.Id]);
     }
@@ -68,10 +68,10 @@ public class LastManagerTests : TestBase
         testingServiceScope.SetUserWithDefaults(identifier: ada.Identifier);
 
         // Act
-        await testingServiceScope.SendAsync(new UpdateUserRole.Command(bea.Id, "User"));
+        await testingServiceScope.SendAsync(new UpdateUserRoles.Command(bea.Id, ["User"]));
         var removeAda = () => testingServiceScope.SendAsync(new DeleteUser.Command(ada.Id));
         await removeAda.ShouldThrowAsync<ValidationException>();
-        await testingServiceScope.SendAsync(new UpdateUserRole.Command(bea.Id, "Admin"));
+        await testingServiceScope.SendAsync(new UpdateUserRoles.Command(bea.Id, ["Admin"]));
         await testingServiceScope.SendAsync(new DeleteUser.Command(ada.Id));
 
         // Assert
@@ -94,11 +94,11 @@ public class LastManagerTests : TestBase
         var rival = new TestingServiceScope();
         underTest.SetUserWithDefaults(identifier: ada.Identifier);
         rival.SetUserWithDefaults(identifier: bea.Identifier);
-        var demoteBea = underTest.SendAsync(new UpdateUserRole.Command(bea.Id, "User"));
+        var demoteBea = underTest.SendAsync(new UpdateUserRoles.Command(bea.Id, ["User"]));
         await pause.ReachedAsync();
 
         // Act
-        var demoteAda = rival.SendAsync(new UpdateUserRole.Command(ada.Id, "User"));
+        var demoteAda = rival.SendAsync(new UpdateUserRoles.Command(ada.Id, ["User"]));
         try
         {
             await pause.WaitUntilBlockedAsync(demoteAda);
@@ -109,7 +109,7 @@ public class LastManagerTests : TestBase
         }
 
         // Assert
-        (await demoteBea).Role.ShouldBe("User");
+        (await demoteBea).Roles.ShouldBe(["User"]);
         (await Should.ThrowAsync<ValidationException>(demoteAda)).Message.ShouldBe(TenantManagers.LastManagerMessage);
         (await ManagerIdsAsync(rival, tenant.Id)).ShouldBe([ada.Id]);
     }
@@ -189,7 +189,7 @@ public class LastManagerTests : TestBase
         await testingServiceScope.SendAsync(new RemoveUserPermission.Command(bea.Id, Permission.Names.ReadAuditLog));
 
         // Act
-        var demoteAda = () => testingServiceScope.SendAsync(new UpdateUserRole.Command(ada.Id, "User"));
+        var demoteAda = () => testingServiceScope.SendAsync(new UpdateUserRoles.Command(ada.Id, ["User"]));
         var removeAda = () => testingServiceScope.SendAsync(new DeleteUser.Command(ada.Id));
 
         // Assert
@@ -214,10 +214,10 @@ public class LastManagerTests : TestBase
             await testingServiceScope.SendAsync(new AddUserPermission.Command(member.Id, permission));
 
         // Act
-        var result = await testingServiceScope.SendAsync(new UpdateUserRole.Command(admin.Id, "User"));
+        var result = await testingServiceScope.SendAsync(new UpdateUserRoles.Command(admin.Id, ["User"]));
 
         // Assert
-        result.Role.ShouldBe("User");
+        result.Roles.ShouldBe(["User"]);
         (await ManagerIdsAsync(testingServiceScope, tenant.Id)).ShouldBe([member.Id]);
     }
 

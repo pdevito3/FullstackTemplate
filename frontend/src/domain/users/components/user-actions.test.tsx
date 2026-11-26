@@ -16,70 +16,86 @@ function aUser(allowedActions: UserDto['allowedActions']): UserDto {
     identifier: 'bob',
     email: 'bob@example.com',
     username: 'bob',
-    role: 'User',
+    roles: ['User'],
     permissions: [],
     allowedActions,
     version: 1,
   }
 }
 
-const allActions: UserDto['allowedActions'] = ['Update', 'UpdateRole', 'AddPermission', 'RemovePermission', 'Delete']
+const allActions: UserDto['allowedActions'] = ['Update', 'UpdateRoles', 'AddPermission', 'RemovePermission', 'Delete']
 
 test('shows a button for each action that the Server allows and that the page can send', async () => {
-  await render(<UserActions user={aUser(allActions)} onChangeRole={() => {}} onDelete={() => {}} />)
+  await render(<UserActions user={aUser(allActions)} onChangeRoles={() => {}} onDelete={() => {}} />)
 
   const actions = page.getByRole('group', { name: 'Actions for Bob Smith' })
-  await expect.element(actions.getByRole('button', { name: 'Change role' })).toBeVisible()
+  await expect.element(actions.getByRole('button', { name: 'Change roles' })).toBeVisible()
   await expect.element(actions.getByRole('button', { name: 'Delete' })).toBeVisible()
   expect(actions.getByRole('button').elements()).toHaveLength(2)
 })
 
 test('shows no actions when the Server allows none that the page can send', async () => {
-  await render(<UserActions user={aUser(['Update', 'AddPermission'])} onChangeRole={() => {}} onDelete={() => {}} />)
+  await render(<UserActions user={aUser(['Update', 'AddPermission'])} onChangeRoles={() => {}} onDelete={() => {}} />)
 
   expect(page.getByRole('button').elements()).toHaveLength(0)
 })
 
-test('Change role asks for the role, offers the current role first, and sends the role that the user picks', async () => {
-  const onChangeRole = vi.fn()
-  await render(<UserActions user={aUser(['UpdateRole'])} onChangeRole={onChangeRole} onDelete={() => {}} />)
+test('Change roles shows the current roles checked, and sends every role that is checked', async () => {
+  const onChangeRoles = vi.fn()
+  await render(<UserActions user={aUser(['UpdateRoles'])} onChangeRoles={onChangeRoles} onDelete={() => {}} />)
 
-  await page.getByRole('button', { name: 'Change role' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Change the role of Bob Smith' })
-  await expect.element(dialog.getByRole('button', { name: /^User/ })).toBeVisible()
-  await dialog.getByRole('button', { name: /^User/ }).click()
-  await page.getByRole('option', { name: 'Admin' }).click()
-  await dialog.getByRole('button', { name: 'Change role', exact: true }).click()
+  await page.getByRole('button', { name: 'Change roles' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Change the roles of Bob Smith' })
+  await expect.element(dialog.getByRole('checkbox', { name: 'User' })).toBeChecked()
+  await expect.element(dialog.getByRole('checkbox', { name: 'Admin' })).not.toBeChecked()
+  await dialog.getByText('Admin', { exact: true }).click()
+  await dialog.getByRole('button', { name: 'Change roles', exact: true }).click()
 
   await expect.element(dialog).not.toBeInTheDocument()
-  await vi.waitFor(() => expect(onChangeRole).toHaveBeenCalledExactlyOnceWith('Admin'))
+  await vi.waitFor(() => expect(onChangeRoles).toHaveBeenCalledExactlyOnceWith(['User', 'Admin']))
 })
 
-test('Keep role closes the dialog and sends nothing', async () => {
-  const onChangeRole = vi.fn()
-  await render(<UserActions user={aUser(['UpdateRole'])} onChangeRole={onChangeRole} onDelete={() => {}} />)
+test('Change roles sends no role when the caller clears each role', async () => {
+  const onChangeRoles = vi.fn()
+  await render(<UserActions user={aUser(['UpdateRoles'])} onChangeRoles={onChangeRoles} onDelete={() => {}} />)
 
-  await page.getByRole('button', { name: 'Change role' }).click()
-  await page.getByRole('button', { name: 'Keep role' }).click()
+  await page.getByRole('button', { name: 'Change roles' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByText('User', { exact: true }).click()
+  await dialog.getByRole('button', { name: 'Change roles', exact: true }).click()
 
-  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  expect(onChangeRole).not.toHaveBeenCalled()
+  await vi.waitFor(() => expect(onChangeRoles).toHaveBeenCalledExactlyOnceWith([]))
 })
 
-test('Change role with the current role closes the dialog and sends nothing', async () => {
-  const onChangeRole = vi.fn()
-  await render(<UserActions user={aUser(['UpdateRole'])} onChangeRole={onChangeRole} onDelete={() => {}} />)
+test('Keep roles closes the dialog and sends nothing', async () => {
+  const onChangeRoles = vi.fn()
+  await render(<UserActions user={aUser(['UpdateRoles'])} onChangeRoles={onChangeRoles} onDelete={() => {}} />)
 
-  await page.getByRole('button', { name: 'Change role' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Change role', exact: true }).click()
+  await page.getByRole('button', { name: 'Change roles' }).click()
+  await page.getByRole('dialog').getByText('Admin', { exact: true }).click()
+  await page.getByRole('button', { name: 'Keep roles' }).click()
 
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  expect(onChangeRole).not.toHaveBeenCalled()
+  expect(onChangeRoles).not.toHaveBeenCalled()
+})
+
+test('Change roles with the same roles, also after a role goes off and on again, sends nothing', async () => {
+  const onChangeRoles = vi.fn()
+  await render(<UserActions user={aUser(['UpdateRoles'])} onChangeRoles={onChangeRoles} onDelete={() => {}} />)
+
+  await page.getByRole('button', { name: 'Change roles' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByText('User', { exact: true }).click()
+  await dialog.getByText('User', { exact: true }).click()
+  await dialog.getByRole('button', { name: 'Change roles', exact: true }).click()
+
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+  expect(onChangeRoles).not.toHaveBeenCalled()
 })
 
 test('Delete asks before it deletes, and Keep user sends nothing', async () => {
   const onDelete = vi.fn()
-  await render(<UserActions user={aUser(['Delete'])} onChangeRole={() => {}} onDelete={onDelete} />)
+  await render(<UserActions user={aUser(['Delete'])} onChangeRoles={() => {}} onDelete={onDelete} />)
 
   await page.getByRole('button', { name: 'Delete' }).click()
   await page.getByRole('button', { name: 'Keep user' }).click()
@@ -94,8 +110,8 @@ test('Delete asks before it deletes, and Keep user sends nothing', async () => {
 
 test('while one action runs, its button is pending and the other buttons take no press', async () => {
   await render(
-    <UserActions user={aUser(['UpdateRole', 'Delete'])} pendingAction="Delete" onChangeRole={() => {}} onDelete={() => {}} />,
+    <UserActions user={aUser(['UpdateRoles', 'Delete'])} pendingAction="Delete" onChangeRoles={() => {}} onDelete={() => {}} />,
   )
 
-  await expect.element(page.getByRole('button', { name: 'Change role' })).toBeDisabled()
+  await expect.element(page.getByRole('button', { name: 'Change roles' })).toBeDisabled()
 })

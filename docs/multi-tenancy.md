@@ -141,7 +141,7 @@ The scope tells which rows a caller sees. It does not tell what a caller can do.
 
 These rules stop a caller from joining a tenant that is not theirs:
 
-- `POST /api/v1/users` needs the `manage_users` permission, and each default permission of the new role (see [backend.md](backend.md#permissions)). The server puts the new user in the tenant of the caller. The request body does not need a tenant. A `tenantId` that is empty or has only spaces is the same as no `tenantId`.
+- `POST /api/v1/users` needs the `manage_users` permission, and each permission of the role of the new user (see [backend.md](backend.md#permissions)). The server puts the new user in the tenant of the caller. The request body does not need a tenant. A `tenantId` that is empty or has only spaces is the same as no `tenantId`.
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A user of a first-party client can do this only for their own `sub`. Any other caller, an agent included, must be able to manage all tenants. Other requests get 403.

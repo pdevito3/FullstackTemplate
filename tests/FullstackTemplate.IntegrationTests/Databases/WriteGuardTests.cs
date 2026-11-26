@@ -191,7 +191,9 @@ public class WriteGuardTests : TestBase
             reads.Add((await db.Users.AsNoTracking().Include(u => u.UserPermissions).SingleAsync(u => u.Id == userId, ct)).Id);
             await db.Entry(user!).Collection(u => u.UserPermissions).LoadAsync(ct);
             reads.Add(db.Entry(user!).Collection(u => u.UserPermissions).IsLoaded);
-            user!.ChangeRoleIgnoringLastManager(UserRole.Admin());
+            await db.Entry(user!).Collection(u => u.UserRoles).LoadAsync(ct);
+            await db.Entry(user!).Collection(u => u.PermissionOverrides).LoadAsync(ct);
+            user!.ChangeRolesIgnoringLastManager(UserRole.Admin());
         }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
@@ -205,7 +207,8 @@ public class WriteGuardTests : TestBase
 
         // Assert
         reads.ShouldBe(new object?[] { userId, userId, 3, true, userId, true });
-        (await ReadAsync(read => read.Users.SingleAsync(u => u.Id == userId))).Role.ShouldBe(UserRole.Admin());
+        (await ReadAsync(read => read.UserRoles.Where(r => r.UserId == userId).Select(r => r.Role.Value).ToListAsync()))
+            .ShouldBe([UserRole.Admin().Value]);
     }
 
     [Test]

@@ -166,12 +166,12 @@ public class TracingTests : TestBase
         FactoryClient.SignInAsAppUser(user.Identifier);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(user.Id), new { });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(user.Id), new { });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var slice = ExportedSpans()
-            .Where(a => a.DisplayName == "UpdateUserRole.Command"
+            .Where(a => a.DisplayName == "UpdateUserRoles.Command"
                 && a.GetTagItem("app.caller.subject") as string == user.Identifier)
             .ShouldHaveSingleItem();
         slice.GetTagItem("app.caller.kind").ShouldBe("user");

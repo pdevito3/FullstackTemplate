@@ -10,10 +10,10 @@ import { useMembership } from '@/domain/membership/apis/get-membership'
 import { StartTenantPrompt } from '@/domain/membership/components/require-tenant'
 import { useDeleteUser } from '@/domain/users/apis/delete-user'
 import { useUser } from '@/domain/users/apis/get-user'
-import { useUpdateUserRole } from '@/domain/users/apis/update-user-role'
+import { useUpdateUserRoles } from '@/domain/users/apis/update-user-roles'
 import { UserKeys } from '@/domain/users/apis/user.keys'
 import { UserActions } from '@/domain/users/components/user-actions'
-import { ROLE_LABELS } from '@/domain/users/components/user-role'
+import { roleLabels } from '@/domain/users/components/user-role'
 import { leaveDeletedRecord } from '@/lib/leave-deleted-record'
 
 export const Route = createFileRoute('/users/$id/')({
@@ -26,7 +26,7 @@ function UserPage() {
   const membership = useMembership().status
   // The Server refuses this request for a user with no tenant, and its text repeats the notice of the layout.
   const user = useUser(id, { enabled: membership !== 'loading' && membership !== 'no-tenant' })
-  const changeRole = useUpdateUserRole(id)
+  const changeRoles = useUpdateUserRoles(id)
   const remove = useDeleteUser()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -53,7 +53,7 @@ function UserPage() {
     )
   }
 
-  const { fullName, email, username, role } = user.data
+  const { fullName, email, username, roles } = user.data
 
   const handleDelete = () =>
     remove.mutate(id, {
@@ -68,7 +68,7 @@ function UserPage() {
       onError: () => headingRef.current?.focus(),
     })
 
-  const pendingAction = (changeRole.isPending && 'UpdateRole') || (remove.isPending && 'Delete') || undefined
+  const pendingAction = (changeRoles.isPending && 'UpdateRoles') || (remove.isPending && 'Delete') || undefined
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
@@ -85,14 +85,14 @@ function UserPage() {
           <dd>{email}</dd>
           <dt className="text-muted-foreground">Username</dt>
           <dd>{username}</dd>
-          <dt className="text-muted-foreground">Role</dt>
-          <dd>{ROLE_LABELS[role]}</dd>
+          <dt className="text-muted-foreground">Roles</dt>
+          <dd>{roleLabels(roles)}</dd>
         </dl>
       </section>
       <UserActions
         user={user.data}
         pendingAction={pendingAction}
-        onChangeRole={(newRole) => changeRole.mutate(newRole, { onSettled: () => headingRef.current?.focus() })}
+        onChangeRoles={(newRoles) => changeRoles.mutate(newRoles, { onSettled: () => headingRef.current?.focus() })}
         onDelete={handleDelete}
       />
     </div>

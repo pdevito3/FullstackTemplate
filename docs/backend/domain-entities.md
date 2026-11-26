@@ -36,8 +36,13 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     // ...
     [Sensitive] public EmailAddress Email { get; private set; } = default!;
     // ...
-    [NotSensitive] public UserRole Role { get; private set; } = default!;
+    private readonly List<UserRoleAssignment> _userRoles = [];
+    public IReadOnlyCollection<UserRoleAssignment> UserRoles => _userRoles.AsReadOnly();
 
+    private readonly List<UserPermissionOverride> _permissionOverrides = [];
+    public IReadOnlyCollection<UserPermissionOverride> PermissionOverrides => _permissionOverrides.AsReadOnly();
+
+    // ...
     private readonly List<UserPermission> _userPermissions = [];
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();
 
@@ -51,13 +56,14 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
             // ...
             Email = EmailAddress.Of(userForCreation.Email),
             // ...
-            Role = UserRole.Of(userForCreation.Role)
         };
-        // Set the ID before the permissions, because each permission copies the user ID.
+        var role = UserRole.Of(userForCreation.Role);
+        // Set the ID before the roles and the permissions, because each row copies the user ID.
         if (userForCreation.Id is not null)
             user.SetId(userForCreation.Id);
 
-        user.ResetPermissionsToDefault();
+        user._userRoles.Add(UserRoleAssignment.Create(user, role));
+        user.ComputePermissions();
 
         ValidateUser(user);
         user.QueueDomainEvent(new UserCreated(user.Id));
@@ -66,15 +72,17 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     }
 
     // ...
-    public User UpdateRole(ManagerKept kept)
+    public User UpdateRoles(ManagerKept kept)
     {
-        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRole { Role: var newRole })
+        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRoles { Roles: var newRoles })
             throw new ArgumentException("Give the proof of a role change of this user.", nameof(kept));
-        if (newRole == Role)
+        if (newRoles.SetEquals(CurrentRoles()))
             return this;
 
-        Role = newRole;
-        ResetPermissionsToDefault();
+        _userRoles.RemoveAll(r => !newRoles.Contains(r.Role));
+        foreach (var role in newRoles.Except(CurrentRoles()).ToList())
+            _userRoles.Add(UserRoleAssignment.Create(this, role));
+        ComputePermissions();
         QueueDomainEvent(new UserUpdated(Id));
 
         return this;
@@ -183,6 +191,8 @@ UserAction.Delete().GuardBeforeLoad(caller, request.Id);
 // ...
 var user = await dbContext.Users
     .TagWithOperationCallSite("users.delete.load")
+    .Include(u => u.UserRoles)
+    .Include(u => u.PermissionOverrides)
     .Include(u => u.UserPermissions)
     .GetById(request.Id, ct);
 user.GuardAllows(UserAction.Delete(), caller);
@@ -222,7 +232,11 @@ public partial class UserRole : ValueObject, IFixedNames
     }
 
     // ...
-    public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
+    public Permission[] GetPermissions() => _role.GetPermissions();
+
+    /// <summary>The union of the permissions of the roles.</summary>
+    public static IReadOnlySet<Permission> PermissionsOf(IEnumerable<UserRole> roles)
+        => roles.SelectMany(r => r.GetPermissions()).ToHashSet();
 
     public override string ToString() => Value;
 
@@ -236,11 +250,11 @@ public partial class UserRole : ValueObject, IFixedNames
     {
         public static readonly UserRoleEnum Admin = new AdminType();
         // ...
-        public abstract Permission[] GetDefaultPermissions();
+        public abstract Permission[] GetPermissions();
 
         private sealed class AdminType() : UserRoleEnum("Admin", 0)
         {
-            public override Permission[] GetDefaultPermissions() => [.. Permission.GetAll()];
+            public override Permission[] GetPermissions() => [.. Permission.GetAll()];
         }
         // ...
     }

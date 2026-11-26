@@ -28,7 +28,7 @@ public class GetAuditEntryPageQueryTests : TestBase
         second.NextCursor.ShouldBeNull();
         first.Items.Concat(second.Items)
             .Select(e => (e.Kind, e.Values.SingleOrDefault(v => v.Name == "FirstName")?.New))
-            .ShouldBe([("Updated", "Third"), ("Updated", "Second"), ("Updated", "First"), ("Created", createdName)]);
+            .ShouldBe([("Updated", "Third"), ("Updated", "Second"), ("Updated", "First"), ("Created", null), ("Created", createdName)]);
     }
 
     [Test]
@@ -41,10 +41,12 @@ public class GetAuditEntryPageQueryTests : TestBase
         var page = await scope.SendAsync(new GetAuditEntryPage.Query(AuditEntryParametersDto.From(target.Id, null, null)));
 
         // Assert
-        var values = page.Items.ShouldHaveSingleItem().Values.ToDictionary(v => v.Name);
+        page.Items.Select(e => e.EntityType).ShouldBe([nameof(UserRoleAssignment), nameof(User)], ignoreOrder: true);
+        var values = page.Items.Single(e => e.EntityType == nameof(User)).Values.ToDictionary(v => v.Name);
         values["FirstName"].ShouldBe(new AuditValueDto { Name = "FirstName", Hidden = true });
         values["Email"].Hidden.ShouldBeTrue();
-        values["Role"].ShouldBe(new AuditValueDto { Name = "Role", New = "User" });
+        page.Items.Single(e => e.EntityType == nameof(UserRoleAssignment)).Values.Single(v => v.Name == "Role")
+            .ShouldBe(new AuditValueDto { Name = "Role", New = "User" });
         values["Identifier"].ShouldBe(new AuditValueDto { Name = "Identifier", Hidden = true });
     }
 

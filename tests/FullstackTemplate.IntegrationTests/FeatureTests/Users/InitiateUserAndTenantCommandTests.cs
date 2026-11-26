@@ -42,7 +42,7 @@ public class InitiateUserAndTenantCommandTests : TestBase
         var result = await testingServiceScope.SendAsync(new InitiateUserAndTenant.Command(dto));
 
         // Assert
-        result.User.AllowedActions.ShouldBe(["Update", "UpdateRole", "AddPermission", "RemovePermission", "Delete"]);
+        result.User.AllowedActions.ShouldBe(["Update", "UpdateRoles", "AddPermission", "RemovePermission", "Delete"]);
     }
 
     [Test]

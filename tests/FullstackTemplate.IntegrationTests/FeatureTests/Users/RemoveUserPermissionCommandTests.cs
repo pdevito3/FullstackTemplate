@@ -136,7 +136,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert - Role should remain Admin even though permissions were removed
-        userReturned.Role.ShouldBe("Admin");
+        userReturned.Roles.ShouldBe(["Admin"]);
     }
 
     [Test]

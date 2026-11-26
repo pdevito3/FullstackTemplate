@@ -27,9 +27,11 @@ public class TenantDeleteOwnedRowsTests : TestBase
     {
         // Arrange
         var scope = new TestingServiceScope();
-        await scope.StartGraph(out _)
+        var graph = scope.StartGraph(out _)
             .AddTenant(out var tenant)
             .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant)
+            .AddUser(out var member, u => u.Role = UserRole.User().Value)
             .Under(tenant)
             .AddAgent(out _, a => a.Permissions = [Permission.Names.ReadAgents])
             .Under(tenant)
@@ -38,7 +40,9 @@ public class TenantDeleteOwnedRowsTests : TestBase
             .Under(tenant).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out _)
             // example:end
             // new-feature:tenant-owned-rows
-            .BuildAsync();
+            ;
+        member.AddPermission(Permission.ReadUsers());
+        await graph.BuildAsync();
         scope.SetUserWithDefaults(identifier: admin.Identifier);
         var owned = await scope.ExecuteDbContextAsync(db => EachOwnedTypeAsync(db, type => Run(IdsOfTenant, type, db)));
         owned.ShouldNotBeEmpty();

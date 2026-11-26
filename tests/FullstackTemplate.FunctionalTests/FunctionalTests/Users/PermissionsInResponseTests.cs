@@ -43,12 +43,12 @@ public class PermissionsInResponseTests : TestBase
             return Returned.OfUser(await ReadAsync<UserDto>(
                 await a.Client.PutJsonRequestAsync(ApiRoutes.Users.Put(target.Id), dto)));
         },
-        [Name(typeof(UpdateUserRole.Command))] = async a =>
+        [Name(typeof(UpdateUserRoles.Command))] = async a =>
         {
-            // The new role replaces each row, so a row that the handler did not load stays in the database
+            // The new roles compute the permissions again, so a row that the handler did not load stays in the database
             var target = await a.AddUserAsync(UserRole.User(), Permission.ReadUsers());
             return Returned.OfUser(await ReadAsync<UserDto>(await a.Client.PutJsonRequestAsync(
-                ApiRoutes.Users.UpdateRole(target.Id), new UpdateUserRoleDto { Role = UserRole.Admin().Value })));
+                ApiRoutes.Users.UpdateRoles(target.Id), new UpdateUserRolesDto { Roles = [UserRole.Admin().Value] })));
         },
         [Name(typeof(AddUserPermission.Command))] = async a =>
         {

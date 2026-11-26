@@ -40,10 +40,10 @@ public class ClaimInviteCommandTests : TestBase
 
         // Assert
         user.Identifier.ShouldBe(subject);
-        user.Role.ShouldBe(UserRole.Admin().Value);
+        user.Roles.ShouldBe([UserRole.Admin().Value]);
         user.FirstName.ShouldBe(command.Dto.FirstName);
         user.Email.ShouldBe(command.Dto.Email);
-        user.Permissions.ShouldBe(UserRole.Admin().GetDefaultPermissions().Select(p => p.Value), ignoreOrder: true);
+        user.Permissions.ShouldBe(UserRole.Admin().GetPermissions().Select(p => p.Value), ignoreOrder: true);
         var stored = await scope.ExecuteDbContextAsync(db => db.Invites.IgnoreQueryFilters([QueryFilterNames.Tenant])
             .SingleAsync(i => i.Id == invite.Id));
         stored.Status.ShouldBe(InviteStatus.Claimed());

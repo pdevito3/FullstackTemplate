@@ -27,11 +27,15 @@ public class GetAuditEntryPageTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var created = (await result.Content.ReadFromJsonAsync<AuditEntryPageDto>())!.Items.ShouldHaveSingleItem();
-        (created.Kind, created.EntityId).ShouldBe(("Created", target.Id));
+        var items = (await result.Content.ReadFromJsonAsync<AuditEntryPageDto>())!.Items;
+        items.Select(e => (e.Kind, e.EntityType)).ShouldBe(
+            [("Created", "User"), ("Created", "UserRoleAssignment")], ignoreOrder: true);
+        var created = items.Single(e => e.EntityType == "User");
+        created.EntityId.ShouldBe(target.Id);
         var values = created.Values.ToDictionary(v => v.Name);
         values["FirstName"].ShouldBe(new AuditValueDto { Name = "FirstName", Hidden = true });
-        values["Role"].ShouldBe(new AuditValueDto { Name = "Role", New = "User" });
+        items.Single(e => e.EntityType == "UserRoleAssignment").Values.Single(v => v.Name == "Role")
+            .ShouldBe(new AuditValueDto { Name = "Role", New = "User" });
     }
 
     [Test]
@@ -46,7 +50,7 @@ public class GetAuditEntryPageTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var values = (await result.Content.ReadFromJsonAsync<AuditEntryPageDto>())!.Items.ShouldHaveSingleItem()
+        var values = (await result.Content.ReadFromJsonAsync<AuditEntryPageDto>())!.Items.Single(e => e.EntityType == "User")
             .Values.ToDictionary(v => v.Name);
         values["FirstName"].ShouldBe(new AuditValueDto { Name = "FirstName", New = target.FirstName });
         values["Email"].ShouldBe(new AuditValueDto { Name = "Email", New = target.Email.Value });

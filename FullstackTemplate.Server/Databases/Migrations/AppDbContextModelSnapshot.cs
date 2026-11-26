@@ -478,17 +478,6 @@ namespace FullstackTemplate.Server.Databases.Migrations
                                 .HasColumnName("email");
                         });
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Role", "FullstackTemplate.Server.Domain.Users.User.Role#UserRole", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Value")
-                                .IsRequired()
-                                .HasMaxLength(50)
-                                .HasColumnType("character varying(50)")
-                                .HasColumnName("role");
-                        });
-
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -553,6 +542,108 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasDatabaseName("ix_user_permissions_user_id");
 
                     b.ToTable("user_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserPermissionOverride", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<bool>("Granted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("granted");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("user_id")
+                        .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Users.UserPermissionOverride.Permission#Permission", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("permission");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_permission_overrides");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_permission_overrides_user_id");
+
+                    b.ToTable("user_permission_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserRoleAssignment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("user_id")
+                        .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Role", "FullstackTemplate.Server.Domain.Users.UserRoleAssignment.Role#UserRole", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("role");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_roles");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_roles_user_id");
+
+                    b.ToTable("user_roles", (string)null);
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Examples.Venues.Venue", b =>
@@ -828,6 +919,30 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserPermissionOverride", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Users.User", "User")
+                        .WithMany("PermissionOverrides")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_permission_overrides_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserRoleAssignment", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Users.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_roles_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Examples.Venues.Venue", b =>
                 {
                     b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
@@ -879,7 +994,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>
                 {
+                    b.Navigation("PermissionOverrides");
+
                     b.Navigation("UserPermissions");
+
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

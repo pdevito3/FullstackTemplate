@@ -2,13 +2,13 @@ import type { InitiateUserAndTenantResponseDto } from '@/api/generated/models/ty
 import type {
   UserDto,
   UserDtoAllowedActionsEnumKey,
-  UserDtoRoleEnumKey,
+  UserDtoRolesEnumKey,
 } from '@/api/generated/models/types/user-dto'
 
 let seed = 0
 const next = () => ++seed
 
-const ADMIN_ACTIONS: UserDtoAllowedActionsEnumKey[] = ['Update', 'UpdateRole', 'AddPermission', 'RemovePermission', 'Delete']
+const ADMIN_ACTIONS: UserDtoAllowedActionsEnumKey[] = ['Update', 'UpdateRoles', 'AddPermission', 'RemovePermission', 'Delete']
 
 class UserBuilder {
   private readonly user: UserDto
@@ -27,7 +27,7 @@ class UserBuilder {
       identifier: '1',
       email: 'bob@example.com',
       username: 'bob',
-      role: 'User',
+      roles: ['User'],
       permissions: [],
       allowedActions: [],
       version: 1,
@@ -49,8 +49,8 @@ class UserBuilder {
     return this.with({ firstName, lastName: rest.join(' '), fullName, username, email: `${username}@example.com` })
   }
 
-  inRole(role: UserDtoRoleEnumKey) {
-    return this.with({ role })
+  inRoles(...roles: UserDtoRolesEnumKey[]) {
+    return this.with({ roles })
   }
 
   seenByAdmin() {
@@ -73,6 +73,6 @@ class UserBuilder {
 export const aUser = () => UserBuilder.create()
 
 export const aStartedTenant = (name: string, user = aUser()): InitiateUserAndTenantResponseDto => {
-  const admin = { ...user.build(), role: 'Admin' as const }
+  const admin = { ...user.build(), roles: ['Admin' as const] }
   return { tenant: { id: admin.tenantId, name, allowedActions: ['InviteUser'], version: 1 }, user: admin }
 }

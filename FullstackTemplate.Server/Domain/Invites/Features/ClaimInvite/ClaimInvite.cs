@@ -85,8 +85,8 @@ public static class ClaimInvite
             }, cancellationToken);
 
             _logger.Here().Information("Claimed invite {InviteId} as new user {UserId} in tenant {TenantId} with role {Role}",
-                invite.Id, user.Id, tenantId, user.Role.Value);
-            InviteMetrics.Claimed.Add(1, new KeyValuePair<string, object?>("app.user.role", user.Role.Value));
+                invite.Id, user.Id, tenantId, invite.Role.Value);
+            InviteMetrics.Claimed.Add(1, new KeyValuePair<string, object?>("app.user.role", invite.Role.Value));
 
             // The caller has a user record only now
             return user.ToUserDto(new Caller.Member(user.Id, user.UserPermissions.Select(p => p.Permission)));

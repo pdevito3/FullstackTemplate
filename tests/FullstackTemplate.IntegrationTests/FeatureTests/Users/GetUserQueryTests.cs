@@ -43,7 +43,7 @@ public class GetUserQueryTests : TestBase
 
         // Assert
         userReturned.ShouldNotBeNull();
-        userReturned.Role.ShouldBe("Admin");
+        userReturned.Roles.ShouldBe(["Admin"]);
         userReturned.Permissions.ShouldNotBeEmpty();
     }
 

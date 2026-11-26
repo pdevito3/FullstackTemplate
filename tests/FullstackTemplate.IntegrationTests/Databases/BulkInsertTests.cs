@@ -31,15 +31,17 @@ public class BulkInsertTests : TestBase
         var written = await scope.GetService<AppDbContext>().BulkInsertAsync(users);
 
         // Assert
-        written.ShouldBe(users.Count * (1 + allPermissions.Count));
+        // Each user has one role row
+        written.ShouldBe(users.Count * (2 + allPermissions.Count));
         var ids = users.Select(u => u.Id).ToList();
-        var stored = await ReadAsync(read => read.Users.Include(u => u.UserPermissions).Where(u => ids.Contains(u.Id)).ToListAsync());
+        var stored = await ReadAsync(read => read.Users.Include(u => u.UserRoles).Include(u => u.UserPermissions).Where(u => ids.Contains(u.Id)).ToListAsync());
         var entries = await ReadAsync(read => read.AuditEntries.Where(e => ids.Contains(e.RootId)).ToListAsync());
         var record = entries.Select(e => (e.RecordId, e.OccurredAt)).Distinct().ShouldHaveSingleItem();
         foreach (var user in users)
         {
             var row = stored.Single(u => u.Id == user.Id);
-            (row.FirstName, row.Email.Value, row.Role.Value).ShouldBe((user.FirstName, user.Email.Value, user.Role.Value));
+            (row.FirstName, row.Email.Value).ShouldBe((user.FirstName, user.Email.Value));
+            row.UserRoles.Select(r => r.Role.Value).ShouldBe(user.UserRoles.Select(r => r.Role.Value));
             row.LastModifiedOn.ShouldBe(record.OccurredAt);
             row.UserPermissions.Select(p => p.Permission.Value).ShouldBe(allPermissions, ignoreOrder: true);
 

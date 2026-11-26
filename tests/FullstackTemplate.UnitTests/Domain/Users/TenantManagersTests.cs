@@ -6,14 +6,19 @@ using Shouldly;
 
 public class TenantManagersTests
 {
-    private static readonly ManagerChange ToUser = new ManagerChange.NewRole(UserRole.User());
-    private static readonly ManagerChange ToAdmin = new ManagerChange.NewRole(UserRole.Admin());
+    private static readonly ManagerChange ToUser = new ManagerChange.NewRoles(new HashSet<UserRole> { UserRole.User() });
+    private static readonly ManagerChange ToAdmin = new ManagerChange.NewRoles(new HashSet<UserRole> { UserRole.Admin() });
+    private static readonly ManagerChange ToAdminAndUser =
+        new ManagerChange.NewRoles(new HashSet<UserRole> { UserRole.Admin(), UserRole.User() });
+    private static readonly ManagerChange ToNoRole = new ManagerChange.NewRoles(new HashSet<UserRole>());
     private static readonly ManagerChange Removal = new ManagerChange.Removal();
     private static readonly ManagerChange LosesAuditLog = new ManagerChange.PermissionRemoval(Permission.ReadAuditLog());
 
     public static IEnumerable<Func<(string Name, User User, ManagerChange Change, int OtherManagers, string? RefusedField)>> Cases()
     {
-        yield return () => ("the only manager becomes a user", Admin(), ToUser, 0, "role");
+        yield return () => ("the only manager becomes a user", Admin(), ToUser, 0, "roles");
+        yield return () => ("the only manager loses every role", Admin(), ToNoRole, 0, "roles");
+        yield return () => ("the only manager keeps the admin role and gets the user role", Admin(), ToAdminAndUser, 0, null);
         yield return () => ("the only manager is removed", Admin(), Removal, 0, "role");
         yield return () => ("the only manager loses a permission", Admin(), LosesAuditLog, 0, "permission");
         yield return () => ("the only manager stays an admin", Admin(), ToAdmin, 0, null);

@@ -34,7 +34,7 @@ public static class AddInvite
             var role = UserRole.Of(request.Dto.Role);
             Activity.Current?.SetTag("app.invite.role", role.Value);
             // A caller cannot invite with a role that has more permissions than the caller has (INV-1)
-            caller.Require(role.GetDefaultPermissions());
+            caller.Require(role.GetPermissions());
 
             var tenantId = ResolveTenantId(request.Dto.TenantId);
             Activity.Current?.SetTag("app.tenant_id", tenantId);

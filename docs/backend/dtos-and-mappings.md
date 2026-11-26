@@ -58,7 +58,7 @@ public sealed record UserDto
     public string Email { get; init; } = default!;
     // ...
     [NamesOf<UserRole>]
-    public string Role { get; init; } = default!;
+    public IReadOnlyList<string> Roles { get; init; } = [];
     [NamesOf<Permission>]
     public IReadOnlyList<string> Permissions { get; init; } = [];
     // ...
@@ -135,13 +135,12 @@ public static partial class UserMapper
     [MapperIgnoreSource(nameof(User.DomainEvents))]
     [MapperIgnoreTarget(nameof(UserDto.AllowedActions))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
+    [MapProperty(nameof(User.UserRoles), nameof(UserDto.Roles))]
     [MapPropertyFromSource(nameof(UserDto.FullName), Use = nameof(MapFullName))]
     private static partial UserDto ToUserDtoWithoutActions(this User user);
 
     // ...
     private static string MapEmail(EmailAddress email) => email.Value;
-    // ...
-    private static string MapRole(UserRole role) => role.Value;
     // ...
 }
 ```

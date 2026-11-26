@@ -68,7 +68,7 @@ public class UserRoleTests
         var adminRole = UserRole.Admin();
 
         // Act
-        var permissions = adminRole.GetDefaultPermissions();
+        var permissions = adminRole.GetPermissions();
 
         // Assert
         permissions.ShouldBe(Permission.GetAll(), ignoreOrder: true);
@@ -81,7 +81,7 @@ public class UserRoleTests
         var userRole = UserRole.User();
 
         // Act
-        var permissions = userRole.GetDefaultPermissions();
+        var permissions = userRole.GetPermissions();
 
         // Assert
         permissions.ShouldBeEmpty();

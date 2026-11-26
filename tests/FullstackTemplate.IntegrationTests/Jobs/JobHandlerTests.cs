@@ -67,7 +67,7 @@ public class JobHandlerTests : TestBase
 
         // Assert
         var deleted = await ReadAsync(read => read.AuditEntries
-            .SingleAsync(e => e.RootId == scenario.FirstUser.Id && e.Kind == AuditEntryKind.Deleted));
+            .SingleAsync(e => e.EntityId == scenario.FirstUser.Id && e.Kind == AuditEntryKind.Deleted));
         (deleted.RequestName, deleted.ActorSubject, deleted.ActorUserId, deleted.TenantId)
             .ShouldBe(("TestJob", null, null, scenario.Tenant.Id));
     }

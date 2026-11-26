@@ -3,12 +3,12 @@
 * Do not edit manually.
 */
 
-export const userDtoRoleEnum = {
+export const userDtoRolesEnum = {
     Admin: "Admin",
     User: "User"
 } as const;
 
-export type UserDtoRoleEnumKey = (typeof userDtoRoleEnum)[keyof typeof userDtoRoleEnum];
+export type UserDtoRolesEnumKey = (typeof userDtoRolesEnum)[keyof typeof userDtoRolesEnum];
 
 export const userDtoPermissionsEnum = {
     manage_agents: "manage_agents",
@@ -29,7 +29,7 @@ export const userDtoAllowedActionsEnum = {
     Delete: "Delete",
     RemovePermission: "RemovePermission",
     Update: "Update",
-    UpdateRole: "UpdateRole"
+    UpdateRoles: "UpdateRoles"
 } as const;
 
 export type UserDtoAllowedActionsEnumKey = (typeof userDtoAllowedActionsEnum)[keyof typeof userDtoAllowedActionsEnum];
@@ -43,7 +43,11 @@ export type UserDto = {
     identifier: string;
     email: string;
     username: string;
-    role: UserDtoRoleEnumKey;
+    /**
+     * @description The roles of the user. The user holds the union of their permissions, with the permissions that someone added or removed by hand.
+     * @type array
+    */
+    roles: UserDtoRolesEnumKey[];
     permissions: UserDtoPermissionsEnumKey[];
     /**
      * @description The actions that the caller can send for this user now. A button in the SPA reads this list.

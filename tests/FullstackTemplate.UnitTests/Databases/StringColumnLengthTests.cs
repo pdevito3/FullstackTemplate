@@ -56,12 +56,13 @@ public class StringColumnLengthTests
 
     private static readonly Dictionary<string, IReadOnlyList<string>> FixedOptionColumns = new()
     {
-        ["users.role"] = UserRole.ListNames(),
+        ["user_roles.role"] = UserRole.ListNames(),
         ["invites.role"] = UserRole.ListNames(),
         ["invites.status"] = InviteStatus.ListNames(),
         ["agents.mode"] = [AgentMode.Delegated().Value, AgentMode.Machine().Value],
         ["audit_entries.kind"] = Enum.GetNames<AuditEntryKind>(),
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
+        ["user_permission_overrides.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         // example:start
         ["venues.time_zone"] = TimeZoneIds(),

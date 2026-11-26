@@ -15,7 +15,7 @@ public class UserActionTests
 {
     private static readonly UserAction[] Actions =
     [
-        UserAction.Update(), UserAction.UpdateRole(), UserAction.AddPermission(), UserAction.RemovePermission(),
+        UserAction.Update(), UserAction.UpdateRoles(), UserAction.AddPermission(), UserAction.RemovePermission(),
         UserAction.Delete(),
     ];
 
@@ -52,16 +52,16 @@ public class UserActionTests
         yield return () => ("manager with read_users", "User", UserAction.Update(),
             _ => MemberWith(Permission.ManageUsers(), Permission.ReadUsers()), null);
 
-        yield return () => ("user on their own record", "User", UserAction.UpdateRole(),
+        yield return () => ("user on their own record", "User", UserAction.UpdateRoles(),
             OwnRecord, manageUserAccessDenial);
-        yield return () => ("admin on their own record", "Admin", UserAction.UpdateRole(), OwnRecord, null);
-        yield return () => ("access manager without read_users", "User", UserAction.UpdateRole(),
+        yield return () => ("admin on their own record", "Admin", UserAction.UpdateRoles(), OwnRecord, null);
+        yield return () => ("access manager without read_users", "User", UserAction.UpdateRoles(),
             _ => MemberWith(Permission.ManageUserAccess()), readUsersDenial);
-        yield return () => ("access manager on a user", "User", UserAction.UpdateRole(),
+        yield return () => ("access manager on a user", "User", UserAction.UpdateRoles(),
             _ => MemberWith(Permission.ManageUserAccess(), Permission.ReadUsers()), null);
-        yield return () => ("access manager on an admin", "Admin", UserAction.UpdateRole(),
+        yield return () => ("access manager on an admin", "Admin", UserAction.UpdateRoles(),
             _ => MemberWith(Permission.ManageUserAccess(), Permission.ReadUsers()), adminPermissionDenial);
-        yield return () => ("admin on an admin", "Admin", UserAction.UpdateRole(),
+        yield return () => ("admin on an admin", "Admin", UserAction.UpdateRoles(),
             _ => MemberWith([.. Permission.GetAll()]), null);
 
         yield return () => ("user on another user", "User", UserAction.AddPermission(), _ => MemberWith(), manageUserAccessDenial);
@@ -181,7 +181,7 @@ public class UserActionTests
         // Arrange
         var user = UserWithRole("Admin");
         var callerBeforeTheChange = OwnRecord(user);
-        user.ChangeRoleIgnoringLastManager(UserRole.User());
+        user.ChangeRolesIgnoringLastManager(UserRole.User());
 
         // Act
         var allowedActions = user.AllowedActions(callerBeforeTheChange);

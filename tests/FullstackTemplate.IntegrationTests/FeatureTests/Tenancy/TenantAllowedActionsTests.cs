@@ -28,6 +28,6 @@ public class TenantAllowedActionsTests : TestBase
         // Assert
         record.AllowedActions.ShouldBe(expected);
         list.ShouldHaveSingleItem().AllowedActions.ShouldBe(expected);
-        UserRole.Of(role).GetDefaultPermissions().Contains(Permission.ManageUsers()).ShouldBe(canInvite);
+        UserRole.Of(role).GetPermissions().Contains(Permission.ManageUsers()).ShouldBe(canInvite);
     }
 }

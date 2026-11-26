@@ -197,7 +197,7 @@ The guard reads the user and their permission rows from the database in each han
 
 ### Add a permission
 
-`scripts/new-feature.cs` does steps 1, 2, and 6 for the permission of a new entity. For another permission:
+`scripts/new-feature.cs` does steps 1, 2, 6, and 7 for the permission of a new entity. For another permission:
 
 1. Add a constant to `Permission.Names` in `Permission.cs`, a value of `PermissionEnum` with that constant as its name, and a static method that returns it, for example `Permission.ManageOrders()`. Use a snake case name, for example `manage_orders`.
 2. Add an EF Core migration that gives the permission to the admins and the tenant managers that exist (see [Migrations](#migrations)). Call `migrationBuilder.GrantPermissionToManagers("manage_orders")` in `Up`. A tenant manager holds every permission, so a grant to the Admin role only can leave a tenant with no manager (UM-4). Write the name as a string, so that the migration does not change when `Permission` changes. New admins get the permission from the Admin role. If the users with another permission also need the new one, call `GrantPermissionToHoldersOf` too, as `GrantReadPermissions` does.
@@ -205,6 +205,7 @@ The guard reads the user and their permission rows from the database in each han
 4. Declare the 403 on each HTTP endpoint of these handlers. Give each MCP tool of these handlers `[ToolAccess(Permission.Names.ManageOrders)]` (see [endpoints.md](backend/endpoints.md#tool-access)).
 5. Add an integration test for a user with the permission and a user without it.
 6. Add the name of the permission to `AllNames` in `PermissionTests`. The list names all the permissions, so `list_names_returns_all_permission_names` and `get_all_returns_all_permissions` fail until you add it.
+7. Add the words of the permission to `PERMISSION_LABELS` in `frontend/src/domain/users/components/permission-overrides.ts`, then update the API contract (see the `api-contract` skill). The SPA does not build until the two have the same permissions.
 
 To remove a permission, remove its value and add a migration that calls `DeletePermission`. A row with a name that `Permission` does not know stops each load of its user.
 

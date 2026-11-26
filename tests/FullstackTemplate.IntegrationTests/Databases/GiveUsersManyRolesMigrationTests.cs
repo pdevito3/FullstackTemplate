@@ -54,6 +54,10 @@ public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
             ignoreOrder: true);
         roles.ShouldAllBe(r => EntityId.IsValid(r.Id, UserRoleAssignment.IdPrefix));
 
+        var permissionsAfter = await ReadAsync("SELECT user_id, permission, is_deleted FROM user_permissions",
+            r => (r.GetString(0), r.GetString(1), r.GetBoolean(2)));
+        permissionsAfter.ShouldBe(permissionsBefore, ignoreOrder: true);
+
         // Each live user holds what their roles give with their overrides, as ComputePermissions makes it
         var overrides = await ReadAsync("SELECT id, user_id, permission, granted FROM user_permission_overrides",
             r => (Id: r.GetString(0), UserId: r.GetString(1), Permission: r.GetString(2), Granted: r.GetBoolean(3)));
@@ -72,15 +76,17 @@ public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
         overrides.ShouldAllBe(o => EntityId.IsValid(o.Id, UserPermissionOverride.IdPrefix));
     }
 
-    // The admin holds the permissions of this release but manage_agents and manage_tenant, and no permission of the
-    // examples, which no other user holds either. Someone removed manage_tenant by hand, so only a soft-deleted row is
+    // The admin holds each permission but manage_agents, manage_tenant, and the permission of the examples, which
+    // no other user holds either. Someone removed manage_tenant by hand, so only a soft-deleted row is
     // left for it. The member had manage_users removed the same way. The deleted admin holds nothing, and the deleted
     // member holds read_users: neither gets an override.
     private static string ArrangeSql()
     {
-        string[] releasePermissions = ["manage_users", "manage_user_access", "manage_tenant", "manage_agents",
-            "read_audit_log", "read_audit_log_sensitive", "read_users", "read_agents"];
-        var adminPermissions = releasePermissions.Where(p => p is not ("manage_agents" or "manage_tenant"))
+        List<string> lacking = ["manage_agents", "manage_tenant"];
+        // example:start
+        lacking.Add("manage_workshops");
+        // example:end
+        var adminPermissions = Permission.ListNames().Except(lacking)
             .Select((p, i) => $"('uperm_admin{i}', 'usr_admin', '{p}', false)");
         return $"""
             INSERT INTO tenants (id, name, is_deleted) VALUES ('ten_migration', 'Migration tenant', false);

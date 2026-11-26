@@ -16,6 +16,7 @@ const PERMISSION_LABELS: Record<UserPermissionOverrideDtoPermissionEnumKey, stri
   // example:start
   manage_workshops: 'Manage workshops',
   // example:end
+  // new-feature:permission-labels
 }
 
 /** The permissions that someone added (granted) or removed by hand, by label, or a dash when there are none. */

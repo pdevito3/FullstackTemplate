@@ -4,8 +4,7 @@ import { Button as ButtonPrimitive } from 'react-aria-components'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Filter } from './types'
-import { getOperatorLabel } from './utils/operators'
-import { formatFilterValue, getFilterName } from './utils/filter-name'
+import { formatFilterOperator, formatFilterValue, getFilterName } from './utils/filter-name'
 
 interface FilterBadgeProps {
   filter: Filter
@@ -35,7 +34,7 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
       >
         <span className="font-medium">{filter.propertyLabel}</span>
         <SeparatorAfterWord />
-        <span className="text-xs">{getOperatorLabel(filter.operator)}</span>
+        <span className="text-xs">{formatFilterOperator(filter)}</span>
         <SeparatorAfterWord />
         <span className="inline-flex max-w-full items-center gap-1.5 align-bottom">
           <span className="min-w-0 text-xs">{formattedValue}</span>

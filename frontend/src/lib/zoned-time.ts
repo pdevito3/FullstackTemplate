@@ -143,6 +143,11 @@ export function formatDate(date: CalendarDate, options: Intl.DateTimeFormatOptio
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(date.toDate('UTC'))
 }
 
+/** Formats a wall clock time with no zone, such as a Server `DateTime` in a `timestamp without time zone` column. */
+export function formatWallClock(wallClock: CalendarDateTime, options: Intl.DateTimeFormatOptions, locale?: string): string {
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(wallClock.toDate('UTC'))
+}
+
 interface FormatInstantOptions
   extends Omit<Intl.DateTimeFormatOptions, 'timeZone' | 'timeZoneName' | 'dateStyle' | 'timeStyle'> {
   /** Name the zone, for a user who can be in another zone than the place. */

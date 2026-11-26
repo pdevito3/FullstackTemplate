@@ -64,7 +64,7 @@ public class GetUserQueryTests : TestBase
         var readScope = new TestingServiceScope();
         var byId = await readScope.SendAsync(new GetUser.Query(fakeUser.Id));
         var byIdentifier = await readScope.SendAsync(new GetUserByIdentifier.Query(fakeUser.Identifier));
-        var list = await readScope.SendAsync(new GetUserList.Query(UserParametersDto.From(1, 100, null, null)));
+        var list = await readScope.SendAsync(new GetUserList.Query(UserParametersDto.From(null, null, $"""id == "{fakeUser.Id}" """, null)));
 
         // Assert
         UserPermissionOverrideDto[] expected =

@@ -4,8 +4,8 @@ A tenant admin sees the users of the tenant at `/users`, opens a user, changes t
 
 ## Sub-features
 
-- `list` shows the table `Users` with the name, the email, and the roles of each user of the tenant, and the pager `Pages of users`.
-- `detail` shows the name of the user as the level 1 heading, with the email, the username, and the roles.
+- `list` shows the table `Users` with the name, the email, the roles, and the count of the permissions changed by hand (`Changed by hand`) of each user of the tenant, and the pager `Pages of users`.
+- `detail` shows the name of the user as the level 1 heading, with the email, the username, the roles, and the permissions that someone added or removed by hand (`Added by hand`, `Removed by hand`).
 - `actions` shows the group `Actions for <full name>` with `Change roles` and `Delete` for an admin. It shows no button for an action that the page cannot send yet, such as an edit of the user.
 - `roles` asks for the roles in the dialog `Change the roles of <full name>`, with a checkbox for each role, sends `PUT /api/v1/users/{id}/roles`, shows the new roles, and moves the focus to the heading.
 - `delete` asks for a confirmation in the dialog `Delete <full name>?`, sends `DELETE /api/v1/users/{id}`, shows the toast `User deleted` one time, and goes to the list with the focus on its heading.
@@ -27,7 +27,7 @@ Preconditions:
 
 - **List.** Choose `Users` in the sidebar after `waitForResponse` on `GET /api/v1/users`. Each row of the table has the name, the email, and the roles of its row in the response.
 - **Detail.** Choose the name of the second user. The heading is the `fullName` of the user, and the group `Actions for <fullName>` has the buttons `Change roles` and `Delete`, in this order.
-- **Roles.** Choose `Change roles`, check `Admin` in `Roles`, and choose `Change roles` in the dialog after `waitForResponse` on `PUT /api/v1/users/{id}/roles`. The response is 200 with `roles` `["User", "Admin"]`. The details show `Admin, User`, and the heading has the focus.
+- **Roles.** Choose `Change roles`, check `Admin` in `Roles`, and choose `Change roles` in the dialog after `waitForResponse` on `PUT /api/v1/users/{id}/roles`. The response is 200, and its `roles` has `Admin` and `User`, in any order. The details show `Admin, User`, and the heading has the focus.
 - **Delete.** Choose `Delete`, then `Delete user` in the dialog after `waitForResponse` on `DELETE /api/v1/users/{id}`. The response is 204. The toast `User deleted` has count 1. The heading `Users` has the focus, and the list has no row for the user.
 - **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/users.mjs`. The captures `list`, `detail`, `change-role-dialog`, `role-changed`, `delete-dialog`, and `after-delete` show each state.
 

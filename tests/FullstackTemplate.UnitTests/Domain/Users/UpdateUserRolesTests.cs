@@ -8,7 +8,7 @@ using Shouldly;
 public class UpdateUserRolesTests
 {
     [Test]
-    public void new_roles_give_their_permissions_keep_the_added_ones_and_queue_user_updated()
+    public void new_roles_give_their_permissions_and_queue_user_updated()
     {
         // Arrange
         var user = User.Create(new FakeUserForCreation().Generate() with { Role = UserRole.User().Value });

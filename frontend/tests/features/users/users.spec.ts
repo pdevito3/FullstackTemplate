@@ -36,8 +36,8 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detail('grace@example.com')).toBeVisible()
     await expect(users.at.detail('grace')).toBeVisible()
     await expect(users.at.detail('User')).toBeVisible()
-    await expect(users.at.detail('manage_tenant, read_users')).toBeVisible()
-    await expect(users.at.detail('manage_users')).toBeVisible()
+    await expect(users.at.detail('Manage the tenant, See the users of the tenant')).toBeVisible()
+    await expect(users.at.detail('Manage users')).toBeVisible()
     await expect(users.at.usersNavLink).toHaveAttribute('aria-current', 'true')
   })
 

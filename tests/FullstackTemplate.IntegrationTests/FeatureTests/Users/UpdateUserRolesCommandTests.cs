@@ -62,14 +62,8 @@ public class UpdateUserRolesCommandTests : TestBase
         await testingServiceScope.SendAsync(command);
 
         // Assert
-        var userInDb = await testingServiceScope.ExecuteDbContextAsync(db =>
-            db.Users
-                .Include(u => u.UserPermissions)
-                .FirstOrDefaultAsync(u => u.Id == createdUser.Id));
-
-        userInDb.ShouldNotBeNull();
         (await RolesOfAsync(createdUser.Id)).ShouldBe(["Admin"]);
-        userInDb.HasPermission(Permission.ManageTenant()).ShouldBeTrue();
+        (await PermissionsOfAsync(createdUser.Id)).ShouldContain("manage_tenant");
     }
 
     [Test]
@@ -107,14 +101,8 @@ public class UpdateUserRolesCommandTests : TestBase
         await testingServiceScope.SendAsync(command);
 
         // Assert
-        var userAfter = await testingServiceScope.ExecuteDbContextAsync(db =>
-            db.Users
-                .Include(u => u.UserPermissions)
-                .FirstOrDefaultAsync(u => u.Id == createdUser.Id));
-
-        userAfter.ShouldNotBeNull();
         (await RolesOfAsync(createdUser.Id)).ShouldBe(["User"]);
-        userAfter.UserPermissions.ShouldBeEmpty();
+        (await PermissionsOfAsync(createdUser.Id)).ShouldBeEmpty();
     }
 
     [Test]
@@ -175,7 +163,7 @@ public class UpdateUserRolesCommandTests : TestBase
 
         // Act & Assert
         var command = new UpdateUserRoles.Command(nonExistentId, ["Admin"]);
-        await Should.ThrowAsync<Exception>(async () =>
+        await Should.ThrowAsync<NotFoundException>(async () =>
             await testingServiceScope.SendAsync(command));
     }
 
@@ -274,7 +262,8 @@ public class UpdateUserRolesCommandTests : TestBase
 
         // Assert
         userReturned.Permissions.ShouldNotContain("manage_tenant");
-        var saved = await testingServiceScope.SendAsync(new GetUser.Query(createdUser.Id));
+        // A new scope, so that the read finds what the command saved and not the tracked user
+        var saved = await new TestingServiceScope().SendAsync(new GetUser.Query(createdUser.Id));
         saved.Permissions.ShouldNotContain("manage_tenant");
     }
 

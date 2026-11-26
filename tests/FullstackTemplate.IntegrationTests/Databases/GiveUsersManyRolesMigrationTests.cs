@@ -54,24 +54,33 @@ public sealed class GiveUsersManyRolesMigrationTests : IAsyncDisposable
             ignoreOrder: true);
         roles.ShouldAllBe(r => EntityId.IsValid(r.Id, UserRoleAssignment.IdPrefix));
 
-        var permissionsAfter = await ReadAsync("SELECT user_id, permission, is_deleted FROM user_permissions",
-            r => (r.GetString(0), r.GetString(1), r.GetBoolean(2)));
-        permissionsAfter.ShouldBe(permissionsBefore, ignoreOrder: true);
-
+        // Each live user holds what their roles give with their overrides, as ComputePermissions makes it
         var overrides = await ReadAsync("SELECT id, user_id, permission, granted FROM user_permission_overrides",
             r => (Id: r.GetString(0), UserId: r.GetString(1), Permission: r.GetString(2), Granted: r.GetBoolean(3)));
-        overrides.Select(o => (o.UserId, o.Permission, o.Granted)).ShouldBe(
-            [("usr_member", "read_users", true), ("usr_admin", "manage_agents", false), ("usr_admin", "manage_tenant", false)],
-            ignoreOrder: true);
+        foreach (var userId in new[] { "usr_member", "usr_admin" })
+        {
+            var given = UserRole.PermissionsOf(roles.Where(r => r.UserId == userId).Select(r => UserRole.Of(r.Role)))
+                .Select(p => p.Value)
+                .Union(overrides.Where(o => o.UserId == userId && o.Granted).Select(o => o.Permission))
+                .Except(overrides.Where(o => o.UserId == userId && !o.Granted).Select(o => o.Permission));
+            permissionsBefore.Where(p => p.Item1 == userId && !p.Item3).Select(p => p.Item2)
+                .ShouldBe(given, ignoreOrder: true, customMessage: userId);
+        }
+        overrides.ShouldContain(o => o.UserId == "usr_member" && o.Permission == "read_users" && o.Granted);
+        overrides.ShouldContain(o => o.UserId == "usr_admin" && o.Permission == "manage_tenant" && !o.Granted);
+        overrides.ShouldNotContain(o => o.UserId == "usr_deleted" || o.UserId == "usr_gone");
         overrides.ShouldAllBe(o => EntityId.IsValid(o.Id, UserPermissionOverride.IdPrefix));
     }
 
-    // The admin holds each permission but manage_agents and manage_tenant. Someone removed manage_tenant by hand, so
-    // only a soft-deleted row is left for it. The member had manage_users removed the same way. The deleted admin
-    // holds nothing, and the deleted member holds read_users: neither gets an override.
+    // The admin holds the permissions of this release but manage_agents and manage_tenant, and no permission of the
+    // examples, which no other user holds either. Someone removed manage_tenant by hand, so only a soft-deleted row is
+    // left for it. The member had manage_users removed the same way. The deleted admin holds nothing, and the deleted
+    // member holds read_users: neither gets an override.
     private static string ArrangeSql()
     {
-        var adminPermissions = Permission.ListNames().Where(p => p is not ("manage_agents" or "manage_tenant"))
+        string[] releasePermissions = ["manage_users", "manage_user_access", "manage_tenant", "manage_agents",
+            "read_audit_log", "read_audit_log_sensitive", "read_users", "read_agents"];
+        var adminPermissions = releasePermissions.Where(p => p is not ("manage_agents" or "manage_tenant"))
             .Select((p, i) => $"('uperm_admin{i}', 'usr_admin', '{p}', false)");
         return $"""
             INSERT INTO tenants (id, name, is_deleted) VALUES ('ten_migration', 'Migration tenant', false);

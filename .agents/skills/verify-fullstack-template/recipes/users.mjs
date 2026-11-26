@@ -50,7 +50,8 @@ export default async ({ page, step, capture, settle, expect, login }) => {
       expect(row).toBeTruthy()
       const shown = usersTable().getByRole('row').filter({ has: page.getByRole('link', { name: row.fullName, exact: true }) })
       await expect(shown).toContainText(row.email)
-      await expect(shown).toContainText(row.roles.join(', '))
+      // The SPA shows the roles in the order of the contract, whatever the order of the response
+      await expect(shown).toContainText(['Admin', 'User'].filter((role) => row.roles.includes(role)).join(', '))
     }
   })
   await capture('list')

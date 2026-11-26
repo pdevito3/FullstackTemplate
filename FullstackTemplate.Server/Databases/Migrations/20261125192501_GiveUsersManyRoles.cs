@@ -82,12 +82,17 @@ namespace FullstackTemplate.Server.Databases.Migrations
             // The permissions of each live user stay the same. A permission that the role does not give becomes a
             // granted override, and a permission that the role gives and the user does not hold becomes a removed
             // override. The User role gives no permission. The Admin role gives each permission: the permissions of
-            // this release, and each permission that a user holds, such as one of the examples.
-            migrationBuilder.Sql("""
+            // this release, and each permission that a user holds. An app with other roles, or with other
+            // permissions, edits these lists before it runs this migration.
+            var adminPermissions = "'manage_users', 'manage_user_access', 'manage_tenant', 'manage_agents', "
+                + "'read_audit_log', 'read_audit_log_sensitive', 'read_users', 'read_agents'";
+            // example:start
+            // The examples add manage_workshops. An admin who lacks it keeps lacking it, even when no user holds it.
+            adminPermissions += ", 'manage_workshops'";
+            // example:end
+            migrationBuilder.Sql($$"""
                 WITH admin_permissions AS (
-                    SELECT unnest(ARRAY['manage_users', 'manage_user_access', 'manage_tenant', 'manage_agents',
-                                        'read_audit_log', 'read_audit_log_sensitive', 'read_users', 'read_agents'])
-                        AS permission
+                    SELECT unnest(ARRAY[{{adminPermissions}}]) AS permission
                     UNION
                     SELECT permission FROM user_permissions WHERE NOT is_deleted),
                 overrides AS (

@@ -913,3 +913,34 @@ test.describe('the badge of a date filter', () => {
     await expect(demo.at.editFilterNamed('Scheduled At (Local) | On | Nov 19, 2026, 10:15 AM')).toBeVisible()
   })
 })
+
+// Exclude means "not on" for On and "not between" for Between. Not before is on or after, which After already gives.
+test.describe('Exclude dates of a date filter', () => {
+  test('shows only for On and Between', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Updated Date')
+
+    await expect(demo.at.option('Updated Date', 'Exclude dates')).toBeVisible()
+    await demo.at.button('Updated Date', 'Before').click()
+    await expect(demo.at.option('Updated Date', 'Exclude dates')).toBeHidden()
+    await demo.at.button('Updated Date', 'After').click()
+    await expect(demo.at.option('Updated Date', 'Exclude dates')).toBeHidden()
+    await demo.chooseBetween('Updated Date')
+    await expect(demo.at.option('Updated Date', 'Exclude date range')).toBeVisible()
+  })
+
+  test('does not change a Before date when the user ticked it in On', { tag: '@zone' }, async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Updated Date')
+
+    await demo.select(demo.at.option('Updated Date', 'Exclude dates'))
+    await demo.at.button('Updated Date', 'Before').click()
+    await demo.typeDate('Updated Date', 'Date', '11192026')
+    await demo.at.addFilter('Updated Date').click()
+
+    await expect(demo.at.queryKit).toHaveText('updatedAt < "2026-11-19"')
+    await expect(demo.at.editFilterNamed('Updated Date | Before | Nov 19, 2026')).toBeVisible()
+  })
+})

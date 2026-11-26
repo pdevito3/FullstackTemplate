@@ -914,7 +914,6 @@ test.describe('the badge of a date filter', () => {
   })
 })
 
-// Exclude means "not on" for On and "not between" for Between. Not before is on or after, which After already gives.
 test.describe('Exclude dates of a date filter', () => {
   test('shows only for On and Between', async ({ page }) => {
     const demo = filterDemoPage(page)

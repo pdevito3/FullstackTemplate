@@ -6,8 +6,8 @@ import { isDateValue, isNumberValue, isTextValue, type DateValue, type Filter } 
 import { getOperatorLabel } from './operators'
 
 /**
- * The operator of a filter as the badge shows it. A date filter has no operator of its own: its mode tells what it
- * does, as the QueryKit string reads it.
+ * The operator of a filter as the badge shows it. A date filter shows its mode, not its operator, as the QueryKit
+ * string reads it.
  */
 export function formatFilterOperator(filter: Filter): string {
   return isDateValue(filter.value) ? dateModeLabel(filter.value) : getOperatorLabel(filter.operator)
@@ -56,7 +56,6 @@ function formatDates(value: DateValue): string {
     ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }
     : { month: 'short', day: 'numeric', year: 'numeric' }
 
-  // A user can be in another zone than the place, so a time of a place names its zone.
   const formatDate = (date: Date | CalendarDateTime) =>
     date instanceof Date
       ? formatInstant(date, value.timeZone ?? browserTimeZone(), { ...options, showZone: hasTime && Boolean(value.timeZone) })

@@ -212,11 +212,11 @@ public class OpenApiDocumentTests
             ("AgentForCreationDto.permissions items", Property("AgentForCreationDto", "permissions")?["items"],
                 Permission.ListNames()),
             ("AgentPermissionDto.permission", Property("AgentPermissionDto", "permission"), Permission.ListNames()),
-            ("UserDto.role", Property("UserDto", "role"), UserRole.ListNames()),
+            ("UserDto.roles items", Property("UserDto", "roles")?["items"], UserRole.ListNames()),
             ("UserDto.permissions items", Property("UserDto", "permissions")?["items"], Permission.ListNames()),
             ("UserForCreationDto.role", Property("UserForCreationDto", "role"), UserRole.ListNames()),
             ("InitiateUserAndTenantDto.role", Property("InitiateUserAndTenantDto", "role"), UserRole.ListNames()),
-            ("UpdateUserRoleDto.role", Property("UpdateUserRoleDto", "role"), UserRole.ListNames()),
+            ("UpdateUserRolesDto.roles items", Property("UpdateUserRolesDto", "roles")?["items"], UserRole.ListNames()),
             ("UserPermissionDto.permission", Property("UserPermissionDto", "permission"), Permission.ListNames()),
         ];
 

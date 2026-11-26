@@ -41,7 +41,7 @@ public class InviteLinkTests : TestBase
         claim.Headers.Location!.ToString().ShouldEndWith($"/users/{user.Id}");
         var me = await ReadAsync<UserDto>(await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(colleague)));
         me.Id.ShouldBe(user.Id);
-        me.Role.ShouldBe(UserRole.User().Value);
+        me.Roles.ShouldBe([UserRole.User().Value]);
         var tenants = await ReadAsync<List<TenantDto>>(await FactoryClient.GetRequestAsync(ApiRoutes.Tenants.GetList));
         tenants.ShouldHaveSingleItem().Id.ShouldBe(admin.TenantId);
         ClaimedTotal(UserRole.User().Value).ShouldBeGreaterThan(claimedBefore);

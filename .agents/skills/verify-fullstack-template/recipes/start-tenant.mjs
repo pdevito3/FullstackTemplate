@@ -51,7 +51,7 @@ export default async ({ page, step, capture, expect, login }) => {
   })
 
   const tenantName = `Verify ${Date.now()}`
-  const started = await step('start the tenant: POST /api/v1/users/initiate is 201 with the role Admin', async () => {
+  const started = await step('start the tenant: POST /api/v1/users/initiate is 201 with the roles [Admin]', async () => {
     await form.getByLabel('Tenant name', { exact: true }).fill(tenantName)
     const res = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/api/v1/users/initiate'))
     await form.getByRole('button', { name: 'Start a tenant' }).click()
@@ -59,7 +59,7 @@ export default async ({ page, step, capture, expect, login }) => {
     expect(r.status()).toBe(201)
     const body = await r.json()
     expect(body.user.identifier).toBe(claims.sub)
-    expect(body.user.role).toBe('Admin')
+    expect(body.user.roles).toEqual(['Admin'])
     return body
   })
 

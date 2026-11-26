@@ -8,5 +8,5 @@ public static class UserMetrics
     public static readonly Counter<long> RoleChanged = Telemetry.Meter.CreateCounter<long>(
         "app.users.role_changed",
         unit: "{user}",
-        description: "Number of role changes, tagged with the new role");
+        description: "Number of roles given to users, tagged with the role");
 }

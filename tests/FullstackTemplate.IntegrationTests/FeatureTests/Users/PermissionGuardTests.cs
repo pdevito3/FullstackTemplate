@@ -291,13 +291,12 @@ public class PermissionGuardTests : TestBase
         var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
 
         // Act
-        var act = () => scope.SendAsync(new UpdateUserRole.Command(target.Id, "Admin"));
+        var act = () => scope.SendAsync(new UpdateUserRoles.Command(target.Id, ["Admin"]));
 
         // Assert
         await act.ShouldThrowAsync<ForbiddenAccessException>();
-        var userInDb = await new TestingServiceScope().ExecuteDbContextAsync(db => db.Users
-            .SingleAsync(u => u.Id == target.Id));
-        userInDb.Role.Value.ShouldBe("User");
+        (await new TestingServiceScope().ExecuteDbContextAsync(db => db.UserRoles
+            .Where(r => r.UserId == target.Id).Select(r => r.Role.Value).ToListAsync())).ShouldBe(["User"]);
     }
 
     [Test]
@@ -308,7 +307,7 @@ public class PermissionGuardTests : TestBase
         var admin = await AddAdminAsync();
 
         // Act
-        var act = () => scope.SendAsync(new UpdateUserRole.Command(admin.Id, "User"));
+        var act = () => scope.SendAsync(new UpdateUserRoles.Command(admin.Id, ["User"]));
 
         // Assert
         await act.ShouldThrowAsync<ForbiddenAccessException>();

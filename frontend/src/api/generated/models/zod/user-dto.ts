@@ -4,6 +4,7 @@
 */
 
 import * as z from 'zod'
+import { userPermissionOverrideDtoSchema } from './user-permission-override-dto'
 
 export const userDtoSchema = z.object({
   id: z.string(),
@@ -14,8 +15,9 @@ export const userDtoSchema = z.object({
   identifier: z.string(),
   email: z.string(),
   username: z.string(),
-  role: z.enum(['Admin', 'User']),
+  roles: z.array(z.enum(['Admin', 'User'])).describe('The roles of the user. The user holds the union of their permissions, with the permissions that someone added or removed by hand.'),
   permissions: z.array(z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'manage_workshops', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users'])),
-  allowedActions: z.array(z.enum(['AddPermission', 'Delete', 'RemovePermission', 'Update', 'UpdateRole'])).describe('The actions that the caller can send for this user now. A button in the SPA reads this list.'),
+  permissionOverrides: z.array(userPermissionOverrideDtoSchema).describe('The permissions that someone added or removed by hand. IReadOnlyList&lt;string&gt; UserDto.Permissions already applies them.'),
+  allowedActions: z.array(z.enum(['AddPermission', 'Delete', 'RemovePermission', 'Update', 'UpdateRoles'])).describe('The actions that the caller can send for this user now. A button in the SPA reads this list.'),
   version: z.int().min(0).max(4294967295),
 })

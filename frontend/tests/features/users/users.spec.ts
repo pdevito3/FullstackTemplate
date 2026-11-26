@@ -16,8 +16,8 @@ test.describe('the users of a tenant', () => {
   test.use({ actor: as.user('Ana Admin') })
 
   test('lists the users of the tenant with their roles, and opens a user from the list', { tag: '@UM-1' }, async ({ page, api }) => {
-    const grace = aUser().named('Grace Hopper').seenByAdmin()
-    const alan = aUser().named('Alan Turing').inRole('Admin').seenByAdmin()
+    const grace = aUser().named('Grace Hopper').withAdded('read_users', 'manage_tenant').withRemoved('manage_users').seenByAdmin()
+    const alan = aUser().named('Alan Turing').inRoles('Admin').seenByAdmin()
     const { id } = grace.build()
     api.mock(usersApi.listReturns([grace, alan]), usersApi.oneIs(grace))
     const users = usersPage(page)
@@ -27,6 +27,8 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.cell('Grace Hopper', 'grace@example.com')).toBeVisible()
     await expect(users.at.cell('Grace Hopper', 'User')).toBeVisible()
     await expect(users.at.cell('Alan Turing', 'Admin')).toBeVisible()
+    await expect(users.at.cell('Grace Hopper', '2 added, 1 removed')).toBeVisible()
+    await expect(users.at.cell('Alan Turing', '—')).toBeVisible()
     await expect(users.at.usersNavLink).toHaveAttribute('aria-current', 'page')
 
     await users.openUser('Grace Hopper', id)
@@ -34,6 +36,8 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detail('grace@example.com')).toBeVisible()
     await expect(users.at.detail('grace')).toBeVisible()
     await expect(users.at.detail('User')).toBeVisible()
+    await expect(users.at.detail('Manage the tenant, See the users of the tenant')).toBeVisible()
+    await expect(users.at.detail('Manage users')).toBeVisible()
     await expect(users.at.usersNavLink).toHaveAttribute('aria-current', 'true')
   })
 
@@ -65,26 +69,26 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.row('Grace Hopper')).toBeVisible()
   })
 
-  test('changes the role that the caller picks, and moves the focus to the heading', { tag: '@UM-2' }, async ({ page, api }) => {
+  test('changes the roles that the caller picks, and moves the focus to the heading', { tag: '@UM-2' }, async ({ page, api }) => {
     const grace = aUser().named('Grace Hopper').seenByAdmin()
     const { id } = grace.build()
     api.mock(usersApi.oneIs(grace))
     const users = usersPage(page)
     await users.openDetail(id)
 
-    await users.pickRole('Grace Hopper', 'Admin')
+    await users.toggleRoles('Grace Hopper', 'Admin')
     await users.keepRole()
 
-    expect(api.all('put', usersPaths.role(id))).toHaveLength(0)
+    expect(api.all('put', usersPaths.roles(id))).toHaveLength(0)
     await expect(users.at.detail('User')).toBeVisible()
 
-    api.mock(usersApi.roleChanges(grace.inRole('Admin').savedAgain()))
-    await users.pickRole('Grace Hopper', 'Admin')
+    api.mock(usersApi.roleChanges(grace.inRoles('Admin', 'User').savedAgain()))
+    await users.toggleRoles('Grace Hopper', 'Admin')
     await users.confirmRole(id)
 
-    expect(api.last('put', usersPaths.role(id))?.body).toEqual({ role: 'Admin' })
+    expect(api.last('put', usersPaths.roles(id))?.body).toEqual({ roles: ['User', 'Admin'] })
     await expect(users.at.roleDialog).toBeHidden()
-    await expect(users.at.detail('Admin')).toBeVisible()
+    await expect(users.at.detail('Admin, User')).toBeVisible()
     await expect(users.at.detailHeading('Grace Hopper')).toBeFocused()
   })
 
@@ -99,11 +103,11 @@ test.describe('the users of a tenant', () => {
       usersApi.oneIs(grace.allowing('Delete')),
     )
 
-    await users.pickRole('Grace Hopper', 'Admin')
+    await users.toggleRoles('Grace Hopper', 'Admin')
     await users.confirmRoleRefused(id)
 
     await expect(users.at.toast('You cannot manage the access of users. Ask a tenant admin for access.')).toBeVisible()
-    await expect(users.at.actionButton('Grace Hopper', 'Change role')).toHaveCount(0)
+    await expect(users.at.actionButton('Grace Hopper', 'Change roles')).toHaveCount(0)
     await expect(users.at.actionButton('Grace Hopper', 'Delete')).toBeVisible()
     await expect(users.at.detail('User')).toBeVisible()
     await expect(users.at.detailHeading('Grace Hopper')).toBeFocused()
@@ -117,12 +121,12 @@ test.describe('the users of a tenant', () => {
     await users.openDetail(id)
     api.mock(usersApi.roleChangeFails(id, aProblem()), usersApi.oneFails(id, aProblem()))
 
-    await users.pickRole('Grace Hopper', 'Admin')
+    await users.toggleRoles('Grace Hopper', 'Admin')
     await users.confirmRoleRefusedAndFailToReadAgain(id)
 
     await expect(users.at.toast('The server could not complete the request. Try again in a moment.')).toBeVisible()
     await expect(users.at.detailHeading('Grace Hopper')).toBeVisible()
-    await expect(users.at.actionButton('Grace Hopper', 'Change role')).toBeVisible()
+    await expect(users.at.actionButton('Grace Hopper', 'Change roles')).toBeVisible()
     await expect(users.at.loadError('The latest user did not load.')).toBeVisible()
     await expect(users.at.loadError('The user did not load.')).toHaveCount(0)
   })
@@ -169,15 +173,15 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detailHeading('Grace Hopper')).toBeFocused()
   })
 
-  test('the only manager keeps the role, and the toast says to make another user an admin first', { tag: ['@UM-2', '@UM-4'] }, async ({ page, api }) => {
+  test('the only manager keeps the Admin role, and the toast says to make another user an admin first', { tag: ['@UM-2', '@UM-4'] }, async ({ page, api }) => {
     const lastManager = 'This user is the only user who can manage the tenant. Make another user an admin first.'
-    const ana = aUser().named('Ana Admin').inRole('Admin').seenByAdmin()
+    const ana = aUser().named('Ana Admin').inRoles('Admin').seenByAdmin()
     const { id } = ana.build()
-    api.mock(usersApi.oneIs(ana), usersApi.roleChangeFails(id, aProblem().invalid({ role: [lastManager] }).saying(lastManager)))
+    api.mock(usersApi.oneIs(ana), usersApi.roleChangeFails(id, aProblem().invalid({ roles: [lastManager] }).saying(lastManager)))
     const users = usersPage(page)
     await users.openDetail(id)
 
-    await users.pickRole('Ana Admin', 'User')
+    await users.toggleRoles('Ana Admin', 'Admin')
     await users.confirmRoleRefused(id)
 
     await expect(users.at.toast(lastManager)).toBeVisible()
@@ -187,7 +191,7 @@ test.describe('the users of a tenant', () => {
 
   test('the only manager stays on the page after a delete, and the toast says to make another user an admin first', { tag: ['@UM-3', '@UM-4'] }, async ({ page, api }) => {
     const lastManager = 'This user is the only user who can manage the tenant. Make another user an admin first.'
-    const ana = aUser().named('Ana Admin').inRole('Admin').seenByAdmin()
+    const ana = aUser().named('Ana Admin').inRoles('Admin').seenByAdmin()
     const { id } = ana.build()
     api.mock(usersApi.oneIs(ana), usersApi.deleteFails(id, aProblem().invalid({ role: [lastManager] }).saying(lastManager)))
     const users = usersPage(page)
@@ -201,19 +205,19 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detailHeading('Ana Admin')).toBeFocused()
   })
 
-  test('shows Change role and Delete to an admin, and no button for an action that no page sends', { tag: ['@UM-2', '@UM-3'] }, async ({ page, api }) => {
+  test('shows Change roles and Delete to an admin, and no button for an action that no page sends', { tag: ['@UM-2', '@UM-3'] }, async ({ page, api }) => {
     const grace = aUser().named('Grace Hopper').seenByAdmin()
     api.mock(usersApi.oneIs(grace))
     const users = usersPage(page)
 
     await users.openDetail(grace.build().id)
 
-    await expect(users.at.actionButton('Grace Hopper', 'Change role')).toBeVisible()
+    await expect(users.at.actionButton('Grace Hopper', 'Change roles')).toBeVisible()
     await expect(users.at.actionButton('Grace Hopper', 'Delete')).toBeVisible()
     expect(await users.at.actionButtons('Grace Hopper').count()).toBe(2)
   })
 
-  test('shows no Change role to a caller who cannot change the role', { tag: '@UM-2' }, async ({ page, api }) => {
+  test('shows no Change roles to a caller who cannot change the roles', { tag: '@UM-2' }, async ({ page, api }) => {
     const grace = aUser().named('Grace Hopper').allowing('Delete')
     api.mock(usersApi.oneIs(grace))
     const users = usersPage(page)
@@ -221,17 +225,17 @@ test.describe('the users of a tenant', () => {
     await users.openDetail(grace.build().id)
 
     await expect(users.at.actionButton('Grace Hopper', 'Delete')).toBeVisible()
-    await expect(users.at.actionButton('Grace Hopper', 'Change role')).toHaveCount(0)
+    await expect(users.at.actionButton('Grace Hopper', 'Change roles')).toHaveCount(0)
   })
 
   test('shows no Delete to a caller who cannot remove the user', { tag: '@UM-3' }, async ({ page, api }) => {
-    const grace = aUser().named('Grace Hopper').allowing('UpdateRole')
+    const grace = aUser().named('Grace Hopper').allowing('UpdateRoles')
     api.mock(usersApi.oneIs(grace))
     const users = usersPage(page)
 
     await users.openDetail(grace.build().id)
 
-    await expect(users.at.actionButton('Grace Hopper', 'Change role')).toBeVisible()
+    await expect(users.at.actionButton('Grace Hopper', 'Change roles')).toBeVisible()
     await expect(users.at.actionButton('Grace Hopper', 'Delete')).toHaveCount(0)
   })
 
@@ -372,13 +376,14 @@ const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythe
 test.describe('the users pages on a 320 px phone', () => {
   test.use({ actor: as.user('Ana Admin'), viewport: { width: 320, height: 640 } })
 
-  test('the list shows the name, the email, and the role of each row with no sideways scroll', { tag: '@UM-1' }, async ({ page, api }) => {
-    api.mock(usersApi.listReturns([aUser().named('Grace Hopper'), aUser().named(`${longName} Smith`)]))
+  test('the list shows the name, the email, and the roles of each row with no sideways scroll', { tag: '@UM-1' }, async ({ page, api }) => {
+    api.mock(usersApi.listReturns([aUser().named('Grace Hopper').withRemoved('manage_users'), aUser().named(`${longName} Smith`)]))
     const users = usersPage(page)
 
     await users.openList()
 
     await expect(users.at.row('Grace Hopper')).toContainText('grace@example.com')
+    await expect(users.at.row('Grace Hopper')).toContainText('1 removed')
     expect(await users.sidewaysOverflowOfTable()).toBe(0)
     expect(await users.pageOverflow()).toBe(0)
   })

@@ -5,6 +5,7 @@ using System.Net;
 using FullstackTemplate.Server.Domain.Agents.Features;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,8 @@ using Telemetry = FullstackTemplate.Server.Resources.Telemetry;
 [NotInParallel]
 public class FeatureTelemetryTests : TestBase
 {
-    private const string RoleChangedTemplate = "Changed the role of user {UserId} to {Role}";
+    private const string RoleChangedTemplate = "Gave role {Role} to user {UserId}";
+    private const string RoleTakenTemplate = "Took role {Role} from user {UserId}";
 
     [Test]
     public async Task a_role_change_tags_the_user_and_the_role_and_logs_the_change()
@@ -27,20 +29,25 @@ public class FeatureTelemetryTests : TestBase
         FactoryClient.SignInAsAppUser(admin.Identifier);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(member.Id), new UpdateUserRolesDto { Roles = ["Admin"] });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var slice = UpdateUserRoleSpanOf(admin);
+        var slice = UpdateUserRolesSpanOf(admin);
         slice.GetTagItem("app.user_id").ShouldBe(member.Id);
-        slice.GetTagItem("app.user.role").ShouldBe("Admin");
+        slice.GetTagItem("app.user.roles").ShouldBe("Admin");
 
         var log = TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
             .Where(e => e.MessageTemplate.Text == RoleChangedTemplate)
             .ShouldHaveSingleItem();
         Scalar(log, "UserId").ShouldBe(member.Id);
         Scalar(log, "Role").ShouldBe("Admin");
-        Scalar(log, "CallSite").ShouldBeOfType<string>().ShouldStartWith("UpdateUserRole.cs:Handle@");
+        Scalar(log, "CallSite").ShouldBeOfType<string>().ShouldStartWith("UpdateUserRoles.cs:Handle@");
+        var taken = TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
+            .Where(e => e.MessageTemplate.Text == RoleTakenTemplate)
+            .ShouldHaveSingleItem();
+        Scalar(taken, "UserId").ShouldBe(member.Id);
+        Scalar(taken, "Role").ShouldBe("User");
     }
 
     [Test]
@@ -51,11 +58,11 @@ public class FeatureTelemetryTests : TestBase
         FactoryClient.SignInAsAppUser(member.Identifier);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(admin.Id), new { role = "User" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(admin.Id), new UpdateUserRolesDto { Roles = ["User"] });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        var slice = UpdateUserRoleSpanOf(member);
+        var slice = UpdateUserRolesSpanOf(member);
         slice.GetTagItem("app.user_id").ShouldBe(admin.Id);
         TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
             .ShouldNotContain(e => e.MessageTemplate.Text == RoleChangedTemplate);
@@ -105,7 +112,7 @@ public class FeatureTelemetryTests : TestBase
         var before = RoleChangedTotal("Admin");
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(member.Id), new UpdateUserRolesDto { Roles = ["Admin"] });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -121,11 +128,11 @@ public class FeatureTelemetryTests : TestBase
         var before = RoleChangedTotal("User");
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "User" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(member.Id), new UpdateUserRolesDto { Roles = ["User"] });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var slice = UpdateUserRoleSpanOf(admin);
+        var slice = UpdateUserRolesSpanOf(admin);
         TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
             .ShouldNotContain(e => e.MessageTemplate.Text == RoleChangedTemplate);
         RoleChangedTotal("User").ShouldBe(before);
@@ -140,11 +147,11 @@ public class FeatureTelemetryTests : TestBase
         TestingWebApplicationFactory.Instance.FailingSaves.Arm(member.Id);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(member.Id), new UpdateUserRolesDto { Roles = ["Admin"] });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        var slice = UpdateUserRoleSpanOf(admin);
+        var slice = UpdateUserRolesSpanOf(admin);
         TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
             .ShouldNotContain(e => e.MessageTemplate.Text == RoleChangedTemplate);
     }
@@ -219,7 +226,7 @@ public class FeatureTelemetryTests : TestBase
         return (users[0], users[1]);
     }
 
-    private Activity UpdateUserRoleSpanOf(User caller) => SpanOf("UpdateUserRole.Command", caller);
+    private Activity UpdateUserRolesSpanOf(User caller) => SpanOf("UpdateUserRoles.Command", caller);
 
     private Activity SpanOf(string feature, User caller) => ExportedSpans()
         .Where(a => a.DisplayName == feature && a.GetTagItem("app.caller.subject") as string == caller.Identifier)

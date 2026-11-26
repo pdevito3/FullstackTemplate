@@ -92,7 +92,7 @@ public class CreateUserTests
         var user = User.Create(userForCreation);
 
         // Assert
-        user.Role.Value.ShouldBe("Admin");
+        user.CurrentRoles().ShouldBe([UserRole.Admin()]);
         user.UserPermissions.Select(p => p.Permission).ShouldBe(Permission.GetAll(), ignoreOrder: true);
     }
 
@@ -108,7 +108,7 @@ public class CreateUserTests
         var user = User.Create(userForCreation);
 
         // Assert
-        user.Role.Value.ShouldBe("User");
+        user.CurrentRoles().ShouldBe([UserRole.User()]);
         user.UserPermissions.ShouldBeEmpty();
     }
 

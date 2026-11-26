@@ -13,8 +13,9 @@ export const member: UserDto = {
   identifier: 'bob',
   email: 'bob@example.com',
   username: 'bob',
-  role: 'User',
+  roles: ['User'],
   permissions: [],
+  permissionOverrides: [],
   allowedActions: [],
   version: 1,
 }

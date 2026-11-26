@@ -158,19 +158,19 @@ A command, or a query that reads data that needs a permission, checks a permissi
 | Permission | Handlers that require it |
 |------------|--------------------------|
 | `manage_users` | `AddUser`, `UpdateUser` for another user, `DeleteUser` |
-| `manage_user_access` | `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission` |
+| `manage_user_access` | `UpdateUserRoles`, `AddUserPermission`, `RemoveUserPermission` |
 | `manage_tenant` | `UpdateTenant`, `DeleteTenant` |
 | `manage_agents` | `AddAgent`, `DeleteAgent`, `AddAgentPermission`, `RemoveAgentPermission` |
 | `read_audit_log` | `GetAuditEntryPage` |
 | `read_audit_log_sensitive` | None. `GetAuditEntryPage` shows the sensitive values of the audit log only to a caller with it. |
-| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for another identifier that no user has. `UpdateUser`, `UpdateUserRole`, `AddUserPermission`, and `RemoveUserPermission` for another user, because they return the user. |
+| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for another identifier that no user has. `UpdateUser`, `UpdateUserRoles`, `AddUserPermission`, and `RemoveUserPermission` for another user, because they return the user. |
 | `read_agents` | `GetAgentList`, `GetAgent`. `AddAgentPermission` and `RemoveAgentPermission`, because they return the agent. |
 
 <!-- example:start -->
 The example permission `manage_workshops` is required by `AddVenue`, `AddWorkshop`, `UpdateWorkshop`, `ScheduleWorkshop`, `CancelWorkshop`, and `CompleteWorkshop`. Its migration gives it to the admins that exist: [20261029095936_AddWorkshopsExample.cs](../FullstackTemplate.Server/Databases/Migrations/Examples/20261029095936_AddWorkshopsExample.cs). After the load, the last four commands also check the row: the caller must be the organizer of the workshop, the member who added it, or have `manage_tenant`. A delegated agent is not a member, so it is never the organizer. It changes a workshop only with `manage_tenant`. Thus the example adds no second permission.
 <!-- example:end -->
 
-The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.
+A user has any number of roles. A role is a chunk of permissions: `UserRole.GetPermissions` gives each permission to `Admin` and no permission to `User`. `AddUserPermission` and `RemoveUserPermission` write an override, a permission that the user holds or does not hold whatever their roles, and the last one for a permission wins. The user holds the union of the permissions of their roles, with the permissions that an override adds and without the ones that it removes. `User` computes this set on each change of the roles or the overrides and writes it as the rows of `user_permissions`, and the rows decide. A change of the roles keeps the overrides. The guard does not read the roles.
 
 A caller can give or take away a permission only if they have it. Thus a user with only `manage_users` cannot add or delete an `Admin`, and a user with only `manage_user_access` cannot give or take away `manage_tenant` or change the role of an `Admin`. As a result, a user with only some of the permissions cannot take access away from an admin. `manage_tenant` gives both the rename and the delete of the tenant, so give it only to a user who can delete the tenant.
 
@@ -179,7 +179,7 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 | Caller | Result of a permission check |
 |--------|------------------------------|
 | A user with a user record | Passes if the user has the permission |
-| The user that the command is about, for `Caller.RequireSelfOr` or the `unlessOwnRecord` permissions of `UserAction` | Passes. `UserAction.Update` needs `manage_users` and `read_users` only for another user, so that a user can update their own record. `UpdateRole`, `AddPermission`, and `RemovePermission` need `read_users` only for another user. The update DTO has no role, so a user cannot give themselves access. `GetUser` and `GetUserByIdentifier` use the same exception, so that a user can read their own record. |
+| The user that the command is about, for `Caller.RequireSelfOr` or the `unlessOwnRecord` permissions of `UserAction` | Passes. `UserAction.Update` needs `manage_users` and `read_users` only for another user, so that a user can update their own record. `UpdateRoles`, `AddPermission`, and `RemovePermission` need `read_users` only for another user. The update DTO has no role, so a user cannot give themselves access. `GetUser` and `GetUserByIdentifier` use the same exception, so that a user can read their own record. |
 | A delegated agent | Passes if both its user and its grant have the permission. It does not get the exception of `Caller.RequireSelfOr`. |
 | A machine agent | Passes if its grant has the permission |
 | A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
@@ -197,14 +197,15 @@ The guard reads the user and their permission rows from the database in each han
 
 ### Add a permission
 
-`scripts/new-feature.cs` does steps 1, 2, and 6 for the permission of a new entity. For another permission:
+`scripts/new-feature.cs` does steps 1, 2, 6, and 7 for the permission of a new entity. For another permission:
 
 1. Add a constant to `Permission.Names` in `Permission.cs`, a value of `PermissionEnum` with that constant as its name, and a static method that returns it, for example `Permission.ManageOrders()`. Use a snake case name, for example `manage_orders`.
-2. Add an EF Core migration that gives the permission to the admins and the tenant managers that exist (see [Migrations](#migrations)). Call `migrationBuilder.GrantPermissionToManagers("manage_orders")` in `Up`. A tenant manager holds every permission, so a grant to the Admin role only can leave a tenant with no manager (UM-4). Write the name as a string, so that the migration does not change when `Permission` changes. New admins get the permission from the role defaults. If the users with another permission also need the new one, call `GrantPermissionToHoldersOf` too, as `GrantReadPermissions` does.
+2. Add an EF Core migration that gives the permission to the admins and the tenant managers that exist (see [Migrations](#migrations)). Call `migrationBuilder.GrantPermissionToManagers("manage_orders")` in `Up`. A tenant manager holds every permission, so a grant to the Admin role only can leave a tenant with no manager (UM-4). Write the name as a string, so that the migration does not change when `Permission` changes. New admins get the permission from the Admin role. If the users with another permission also need the new one, call `GrantPermissionToHoldersOf` too, as `GrantReadPermissions` does.
 3. Call `permissionGuard.RequireAsync(Permission.ManageOrders(), cancellationToken)` first in each handler that needs it.
 4. Declare the 403 on each HTTP endpoint of these handlers. Give each MCP tool of these handlers `[ToolAccess(Permission.Names.ManageOrders)]` (see [endpoints.md](backend/endpoints.md#tool-access)).
 5. Add an integration test for a user with the permission and a user without it.
 6. Add the name of the permission to `AllNames` in `PermissionTests`. The list names all the permissions, so `list_names_returns_all_permission_names` and `get_all_returns_all_permissions` fail until you add it.
+7. Add the words of the permission to `PERMISSION_LABELS` in `frontend/src/domain/users/components/permission-overrides.ts`, then update the API contract (see the `api-contract` skill). The SPA does not build until the two have the same permissions.
 
 To remove a permission, remove its value and add a migration that calls `DeletePermission`. A row with a name that `Permission` does not know stops each load of its user.
 

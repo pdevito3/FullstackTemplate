@@ -27,7 +27,7 @@ public class DeleteUserTests
         // Arrange
         var user = User.Create(new FakeUserForCreation().Generate() with { Role = UserRole.User().Value });
         var roleChange = ((ManagerDecision.Kept)TenantManagers.Decide(
-            new ManagerCase(user, new ManagerChange.NewRole(UserRole.User()), []))).Proof;
+            new ManagerCase(user, new ManagerChange.NewRoles(new HashSet<UserRole> { UserRole.User() }), []))).Proof;
 
         // Act
         var act = () => user.Delete(roleChange);

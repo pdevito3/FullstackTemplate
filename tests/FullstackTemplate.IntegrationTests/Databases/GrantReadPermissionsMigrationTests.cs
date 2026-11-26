@@ -17,8 +17,8 @@ using Shouldly;
 /// <summary>
 /// The data migration runs on a database of its own, from the migration before it, with users that existed before
 /// read_users and read_agents: admins, users that were given a manage permission, and agents whose grant has a manage
-/// permission. It also covers
-/// <see cref="PermissionMigrationExtensions.GrantPermissionToHoldersOf"/> on the latest schema.
+/// permission. It also covers <see cref="PermissionMigrationExtensions.GrantPermissionToHoldersOf"/> on the schema of
+/// that migration. <see cref="GrantPermissionMigrationTests"/> covers the latest schema.
 /// </summary>
 public sealed class GrantReadPermissionsMigrationTests : IAsyncDisposable
 {

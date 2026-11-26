@@ -2009,13 +2009,13 @@
         }
       }
     },
-    "/api/v1/users/{id}/role": {
+    "/api/v1/users/{id}/roles": {
       "put": {
         "tags": [
           "Users"
         ],
-        "summary": "Updates a User's role. This resets all permissions to the new role's defaults.",
-        "operationId": "UpdateUserRole",
+        "summary": "Gives a User exactly these roles. The User holds the union of their permissions. A permission that someone\nadded to or removed from the User by hand stays added or removed.",
+        "operationId": "UpdateUserRoles",
         "parameters": [
           {
             "name": "id",
@@ -2030,7 +2030,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateUserRoleDto"
+                "$ref": "#/components/schemas/UpdateUserRolesDto"
               }
             }
           },
@@ -3990,18 +3990,22 @@
           }
         }
       },
-      "UpdateUserRoleDto": {
+      "UpdateUserRolesDto": {
         "required": [
-          "role"
+          "roles"
         ],
         "type": "object",
         "properties": {
-          "role": {
-            "enum": [
-              "Admin",
-              "User"
-            ],
-            "type": "string"
+          "roles": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Admin",
+                "User"
+              ],
+              "type": "string"
+            },
+            "description": "Every role that the user gets. The user holds the union of their permissions. A permission that someone added to\nor removed from the user by hand stays added or removed."
           }
         }
       },
@@ -4035,8 +4039,9 @@
           "identifier",
           "email",
           "username",
-          "role",
+          "roles",
           "permissions",
+          "permissionOverrides",
           "allowedActions",
           "version"
         ],
@@ -4066,12 +4071,16 @@
           "username": {
             "type": "string"
           },
-          "role": {
-            "enum": [
-              "Admin",
-              "User"
-            ],
-            "type": "string"
+          "roles": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Admin",
+                "User"
+              ],
+              "type": "string"
+            },
+            "description": "The roles of the user. The user holds the union of their permissions, with the permissions that someone added or removed by hand."
           },
           "permissions": {
             "type": "array",
@@ -4090,6 +4099,13 @@
               "type": "string"
             }
           },
+          "permissionOverrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserPermissionOverrideDto"
+            },
+            "description": "The permissions that someone added or removed by hand. IReadOnlyList&lt;string&gt; UserDto.Permissions already applies them."
+          },
           "allowedActions": {
             "type": "array",
             "items": {
@@ -4098,7 +4114,7 @@
                 "Delete",
                 "RemovePermission",
                 "Update",
-                "UpdateRole"
+                "UpdateRoles"
               ],
               "type": "string"
             },
@@ -4213,6 +4229,34 @@
             "type": "string"
           }
         }
+      },
+      "UserPermissionOverrideDto": {
+        "required": [
+          "permission",
+          "granted"
+        ],
+        "type": "object",
+        "properties": {
+          "permission": {
+            "enum": [
+              "manage_agents",
+              "manage_tenant",
+              "manage_user_access",
+              "manage_users",
+              "manage_workshops",
+              "read_agents",
+              "read_audit_log",
+              "read_audit_log_sensitive",
+              "read_users"
+            ],
+            "type": "string"
+          },
+          "granted": {
+            "type": "boolean",
+            "description": "True when the user holds the permission whatever their roles, false when they never hold it."
+          }
+        },
+        "description": "A permission that someone added to the user or removed from the user by hand, on top of their roles."
       },
       "ValidationProblemDetails": {
         "required": [

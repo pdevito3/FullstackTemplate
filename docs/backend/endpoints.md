@@ -100,7 +100,7 @@ A create endpoint returns `TypedResults.CreatedAtRoute(result, "GetUser", new { 
 | Create | POST | `/{entities}` | 201, with `CreatedAtRoute` |
 | Update | PUT | `/{entities}/{id}` | 200 |
 | Delete | DELETE | `/{entities}/{id}` | 204 |
-| Business action | POST or PUT | `/{entities}/{id}/action`, for example `/users/{id}/role` | 200 |
+| Business action | POST or PUT | `/{entities}/{id}/action`, for example `/users/{id}/roles` | 200 |
 
 ### Request validation
 

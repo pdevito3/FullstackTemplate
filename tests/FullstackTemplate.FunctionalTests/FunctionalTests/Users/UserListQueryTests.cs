@@ -38,7 +38,7 @@ public class UserListQueryTests : TestBase
         Id == "{id}"
         """)]
     [Arguments("""
-        Role == "{role}"
+        Roles == "{role}"
         """)]
     [Arguments("""
         Permissions ^$ "{permission}"
@@ -57,7 +57,7 @@ public class UserListQueryTests : TestBase
             .Replace("{username}", target.Username)
             .Replace("{identifier}", target.Identifier)
             .Replace("{id}", target.Id.ToString())
-            .Replace("{role}", target.Role.Value)
+            .Replace("{role}", UserRole.Admin().Value)
             .Replace("{permission}", Permission.ManageTenant().Value);
 
         // Act
@@ -76,7 +76,6 @@ public class UserListQueryTests : TestBase
     [Arguments("FullName", true)]
     [Arguments("Email desc", false)]
     [Arguments("Username", true)]
-    [Arguments("Role", true)]
     public async Task sort_on_a_dto_field_returns_the_users_in_order(string sortOrder, bool targetFirst)
     {
         // Arrange
@@ -124,12 +123,12 @@ public class UserListQueryTests : TestBase
         users.Select(u => u.Id).ShouldBe([first.Id, second.Id, third.Id]);
     }
 
-    // The users have the same role, so only the tie-break on Id puts each user on exactly one page.
+    // The users have the same tenant, so only the tie-break on Id puts each user on exactly one page.
     // Each insert is separate and in the reverse of the Id order, so the order of the rows on disk cannot give the correct result.
     // A sort on the names uses the index on the tenant and the names, which also has the Id, so it cannot show a missing tie-break.
     [Test]
-    [Arguments("Role")]
-    [Arguments("Role desc")]
+    [Arguments("TenantId")]
+    [Arguments("TenantId desc")]
     public async Task users_with_the_same_sort_value_each_show_on_one_page_in_id_order(string sortOrder)
     {
         // Arrange

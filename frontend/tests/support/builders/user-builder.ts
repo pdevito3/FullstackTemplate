@@ -2,13 +2,14 @@ import type { InitiateUserAndTenantResponseDto } from '@/api/generated/models/ty
 import type {
   UserDto,
   UserDtoAllowedActionsEnumKey,
-  UserDtoRoleEnumKey,
+  UserDtoRolesEnumKey,
 } from '@/api/generated/models/types/user-dto'
+import type { UserPermissionOverrideDto } from '@/api/generated/models/types/user-permission-override-dto'
 
 let seed = 0
 const next = () => ++seed
 
-const ADMIN_ACTIONS: UserDtoAllowedActionsEnumKey[] = ['Update', 'UpdateRole', 'AddPermission', 'RemovePermission', 'Delete']
+const ADMIN_ACTIONS: UserDtoAllowedActionsEnumKey[] = ['Update', 'UpdateRoles', 'AddPermission', 'RemovePermission', 'Delete']
 
 class UserBuilder {
   private readonly user: UserDto
@@ -27,8 +28,9 @@ class UserBuilder {
       identifier: '1',
       email: 'bob@example.com',
       username: 'bob',
-      role: 'User',
+      roles: ['User'],
       permissions: [],
+      permissionOverrides: [],
       allowedActions: [],
       version: 1,
     })
@@ -50,8 +52,24 @@ class UserBuilder {
     return this.with({ firstName, lastName: rest.join(' '), fullName, username, email: `${username}@example.com` })
   }
 
-  inRole(role: UserDtoRoleEnumKey) {
-    return this.with({ role })
+  inRoles(...roles: UserDtoRolesEnumKey[]) {
+    return this.with({ roles })
+  }
+
+  /** Permissions that someone added by hand, on top of the roles. */
+  withAdded(...permissions: UserPermissionOverrideDto['permission'][]) {
+    return this.withOverrides(permissions, true)
+  }
+
+  /** Permissions that someone removed by hand, whatever the roles give. */
+  withRemoved(...permissions: UserPermissionOverrideDto['permission'][]) {
+    return this.withOverrides(permissions, false)
+  }
+
+  private withOverrides(permissions: UserPermissionOverrideDto['permission'][], granted: boolean) {
+    return this.with({
+      permissionOverrides: [...this.user.permissionOverrides, ...permissions.map((permission) => ({ permission, granted }))],
+    })
   }
 
   seenByAdmin() {
@@ -74,7 +92,7 @@ class UserBuilder {
 export const aUser = () => UserBuilder.create()
 
 export const aStartedTenant = (name: string, user = aUser()): InitiateUserAndTenantResponseDto => {
-  const admin = { ...user.build(), role: 'Admin' as const }
+  const admin = { ...user.build(), roles: ['Admin' as const] }
 
   return { tenant: { id: admin.tenantId, name, allowedActions: ['InviteUser'], version: 1 }, user: admin }
 }

@@ -22,19 +22,37 @@ public partial class UserRole : ValueObject, IFixedNames
         }
     }
 
-    public UserRole(string value)
+    public UserRole(string value) : this(value, RequestField) { }
+
+    private UserRole(string value, string requestField)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ValidationException(RequestField, "Role cannot be null or empty.");
+            throw new ValidationException(requestField, "Role cannot be null or empty.");
+        if (!UserRoleEnum.TryFromName(value, true, out var parsed))
+            throw new ValidationException(requestField, $"Invalid role: {value}");
 
-        Value = value;
+        _role = parsed;
     }
 
-    public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
+    /// <summary>
+    /// The chunk of permissions that the role gives. A user holds the union of the permissions of each of their
+    /// roles, with the permissions that someone added to the user and without the ones that someone removed.
+    /// </summary>
+    public Permission[] GetPermissions() => _role.GetPermissions();
+
+    /// <summary>The union of the permissions of the roles.</summary>
+    public static IReadOnlySet<Permission> PermissionsOf(IEnumerable<UserRole> roles)
+        => roles.SelectMany(r => r.GetPermissions()).ToHashSet();
 
     public override string ToString() => Value;
 
     public static UserRole Of(string value) => new(value);
+
+    /// <summary>
+    /// The role of a request field with another name, for example <c>roles[1]</c> for an item of a list. The field is
+    /// the key of the error when the name is not valid.
+    /// </summary>
+    public static UserRole Of(string value, string requestField) => new(value, requestField);
     public static implicit operator string(UserRole value) => value.Value;
     public static List<string> ListNames() => UserRoleEnum.List.Select(x => x.Name).ToList();
 
@@ -49,16 +67,16 @@ public partial class UserRole : ValueObject, IFixedNames
         public static readonly UserRoleEnum Admin = new AdminType();
         public static readonly UserRoleEnum User = new UserType();
 
-        public abstract Permission[] GetDefaultPermissions();
+        public abstract Permission[] GetPermissions();
 
         private sealed class AdminType() : UserRoleEnum("Admin", 0)
         {
-            public override Permission[] GetDefaultPermissions() => [.. Permission.GetAll()];
+            public override Permission[] GetPermissions() => [.. Permission.GetAll()];
         }
 
         private sealed class UserType() : UserRoleEnum("User", 1)
         {
-            public override Permission[] GetDefaultPermissions() => [];
+            public override Permission[] GetPermissions() => [];
         }
     }
 }

@@ -94,7 +94,8 @@ public class AuditCaptureTests : TestBase
         // Assert
         var deleted = (await EntriesOfRootAsync(user.Id)).Where(e => e.Kind == AuditEntryKind.Deleted).ToList();
         deleted.Select(e => e.EntityId)
-            .ShouldBe(user.UserPermissions.Select(p => p.Id).Append(user.Id), ignoreOrder: true);
+            .ShouldBe(user.UserPermissions.Select(p => p.Id).Concat(user.UserRoles.Select(r => r.Id)).Append(user.Id),
+                ignoreOrder: true);
         deleted.Select(e => e.RecordId).Distinct().ShouldHaveSingleItem();
         deleted.Single(e => e.EntityId == user.Id).Data.ShouldContain(user.Identifier);
     }
@@ -118,7 +119,8 @@ public class AuditCaptureTests : TestBase
         {
             var deleted = (await EntriesOfRootAsync(user.Id)).Where(e => e.Kind == AuditEntryKind.Deleted).ToList();
             deleted.Select(e => e.EntityId)
-                .ShouldBe(user.UserPermissions.Select(p => p.Id).Append(user.Id), ignoreOrder: true);
+                .ShouldBe(user.UserPermissions.Select(p => p.Id).Concat(user.UserRoles.Select(r => r.Id)).Append(user.Id),
+                ignoreOrder: true);
             deleted.ShouldAllBe(e => e.TenantId == tenant.Id && e.RequestName == "DeleteTenant.Command");
         }
     }
@@ -163,7 +165,7 @@ public class AuditCaptureTests : TestBase
         var scope = new TestingServiceScope();
         await scope.StartGraph(out _).AddUser(out var user, u => u.Role = UserRole.Admin().Value).BuildAsync();
         var db = scope.GetService<AppDbContext>();
-        var loaded = await db.Users.Include(u => u.UserPermissions).SingleAsync(u => u.Id == user.Id);
+        var loaded = await db.Users.Include(u => u.UserRoles).Include(u => u.PermissionOverrides).Include(u => u.UserPermissions).SingleAsync(u => u.Id == user.Id);
         var removed = loaded.UserPermissions.First();
 
         // Act
@@ -175,7 +177,10 @@ public class AuditCaptureTests : TestBase
         var deletion = entries.Single(e => e.Kind == AuditEntryKind.Deleted);
         (deletion.EntityType, deletion.EntityId, deletion.RootType, deletion.TenantId)
             .ShouldBe((nameof(UserPermission), removed.Id, nameof(User), user.TenantId));
-        entries.Where(e => e.RecordId == deletion.RecordId).ShouldHaveSingleItem();
+        // The removal records an override, and the touch of the user records no entry
+        entries.Where(e => e.RecordId == deletion.RecordId).Select(e => (e.Kind, e.EntityType)).ShouldBe(
+            [(AuditEntryKind.Deleted, nameof(UserPermission)), (AuditEntryKind.Created, nameof(UserPermissionOverride))],
+            ignoreOrder: true);
         deletion.Data.ShouldContain($"""
             "{removed.Permission.Value}"
             """);

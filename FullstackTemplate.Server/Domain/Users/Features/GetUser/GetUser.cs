@@ -23,6 +23,8 @@ public static class GetUser
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.get_by_id")
+                .Include(u => u.UserRoles)
+                .Include(u => u.PermissionOverrides)
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
             return user.ToUserDto(caller);

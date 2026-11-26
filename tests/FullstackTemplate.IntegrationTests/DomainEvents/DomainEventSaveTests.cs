@@ -50,8 +50,8 @@ public class DomainEventSaveTests : TestBase
         var failures = 1;
         await using var services = TestFixture.BuildServiceProvider(s => s.AddTestHandler<TenantUpdated>(async (_, db, ct) =>
         {
-            var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
-            user.ChangeRoleIgnoringLastManager(UserRole.Admin());
+            var user = await db.Users.Include(u => u.UserRoles).Include(u => u.PermissionOverrides).Include(u => u.UserPermissions).SingleAsync(u => u.Id == userId, ct);
+            user.ChangeRolesIgnoringLastManager(UserRole.Admin());
             if (failures-- > 0)
                 throw new InvalidOperationException("The handler failed.");
         }));
@@ -70,7 +70,8 @@ public class DomainEventSaveTests : TestBase
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldBe("The handler failed.");
         (await ReadAsync(read => read.Tenants.Where(t => t.Id == tenant.Id).Select(t => t.Name).SingleAsync()))
             .ShouldBe(scenario.Tenant.Name);
-        (await ReadAsync(read => read.Users.SingleAsync(u => u.Id == userId))).Role.ShouldBe(UserRole.User());
+        (await ReadAsync(read => read.UserRoles.Where(r => r.UserId == userId).Select(r => r.Role.Value).ToListAsync()))
+            .ShouldBe([UserRole.User().Value]);
 
         var saveAgain = () => db.SaveChangesAsync();
         (await saveAgain.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("Use a new DI scope");
@@ -83,7 +84,8 @@ public class DomainEventSaveTests : TestBase
         await retryDb.SaveChangesAsync();
         (await ReadAsync(read => read.Tenants.Where(t => t.Id == tenant.Id).Select(t => t.Name).SingleAsync()))
             .ShouldBe(newName);
-        (await ReadAsync(read => read.Users.SingleAsync(u => u.Id == userId))).Role.ShouldBe(UserRole.Admin());
+        (await ReadAsync(read => read.UserRoles.Where(r => r.UserId == userId).Select(r => r.Role.Value).ToListAsync()))
+            .ShouldBe([UserRole.Admin().Value]);
     }
 
     [Test]
@@ -122,20 +124,20 @@ public class DomainEventSaveTests : TestBase
             .AddTestHandler<TenantUpdated>(async (e, db, ct) =>
             {
                 runs.Add($"{nameof(TenantUpdated)}:{e.Id}");
-                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).ChangeRoleIgnoringLastManager(UserRole.User());
+                (await db.Users.Include(u => u.UserRoles).Include(u => u.PermissionOverrides).Include(u => u.UserPermissions).SingleAsync(u => u.Id == adminId, ct)).ChangeRolesIgnoringLastManager(UserRole.User());
             }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
         adminId = scenario.Admin.Id;
         var db = scope.GetService<AppDbContext>();
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
-        var firstUser = await db.Users.SingleAsync(u => u.Id == scenario.FirstUser.Id);
-        var secondUser = await db.Users.SingleAsync(u => u.Id == scenario.SecondUser.Id);
+        var firstUser = await db.Users.Include(u => u.UserRoles).Include(u => u.PermissionOverrides).Include(u => u.UserPermissions).SingleAsync(u => u.Id == scenario.FirstUser.Id);
+        var secondUser = await db.Users.Include(u => u.UserRoles).Include(u => u.PermissionOverrides).Include(u => u.UserPermissions).SingleAsync(u => u.Id == scenario.SecondUser.Id);
 
         // Act
-        secondUser.ChangeRoleIgnoringLastManager(UserRole.Admin());
+        secondUser.ChangeRolesIgnoringLastManager(UserRole.Admin());
         tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
-        firstUser.ChangeRoleIgnoringLastManager(UserRole.Admin());
+        firstUser.ChangeRolesIgnoringLastManager(UserRole.Admin());
         await db.SaveChangesAsync();
 
         // Assert

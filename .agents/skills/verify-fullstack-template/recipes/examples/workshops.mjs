@@ -79,7 +79,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
     await form.getByRole('button', { name: 'Start a tenant' }).click()
     const res = await started
     expect(res.status()).toBe(201)
-    expect((await res.json()).user.role).toBe('Admin')
+    expect((await res.json()).user.roles).toEqual(['Admin'])
   })
 
   await step('Examples, Workshops: the list opens', async () => {

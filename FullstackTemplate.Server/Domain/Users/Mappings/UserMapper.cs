@@ -41,6 +41,8 @@ public static partial class UserMapper
     [MapperIgnoreSource(nameof(User.DomainEvents))]
     [MapperIgnoreTarget(nameof(UserDto.AllowedActions))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
+    [MapProperty(nameof(User.UserRoles), nameof(UserDto.Roles))]
+    [MapProperty(nameof(User.PermissionOverrides), nameof(UserDto.PermissionOverrides))]
     [MapPropertyFromSource(nameof(UserDto.FullName), Use = nameof(MapFullName))]
     private static partial UserDto ToUserDtoWithoutActions(this User user);
 
@@ -48,10 +50,17 @@ public static partial class UserMapper
     private static string MapEmail(EmailAddress email) => email.Value;
     // The projection inlines this expression, so EF can filter and sort on FullName. User.FullName is not a column.
     private static string MapFullName(User user) => user.FirstName + " " + user.LastName;
-    private static string MapRole(UserRole role) => role.Value;
     // Mapperly uses this method only when its return type is the type of UserDto.Permissions.
     // With List<string>, Mapperly ignores it and maps each permission with ToString().
     [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
     private static IReadOnlyList<string> MapUserPermissionsToPermissions(IReadOnlyCollection<UserPermission> permissions)
         => permissions.Select(p => p.Permission.Value).ToList();
+
+    [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
+    private static IReadOnlyList<string> MapUserRolesToRoles(IReadOnlyCollection<UserRoleAssignment> roles)
+        => roles.Select(r => r.Role.Value).ToList();
+
+    [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
+    private static IReadOnlyList<UserPermissionOverrideDto> MapPermissionOverrides(IReadOnlyCollection<UserPermissionOverride> overrides)
+        => overrides.Select(o => new UserPermissionOverrideDto { Permission = o.Permission.Value, Granted = o.Granted }).ToList();
 }

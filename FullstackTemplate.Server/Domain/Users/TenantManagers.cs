@@ -8,12 +8,11 @@ public abstract record ManagerChange
 
     internal abstract IEnumerable<Permission> PermissionsAfter(User user);
 
-    public sealed record NewRole(UserRole Role) : ManagerChange
+    public sealed record NewRoles(IReadOnlySet<UserRole> Roles) : ManagerChange
     {
-        internal override string Field => "role";
+        internal override string Field => "roles";
 
-        internal override IEnumerable<Permission> PermissionsAfter(User user)
-            => Role == user.Role ? user.CurrentPermissions() : Role.GetDefaultPermissions();
+        internal override IEnumerable<Permission> PermissionsAfter(User user) => user.PermissionsWithRoles(Roles);
     }
 
     public sealed record PermissionRemoval(Permission Permission) : ManagerChange

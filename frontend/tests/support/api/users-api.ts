@@ -13,7 +13,7 @@ export const usersPaths = {
   current: '/api/v1/users/me',
   list: '/api/v1/users',
   one: (id: string) => `/api/v1/users/${id}`,
-  role: (id: string) => `/api/v1/users/${id}/role`,
+  roles: (id: string) => `/api/v1/users/${id}/roles`,
 }
 
 const problemAt = (method: MockRoute['method'], path: string, problem: Buildable<ProblemDetails>): MockRoute => {
@@ -73,11 +73,11 @@ export const usersApi = {
   roleChanges(user: Buildable<UserDto>): MockRoute {
     const body = user.build()
 
-    return { method: 'put', path: usersPaths.role(body.id), status: 200, body }
+    return { method: 'put', path: usersPaths.roles(body.id), status: 200, body }
   },
 
   roleChangeFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
-    return problemAt('put', usersPaths.role(id), problem)
+    return problemAt('put', usersPaths.roles(id), problem)
   },
 
   deletes(id: string): MockRoute {

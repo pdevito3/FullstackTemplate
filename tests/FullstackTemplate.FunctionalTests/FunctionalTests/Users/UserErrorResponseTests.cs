@@ -231,7 +231,7 @@ public class UserErrorResponseTests : TestBase
     }
 
     [Test]
-    [Arguments("role")]
+    [Arguments("roles")]
     [Arguments("permission")]
     public async Task missing_field_of_a_command_returns_bad_request_keyed_by_the_field(string field)
     {
@@ -244,8 +244,8 @@ public class UserErrorResponseTests : TestBase
         FactoryClient.SignInAsAppUser(user.Identifier);
 
         // Act
-        var result = field == "role"
-            ? await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(user.Id), new { })
+        var result = field == "roles"
+            ? await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(user.Id), new { })
             : await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.AddPermission(user.Id), new { });
 
         // Assert

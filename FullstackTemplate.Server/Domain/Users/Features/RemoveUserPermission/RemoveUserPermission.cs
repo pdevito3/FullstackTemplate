@@ -32,34 +32,26 @@ public static class RemoveUserPermission
                 .AsNoTracking()
                 .GetById(request.Id, cancellationToken)).TenantId;
 
-            var (user, existingPermissions) = await RootLock.Tenant.RunExclusiveAsync(dbContext, tenantId, async ct =>
+            var (user, hadPermission) = await RootLock.Tenant.RunExclusiveAsync(dbContext, tenantId, async ct =>
             {
                 var user = await dbContext.Users
                     .TagWithOperationCallSite("users.remove_permission.load")
+                    .Include(u => u.UserRoles)
+                    .Include(u => u.PermissionOverrides)
                     .Include(u => u.UserPermissions)
                     .GetById(request.Id, ct);
                 user.GuardAllows(UserAction.RemovePermission(), caller);
 
                 var kept = await dbContext.KeepManagerAsync(user, new ManagerChange.PermissionRemoval(permission), ct);
 
-                var existingPermissions = user.UserPermissions.ToList();
-
-                user.RemovePermission(kept);
-
-                var remainingIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
-                foreach (var existingPermission in existingPermissions)
-                {
-                    if (!remainingIds.Contains(existingPermission.Id))
-                    {
-                        dbContext.UserPermissions.Remove(existingPermission);
-                    }
-                }
+                var hadPermission = user.HasPermission(permission);
+                dbContext.ChangeUser(user, u => u.RemovePermission(kept));
 
                 await dbContext.SaveChangesAsync(ct);
-                return (user, existingPermissions);
+                return (user, hadPermission);
             }, cancellationToken);
 
-            if (user.UserPermissions.Count < existingPermissions.Count)
+            if (hadPermission)
                 _logger.Here().Information("Removed permission {Permission} from user {UserId}", permission.Value, user.Id);
 
             return user.ToUserDto(caller);

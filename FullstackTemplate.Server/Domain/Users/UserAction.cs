@@ -6,7 +6,7 @@ using Exceptions;
 /// <summary>
 /// A command that a caller can send for a user record. Each action names the permissions that it needs, so
 /// <see cref="User.AllowedActions"/> and <see cref="User.GuardAllows"/> read one table and cannot disagree.
-/// A permission that the request names, such as the new role, is not in the table. The command checks it.
+/// A permission that the request names, such as one of a new role, is not in the table. The command checks it.
 /// </summary>
 public partial class UserAction : ValueObject, IFixedNames
 {
@@ -21,7 +21,7 @@ public partial class UserAction : ValueObject, IFixedNames
     public static List<string> ListNames() => UserActionEnum.List.Select(x => x.Name).ToList();
 
     public static UserAction Update() => new(UserActionEnum.Update);
-    public static UserAction UpdateRole() => new(UserActionEnum.UpdateRole);
+    public static UserAction UpdateRoles() => new(UserActionEnum.UpdateRoles);
     public static UserAction AddPermission() => new(UserActionEnum.AddPermission);
     public static UserAction RemovePermission() => new(UserActionEnum.RemovePermission);
     public static UserAction Delete() => new(UserActionEnum.Delete);
@@ -53,13 +53,13 @@ public partial class UserAction : ValueObject, IFixedNames
         public static readonly UserActionEnum Update = new(nameof(Update), 0,
             always: [], unlessOwnRecord: [Permission.ManageUsers(), Permission.ReadUsers()], revokesUserPermissions: false);
 
-        public static readonly UserActionEnum UpdateRole = new(nameof(UpdateRole), 1,
+        public static readonly UserActionEnum UpdateRoles = new(nameof(UpdateRoles), 1,
             always: [Permission.ManageUserAccess()], unlessOwnRecord: [Permission.ReadUsers()], revokesUserPermissions: true);
 
         public static readonly UserActionEnum AddPermission = new(nameof(AddPermission), 2,
             always: [Permission.ManageUserAccess()], unlessOwnRecord: [Permission.ReadUsers()], revokesUserPermissions: false);
 
-        // The caller must hold each permission of the user, as for UpdateRole and Delete. Otherwise a user with only
+        // The caller must hold each permission of the user, as for UpdateRoles and Delete. Otherwise a user with only
         // manage_user_access could take it away from each admin, and no admin could then take it away from that user (ADR 0009).
         public static readonly UserActionEnum RemovePermission = new(nameof(RemovePermission), 3,
             always: [Permission.ManageUserAccess()], unlessOwnRecord: [Permission.ReadUsers()], revokesUserPermissions: true);

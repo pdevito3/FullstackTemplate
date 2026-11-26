@@ -103,13 +103,13 @@ A `permanent` failure is an `invalid_grant`, or an ID token in the refresh respo
 
 ## Exemplars
 
-An exemplar connects one measurement of a metric to the span that was current when the code recorded it. A metric tells that `UpdateUserRole.Command` became slow. It does not tell which requests were slow or why. The exemplars give the traces of some of those requests, and each trace tells why.
+An exemplar connects one measurement of a metric to the span that was current when the code recorded it. A metric tells that `UpdateUserRoles.Command` became slow. It does not tell which requests were slow or why. The exemplars give the traces of some of those requests, and each trace tells why.
 
 ### When the SDK records an exemplar
 
 - The exemplar filter is `trace_based`. The SDK keeps an exemplar only for a measurement that the code records while a sampled span is current.
 - The SDK default is off. The `appsettings.json` of the server and of the BFF set `OTEL_METRICS_EXEMPLAR_FILTER` to `trace_based`, so each environment exports exemplars. The SDK reads the setting from the configuration, so an environment variable of the same name wins. To turn exemplars off in a deployment, set `OTEL_METRICS_EXEMPLAR_FILTER=always_off`.
-- `RequestTracingBehavior` records `app.request.duration` before the feature slice span ends. Thus each exemplar of `app.request.duration` points at the feature slice span, for example `UpdateUserRole.Command`, not at the HTTP span.
+- `RequestTracingBehavior` records `app.request.duration` before the feature slice span ends. Thus each exemplar of `app.request.duration` points at the feature slice span, for example `UpdateUserRoles.Command`, not at the HTTP span.
 - A histogram keeps one exemplar for each bucket of each series: the last measurement in that bucket. With the default cumulative temporality, each export sends it again until a newer measurement replaces it, so an old exemplar can point at a trace that the trace backend no longer keeps. Thus the exemplars are a sample of the traces, not all of them. To get more of the slow requests of a feature, sort its spans (see [Read slow requests as an agent](#read-slow-requests-as-an-agent)).
 - The Aspire dashboard shows exemplars on a histogram only. The SDK also exports exemplars for a counter, but the dashboard does not show them.
 
@@ -118,7 +118,7 @@ An exemplar is also the reason that a metric never needs an id tag. The id is on
 ### From a slow feature to the cause
 
 1. In the dashboard, open **Metrics**. Select the `server` resource, then `FullstackTemplate.Server` > `app.request.duration`.
-2. In **Filters**, select the `app.request.name` of the feature, for example `UpdateUserRole.Command`.
+2. In **Filters**, select the `app.request.name` of the feature, for example `UpdateUserRoles.Command`.
 3. Find the slow requests:
    - On **Graph**, each dot is an exemplar at the height of its duration. Select a high dot to open its trace.
    - On **Table**, select the number in the **Exemplars** column. The dialog gives the trace, the time, and the value of each exemplar. Select **View** to open the trace with the feature slice span selected.
@@ -134,23 +134,23 @@ An exemplar is also the reason that a metric never needs an id tag. The id is on
 | Span events from `Telemetry.AddEvent` | Which path the code took, such as a cache miss |
 | Time in the feature slice span that no child covers | C# code with no span of its own. Add a `Telemetry.Trace` span around that work (rule 7 of [feature-telemetry.md](backend/feature-telemetry.md#rules)). |
 
-For example, the exemplar of a 430 ms `UpdateUserRole.Command` gives this trace:
+For example, the exemplar of a 430 ms `UpdateUserRoles.Command` gives this trace:
 
 ```
-PUT api/v{version}/users/{id}/role
-└─ UpdateUserRole.Command            430ms   app.caller.tenant_id=ten_01J...  app.user_id=usr_01J...
-   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=39
+PUT api/v{version}/users/{id}/roles
+└─ UpdateUserRoles.Command            430ms   app.caller.tenant_id=ten_01J...  app.user_id=usr_01J...
+   ├─ SQL: users.update_roles.load    412ms   code.file.path=.../UpdateUserRoles.cs  code.line.number=39
    └─ SQL: <the save>                  8ms
 ```
 
-The request was slow because of the `users.update_role.load` query at `UpdateUserRole.cs` line 39, for user `usr_01J...`.
+The request was slow because of the `users.update_roles.load` query at `UpdateUserRoles.cs` line 39, for user `usr_01J...`.
 
 ### Read slow requests as an agent
 
 The `dotnet aspire otel` CLI has no metrics command, so it does not give exemplars. The feature slice spans have the same durations. Sort the spans of the feature by duration, then read the trace of the slowest. Without `--limit`, the CLI returns only the 200 most recent spans:
 
 ```bash
-dotnet aspire otel spans server --apphost FullstackTemplate.AppHost --search "UpdateUserRole.Command" --limit 1000 --format Json \
+dotnet aspire otel spans server --apphost FullstackTemplate.AppHost --search "UpdateUserRoles.Command" --limit 1000 --format Json \
   | jq 'sort_by(-.durationMs) | .[:5][] | {traceId, durationMs, attributes}'
 dotnet aspire otel spans --apphost FullstackTemplate.AppHost --trace-id <traceId>
 ```
@@ -159,7 +159,7 @@ dotnet aspire otel spans --apphost FullstackTemplate.AppHost --trace-id <traceId
 
 The SDK takes the span from `Activity.Current` when the code calls `Add` or `Record`. Record the measurement while the span that explains it is current:
 
-- In a handler, the feature slice span is current. `UserMetrics.RoleChanged.Add` in `UpdateUserRole` gives exemplars that point at the `UpdateUserRole.Command` span. `RoleChanged` is a counter, so the dashboard does not show these exemplars, but a trace backend that reads OTLP exemplars does.
+- In a handler, the feature slice span is current. `UserMetrics.RoleChanged.Add` in `UpdateUserRoles` gives exemplars that point at the `UpdateUserRoles.Command` span. `RoleChanged` is a counter, so the dashboard does not show these exemplars, but a trace backend that reads OTLP exemplars does.
 - In a `Telemetry.Trace` or a `Telemetry.TraceRoot` scope, the new span is current. Record before the scope ends:
 
 ```csharp

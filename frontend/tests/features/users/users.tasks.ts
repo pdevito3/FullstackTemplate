@@ -56,28 +56,34 @@ export function usersPage(page: Page) {
       await settled
     },
 
-    async pickRole(name: string, role: string) {
-      await at.actionButton(name, 'Change role').click()
+    /** Opens Change roles and turns each role on or off. */
+    async toggleRoles(name: string, ...roles: string[]) {
+      await at.actionButton(name, 'Change roles').click()
       await expect(at.roleDialog).toBeVisible()
-      await at.roleSelect.click()
-      await at.roleOption(role).click()
-      await expect(at.roleSelect).toHaveAccessibleName(`${role} Role`)
+
+      for (const role of roles) {
+        const checkbox = at.roleCheckbox(role)
+        const wasChecked = await checkbox.isChecked()
+        // The label holds the box that the user sees. React Aria hides the input under it.
+        await checkbox.locator('xpath=ancestor::label').click()
+        await expect(checkbox).toBeChecked({ checked: !wasChecked })
+      }
     },
 
     async confirmRole(id: string) {
-      const settled = answered('PUT', usersPaths.role(id))
+      const settled = answered('PUT', usersPaths.roles(id))
       await at.confirmRole.click()
       await settled
     },
 
     async confirmRoleRefused(id: string) {
-      const settled = Promise.all([answered('PUT', usersPaths.role(id)), answered('GET', usersPaths.one(id))])
+      const settled = Promise.all([answered('PUT', usersPaths.roles(id)), answered('GET', usersPaths.one(id))])
       await at.confirmRole.click()
       await settled
     },
 
     async confirmRoleRefusedAndFailToReadAgain(id: string) {
-      const settled = Promise.all([answered('PUT', usersPaths.role(id)), failedLoad(page, usersPaths.one(id))])
+      const settled = Promise.all([answered('PUT', usersPaths.roles(id)), failedLoad(page, usersPaths.one(id))])
       await at.confirmRole.click()
       await settled
       await nextFrames(page)

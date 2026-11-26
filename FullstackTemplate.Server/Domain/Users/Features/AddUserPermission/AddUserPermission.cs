@@ -30,26 +30,18 @@ public static class AddUserPermission
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.add_permission.load")
+                .Include(u => u.UserRoles)
+                .Include(u => u.PermissionOverrides)
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
             user.GuardAllows(UserAction.AddPermission(), caller);
 
-            var existingPermissionIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
-
-            user.AddPermission(permission);
-
-            // Explicitly track new permissions (needed due to PropertyAccessMode.Field)
-            foreach (var userPermission in user.UserPermissions)
-            {
-                if (!existingPermissionIds.Contains(userPermission.Id))
-                {
-                    dbContext.UserPermissions.Add(userPermission);
-                }
-            }
+            var hadPermission = user.HasPermission(permission);
+            dbContext.ChangeUser(user, u => u.AddPermission(permission));
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            if (user.UserPermissions.Count > existingPermissionIds.Count)
+            if (!hadPermission)
                 _logger.Here().Information("Added permission {Permission} to user {UserId}", permission.Value, user.Id);
 
             return user.ToUserDto(caller);

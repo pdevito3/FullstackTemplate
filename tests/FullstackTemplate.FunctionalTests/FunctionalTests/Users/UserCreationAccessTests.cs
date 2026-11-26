@@ -140,7 +140,7 @@ public class UserCreationAccessTests : TestBase
         SignInAs(member);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRoles(member.Id), new UpdateUserRolesDto { Roles = ["Admin"] });
 
         // Assert
         await ShouldBeForbiddenAsync(result, "You cannot manage the access of users. Ask a tenant admin for access.");

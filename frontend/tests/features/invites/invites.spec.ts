@@ -247,16 +247,16 @@ test.describe('the invites of a tenant admin', () => {
   })
 
   test('shows no button and asks for no invites after the admin demotes themselves and comes back', async ({ page, api }) => {
-    const ana = aUser().identifiedBy(actorSubject).named('Ana Admin').inRole('Admin').seenByAdmin()
+    const ana = aUser().identifiedBy(actorSubject).named('Ana Admin').inRoles('Admin').seenByAdmin()
     const { id } = ana.build()
     api.mock(usersApi.listReturns([ana]), usersApi.oneIs(ana), membershipApi.userIsNow(ana), invitesApi.listReturns([]))
     const users = usersWithInvites(page)
     const people = usersPage(page)
     await users.openWithList()
     await users.openUserFromTheList('Ana Admin')
-    await people.pickRole('Ana Admin', 'User')
+    await people.toggleRoles('Ana Admin', 'Admin', 'User')
 
-    const demoted = ana.inRole('User').allowing()
+    const demoted = ana.inRoles('User').allowing()
     api.mock(
       usersApi.roleChanges(demoted),
       usersApi.oneIs(demoted),

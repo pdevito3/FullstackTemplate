@@ -14,7 +14,8 @@ import { useMembership } from '@/domain/membership/apis/get-membership'
 import { StartTenantPrompt } from '@/domain/membership/components/require-tenant'
 import { useTenant } from '@/domain/tenants/apis/get-tenant'
 import { useUserList } from '@/domain/users/apis/get-user-list'
-import { ROLE_LABELS } from '@/domain/users/components/user-role'
+import { overrideSummary } from '@/domain/users/components/permission-overrides'
+import { roleLabels } from '@/domain/users/components/user-role'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 const listSearchSchema = z.object({
@@ -101,7 +102,8 @@ function UserRows({ list, page, onPageChange }: UserRowsProps) {
           <TableHeader>
             <TableHead isRowHeader>Name</TableHead>
             {!isMobile && <TableHead>Email</TableHead>}
-            <TableHead>Role</TableHead>
+            <TableHead>Roles</TableHead>
+            {!isMobile && <TableHead>Changed by hand</TableHead>}
           </TableHeader>
           <TableBody>
             {users.map((user) => (
@@ -113,7 +115,13 @@ function UserRows({ list, page, onPageChange }: UserRowsProps) {
                   {isMobile && <p className="text-sm text-muted-foreground">{user.email}</p>}
                 </TableCell>
                 {!isMobile && <TableCell className="wrap-anywhere">{user.email}</TableCell>}
-                <TableCell className="whitespace-nowrap">{ROLE_LABELS[user.role]}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {roleLabels(user.roles)}
+                  {isMobile && user.permissionOverrides.length > 0 && (
+                    <p className="text-sm text-muted-foreground">{overrideSummary(user.permissionOverrides)}</p>
+                  )}
+                </TableCell>
+                {!isMobile && <TableCell className="whitespace-nowrap">{overrideSummary(user.permissionOverrides)}</TableCell>}
               </TableRow>
             ))}
           </TableBody>

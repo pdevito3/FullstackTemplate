@@ -76,7 +76,7 @@ public class RunAgainWhenRacedTests : TestBase
     public async Task role_change_that_a_rival_permission_add_beat_after_the_load_runs_again_and_saves()
     {
         // Arrange
-        var pause = PauseAtQuery.After("users.update_role.load");
+        var pause = PauseAtQuery.After("users.update_roles.load");
         await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)
             .AddTenant(out _)
@@ -89,18 +89,18 @@ public class RunAgainWhenRacedTests : TestBase
         rival.SetUserWithDefaults(identifier: admin.Identifier);
 
         // Act
-        var change = underTest.SendAsync(new UpdateUserRole.Command(user.Id, "Admin"));
+        var change = underTest.SendAsync(new UpdateUserRoles.Command(user.Id, ["Admin"]));
         await pause.ReachedAsync();
         await rival.SendAsync(new AddUserPermission.Command(user.Id, Permission.Names.ReadUsers));
         pause.Release();
 
         // Assert
-        (await change).Role.ShouldBe("Admin");
+        (await change).Roles.ShouldBe(["Admin"]);
         var saved = await new TestingServiceScope().ExecuteDbContextAsync(db =>
-            db.Users.IgnoreQueryFilters([QueryFilterNames.Tenant]).Include(u => u.UserPermissions).GetById(user.Id));
-        saved.Role.Value.ShouldBe("Admin");
+            db.Users.IgnoreQueryFilters([QueryFilterNames.Tenant]).Include(u => u.UserRoles).Include(u => u.UserPermissions).GetById(user.Id));
+        saved.UserRoles.Select(r => r.Role.Value).ShouldBe(["Admin"]);
         saved.UserPermissions.Select(p => p.Permission.Value)
-            .ShouldBe(UserRole.Of("Admin").GetDefaultPermissions().Select(p => p.Value), ignoreOrder: true);
+            .ShouldBe(UserRole.Of("Admin").GetPermissions().Select(p => p.Value), ignoreOrder: true);
     }
 
     [Test]

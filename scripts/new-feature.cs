@@ -495,6 +495,8 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
                 [$"""public const string {n.Permission} = "{n.PermissionName}";"""]),
             new(permissionFile, "permission-values", $"PermissionEnum {n.Permission} =",
                 [$"""public static readonly PermissionEnum {n.Permission} = new(Names.{n.Permission}, {value}, "{n.PermissionWords}");"""]),
+            new("frontend/src/domain/users/components/permission-overrides.ts", "permission-labels", $"{n.PermissionName}:",
+                [$"{n.PermissionName}: '{char.ToUpperInvariant(n.PermissionWords[0])}{n.PermissionWords[1..]}',"]),
             new(permission, "permission-names", $"""
                 "{n.PermissionName}",
                 """, [$"""

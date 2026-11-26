@@ -50,39 +50,40 @@ export default async ({ page, step, capture, settle, expect, login }) => {
       expect(row).toBeTruthy()
       const shown = usersTable().getByRole('row').filter({ has: page.getByRole('link', { name: row.fullName, exact: true }) })
       await expect(shown).toContainText(row.email)
-      await expect(shown).toContainText(row.role)
+      // The SPA shows the roles in the order of the contract, whatever the order of the response
+      await expect(shown).toContainText(['Admin', 'User'].filter((role) => row.roles.includes(role)).join(', '))
     }
   })
   await capture('list')
 
-  await step('open the colleague: the detail shows Change role and Delete', async () => {
+  await step('open the colleague: the detail shows Change roles and Delete', async () => {
     const detail = answered('GET', new RegExp(`^/api/v1/users/${colleague.id}$`))
     await usersTable().getByRole('link', { name: colleague.fullName, exact: true }).click()
     expect((await detail).status()).toBe(200)
     await expect(page.getByRole('heading', { name: colleague.fullName, exact: true })).toBeVisible()
     const actions = page.getByRole('group', { name: `Actions for ${colleague.fullName}` })
-    await expect(actions.getByRole('button')).toHaveText(['Change role', 'Delete'])
+    await expect(actions.getByRole('button')).toHaveText(['Change roles', 'Delete'])
   })
   await capture('detail')
 
-  await step('Change role: the dialog asks for the role', async () => {
-    await page.getByRole('button', { name: 'Change role', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: `Change the role of ${colleague.fullName}` })).toBeVisible()
+  await step('Change roles: the dialog asks for the roles', async () => {
+    await page.getByRole('button', { name: 'Change roles', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: `Change the roles of ${colleague.fullName}` })).toBeVisible()
     await settle()
   })
   await capture('change-role-dialog', { fullPage: false })
 
-  await step('pick Admin and confirm: the Server saves the role and the page shows it', async () => {
-    const dialog = page.getByRole('dialog', { name: `Change the role of ${colleague.fullName}` })
-    await dialog.getByRole('button', { name: /Role/ }).click()
-    await settle()
-    await page.getByRole('option', { name: 'Admin', exact: true }).click()
-    const saved = answered('PUT', new RegExp(`^/api/v1/users/${colleague.id}/role$`))
-    await dialog.getByRole('button', { name: 'Change role', exact: true }).click()
+  await step('check Admin and confirm: the Server saves both roles and the page shows them', async () => {
+    const dialog = page.getByRole('dialog', { name: `Change the roles of ${colleague.fullName}` })
+    await dialog.getByText('Admin', { exact: true }).click()
+    const saved = answered('PUT', new RegExp(`^/api/v1/users/${colleague.id}/roles$`))
+    await dialog.getByRole('button', { name: 'Change roles', exact: true }).click()
     const res = await saved
     expect(res.status()).toBe(200)
-    expect((await res.json()).role).toBe('Admin')
-    await expect(page.getByRole('definition').filter({ hasText: /^Admin$/ })).toBeVisible()
+    const body = await res.json()
+    expect(body.roles.toSorted()).toEqual(['Admin', 'User'])
+    expect(body.permissions.length).toBeGreaterThan(0)
+    await expect(page.getByRole('definition').filter({ hasText: /^Admin, User$/ })).toBeVisible()
     await expect(page.getByRole('heading', { name: colleague.fullName, exact: true })).toBeFocused()
   })
   await capture('role-changed')

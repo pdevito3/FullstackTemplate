@@ -31,17 +31,18 @@ public static class DeleteUser
             {
                 var user = await dbContext.Users
                     .TagWithOperationCallSite("users.delete.load")
+                    .Include(u => u.UserRoles)
+                    .Include(u => u.PermissionOverrides)
                     .Include(u => u.UserPermissions)
                     .GetById(request.Id, ct);
                 user.GuardAllows(UserAction.Delete(), caller);
 
                 var kept = await dbContext.KeepManagerAsync(user, new ManagerChange.Removal(), ct);
 
-                // Remove permissions first (due to PropertyAccessMode.Field)
-                foreach (var permission in user.UserPermissions.ToList())
-                {
-                    dbContext.UserPermissions.Remove(permission);
-                }
+                // Remove the child rows first (due to PropertyAccessMode.Field)
+                dbContext.UserPermissions.RemoveRange(user.UserPermissions);
+                dbContext.UserPermissionOverrides.RemoveRange(user.PermissionOverrides);
+                dbContext.UserRoles.RemoveRange(user.UserRoles);
 
                 dbContext.Users.Remove(user.Delete(kept));
                 await dbContext.SaveChangesAsync(ct);

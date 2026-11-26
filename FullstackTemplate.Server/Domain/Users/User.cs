@@ -20,8 +20,18 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     [Sensitive] public string Identifier { get; private set; } = default!;
     [Sensitive] public EmailAddress Email { get; private set; } = default!;
     [Sensitive] public string Username { get; private set; } = default!;
-    [NotSensitive] public UserRole Role { get; private set; } = default!;
 
+    private readonly List<UserRoleAssignment> _userRoles = [];
+    public IReadOnlyCollection<UserRoleAssignment> UserRoles => _userRoles.AsReadOnly();
+
+    private readonly List<UserPermissionOverride> _permissionOverrides = [];
+    public IReadOnlyCollection<UserPermissionOverride> PermissionOverrides => _permissionOverrides.AsReadOnly();
+
+    /// <summary>
+    /// The permissions that the user holds: the union of the permissions of each role, with each permission that an
+    /// override grants and without each one that an override removes. Each change of the roles or the overrides
+    /// computes it again, so a read needs only these rows.
+    /// </summary>
     private readonly List<UserPermission> _userPermissions = [];
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();
 
@@ -41,13 +51,14 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
             Identifier = userForCreation.Identifier,
             Email = EmailAddress.Of(userForCreation.Email),
             Username = userForCreation.Username,
-            Role = UserRole.Of(userForCreation.Role)
         };
-        // Set the ID before the permissions, because each permission copies the user ID.
+        var role = UserRole.Of(userForCreation.Role);
+        // Set the ID before the roles and the permissions, because each row copies the user ID.
         if (userForCreation.Id is not null)
             user.SetId(userForCreation.Id);
 
-        user.ResetPermissionsToDefault();
+        user._userRoles.Add(UserRoleAssignment.Create(user, role));
+        user.ComputePermissions();
 
         ValidateUser(user);
         user.QueueDomainEvent(new UserCreated(user.Id));
@@ -58,7 +69,7 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     /// <summary>Creates the user who starts a tenant. This user must be able to manage it (UM-4).</summary>
     public static User CreateFirstOfTenant(UserForCreation userForCreation)
     {
-        Exceptions.ValidationException.Must(TenantManagers.CanManage(UserRole.Of(userForCreation.Role).GetDefaultPermissions()),
+        Exceptions.ValidationException.Must(TenantManagers.CanManage(UserRole.Of(userForCreation.Role).GetPermissions()),
             "role", TenantManagers.FirstUserMessage);
         return Create(userForCreation);
     }
@@ -90,30 +101,28 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
         return this;
     }
 
-    public User UpdateRole(ManagerKept kept)
+    /// <summary>
+    /// Gives the user exactly these roles. The overrides stay, so a permission that someone added or removed by hand
+    /// stays added or removed.
+    /// </summary>
+    public User UpdateRoles(ManagerKept kept)
     {
-        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRole { Role: var newRole })
+        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRoles { Roles: var newRoles })
             throw new ArgumentException("Give the proof of a role change of this user.", nameof(kept));
-        if (newRole == Role)
+        if (newRoles.SetEquals(CurrentRoles()))
             return this;
 
-        Role = newRole;
-        ResetPermissionsToDefault();
+        _userRoles.RemoveAll(r => !newRoles.Contains(r.Role));
+        foreach (var role in newRoles.Except(CurrentRoles()).ToList())
+            _userRoles.Add(UserRoleAssignment.Create(this, role));
+        ComputePermissions();
         QueueDomainEvent(new UserUpdated(Id));
 
         return this;
     }
 
-    public User AddPermission(Permission permission)
-    {
-        if (_userPermissions.Any(x => x.Permission == permission))
-            return this;
-
-        var userPermission = UserPermission.Create(this, permission);
-        _userPermissions.Add(userPermission);
-
-        return this;
-    }
+    /// <summary>Grants the permission whatever the roles of the user, also after a role change.</summary>
+    public User AddPermission(Permission permission) => Override(permission, granted: true);
 
     public User AddPermissions(IEnumerable<Permission> permissions)
     {
@@ -129,17 +138,27 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     {
         if (kept.UserId != Id || kept.Change is not ManagerChange.PermissionRemoval { Permission: var permission })
             throw new ArgumentException("Give the proof of a permission removal of this user.", nameof(kept));
-        _userPermissions.RemoveAll(x => x.Permission == permission);
+        return Override(permission, granted: false);
+    }
+
+    // The last decision for a permission wins: an add replaces a removal, and a removal replaces an add
+    private User Override(Permission permission, bool granted)
+    {
+        if (_permissionOverrides.Any(o => o.Permission == permission && o.Granted == granted))
+            return this;
+
+        _permissionOverrides.RemoveAll(o => o.Permission == permission);
+        _permissionOverrides.Add(UserPermissionOverride.Create(this, permission, granted));
+        ComputePermissions();
         return this;
     }
 
-    public User ResetPermissionsToDefault()
+    private void ComputePermissions()
     {
-        _userPermissions.Clear();
-        var defaultPermissions = Role.GetDefaultPermissions();
-        AddPermissions(defaultPermissions);
-
-        return this;
+        var permissions = PermissionsWithRoles(CurrentRoles());
+        _userPermissions.RemoveAll(p => !permissions.Contains(p.Permission));
+        foreach (var permission in permissions.Where(p => _userPermissions.All(x => x.Permission != p)))
+            _userPermissions.Add(UserPermission.Create(this, permission));
     }
 
     /// <summary>
@@ -190,6 +209,19 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
 
     internal Permission[] CurrentPermissions() => _userPermissions.Select(x => x.Permission).ToArray();
 
+    internal UserRole[] CurrentRoles() => _userRoles.Select(x => x.Role).ToArray();
+
+    /// <summary>
+    /// The permissions that the user would hold with <paramref name="roles"/>: the union of their permissions, with
+    /// each permission that an override grants and without each one that an override removes.
+    /// </summary>
+    /// <remarks>Load <see cref="PermissionOverrides"/> first.</remarks>
+    internal IReadOnlySet<Permission> PermissionsWithRoles(IEnumerable<UserRole> roles)
+        => UserRole.PermissionsOf(roles)
+            .Union(_permissionOverrides.Where(o => o.Granted).Select(o => o.Permission))
+            .Except(_permissionOverrides.Where(o => !o.Granted).Select(o => o.Permission))
+            .ToHashSet();
+
     // A member holds the permissions of their own user. After a command changes them, the caller that the handler
     // loaded still has the old set, so the response would list the actions from before the change.
     private Caller OnThisRecord(Caller caller, Permission[] permissions)
@@ -219,7 +251,6 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
             $"A username can have no more than {UsernameMaxLength} characters.");
         Exceptions.ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.Username, "username",
             "A username has a character that is not allowed.");
-        Exceptions.ValidationException.ThrowWhenNull(user.Role, "role", "Please provide a role.");
     }
 
     protected User() : base(IdPrefix) { } // For EF Core

@@ -92,7 +92,7 @@ public class GetUserByIdentifierQueryTests : TestBase
 
         // Assert
         userReturned.ShouldNotBeNull();
-        userReturned.Role.ShouldBe("Admin");
+        userReturned.Roles.ShouldBe(["Admin"]);
         userReturned.Permissions.ShouldNotBeEmpty();
         userReturned.Permissions.ShouldContain("manage_tenant");
     }

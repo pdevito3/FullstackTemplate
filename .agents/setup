@@ -55,6 +55,18 @@ export SSL_CERT_DIR="\$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
 EOF
 }
 
+# An apphost, such as the one that `aspire start` runs, finds .NET from DOTNET_ROOT or from this file. Amp rewrites
+# ~/.bash_profile when it saves the snapshot and keeps only PATH, so DOTNET_ROOT does not reach a later shell.
+register_dotnet_location() {
+  local file=/etc/dotnet/install_location_x64
+  if [ "$(cat "$file" 2>/dev/null)" = "$dotnet_root" ]; then
+    echo "$file names $dotnet_root."
+    return
+  fi
+  sudo mkdir -p "$(dirname "$file")"
+  echo "$dotnet_root" | sudo tee "$file" >/dev/null
+}
+
 export DOTNET_ROOT="$dotnet_root"
 export PATH="$dotnet_root:$dotnet_root/tools:$PATH"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
@@ -64,9 +76,19 @@ export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
 trust_dev_certificate() {
   if dotnet dev-certs https --check --trust >/dev/null 2>&1; then
     echo "The development certificate is trusted."
-    return
+  else
+    dotnet dev-certs https --trust
   fi
-  dotnet dev-certs https --trust
+  # The SSL_CERT_DIR above does not reach a later shell (see register_dotnet_location), so the system store of
+  # OpenSSL also gets the certificate. The newest one replaces the old one there.
+  local cert target=/usr/local/share/ca-certificates/aspnetcore-dev.crt
+  cert="$(ls -t "$HOME"/.aspnet/dev-certs/trust/aspnetcore-localhost-*.pem 2>/dev/null | head -n 1 || true)"
+  if [ -z "$cert" ]; then
+    echo "No development certificate .pem to add to the system store. The BFF cannot reach the Server over HTTPS." >&2
+  elif ! sudo cmp -s "$cert" "$target" || [ "$(stat -c %a "$target")" != 644 ]; then
+    sudo install -m 644 "$cert" "$target"
+    sudo update-ca-certificates --fresh >/dev/null
+  fi
 }
 
 # The tests start Postgres and Floci with Testcontainers, and the stack runs its containers on Docker. The orb starts
@@ -106,6 +128,18 @@ pull_images() {
   done
 }
 
+# The Aspire container tunnel builds its proxy image with `docker build --progress`, which needs the buildx plugin.
+install_buildx() {
+  if docker buildx version >/dev/null 2>&1; then
+    echo "docker buildx is installed."
+    return
+  fi
+  # A failed install does not fail setup, so Docker still stops before the snapshot. Only the stack needs buildx.
+  { timeout 5m sudo apt-get update -qq &&
+    timeout 5m sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker-buildx-plugin; } ||
+    echo "Could not install docker buildx"
+}
+
 install_frontend() {
   (cd frontend && pnpm install --frozen-lockfile)
 }
@@ -117,12 +151,14 @@ install_chromium() {
 
 step "Install the .NET SDK" install_dotnet
 step "Persist the .NET environment" persist_environment
+step "Register the .NET location" register_dotnet_location
 step "Restore the .NET tools" dotnet tool restore
 step "Restore the NuGet packages" dotnet restore FullstackTemplate.slnx
 step "Trust the development certificate" trust_dev_certificate
 step "Install the frontend packages" install_frontend
 step "Install the Playwright Chromium" install_chromium
 step "Start Docker" configure_docker
+step "Install docker buildx" install_buildx
 step "Pull the container images" pull_images
 # Stop Docker cleanly before the snapshot. .agents/resume starts it.
 step "Stop Docker" sudo systemctl stop docker.service docker.socket

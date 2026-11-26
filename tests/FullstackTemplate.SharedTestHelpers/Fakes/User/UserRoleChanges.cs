@@ -4,8 +4,8 @@ using FullstackTemplate.Server.Domain.Users;
 
 public static class UserRoleChanges
 {
-    public static User ChangeRoleIgnoringLastManager(this User user, UserRole role)
-        => user.UpdateRole(KeptIgnoringLastManager(user, new ManagerChange.NewRole(role)));
+    public static User ChangeRolesIgnoringLastManager(this User user, params UserRole[] roles)
+        => user.UpdateRoles(KeptIgnoringLastManager(user, new ManagerChange.NewRoles(roles.ToHashSet())));
 
     public static User RemovePermissionIgnoringLastManager(this User user, Permission permission)
         => user.RemovePermission(KeptIgnoringLastManager(user, new ManagerChange.PermissionRemoval(permission)));

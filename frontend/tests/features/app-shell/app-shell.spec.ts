@@ -5,7 +5,7 @@ import { expect, test } from '@tests/support/fixtures'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { homePage } from '../home/home.tasks'
 import { aboutPageSource } from './app-shell.locators'
-import { appShellPage } from './app-shell.tasks'
+import { appShellPage, iconColumnWidth } from './app-shell.tasks'
 
 for (const viewport of [
   { width: 1280, height: 800 },
@@ -120,6 +120,32 @@ test.describe('the link to the jobs dashboard', () => {
     // The name and the link come from the same answer of the Server.
     await expect(home.at.signedInAs('Bob Smith')).toBeVisible()
     await expect(appShellPage(page).at.jobsDashboardLink).toHaveCount(0)
+  })
+})
+
+test.describe('the sidebar after a reload', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('stays collapsed when the user collapsed it', async ({ page }) => {
+    const shell = appShellPage(page)
+    await shell.openAbout()
+    await shell.collapseSidebar()
+
+    await shell.reload()
+
+    expect(await shell.navigationWidth()).toBeLessThan(iconColumnWidth)
+  })
+
+  test('opens again when the user opened it after a collapse', async ({ page }) => {
+    const shell = appShellPage(page)
+    await shell.openAbout()
+    await shell.collapseSidebar()
+    await shell.reload()
+    await shell.expandSidebar()
+
+    await shell.reload()
+
+    expect(await shell.navigationWidth()).toBeGreaterThan(iconColumnWidth * 3)
   })
 })
 

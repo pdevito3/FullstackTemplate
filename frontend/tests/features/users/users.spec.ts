@@ -16,7 +16,7 @@ test.describe('the users of a tenant', () => {
   test.use({ actor: as.user('Ana Admin') })
 
   test('lists the users of the tenant with their roles, and opens a user from the list', { tag: '@UM-1' }, async ({ page, api }) => {
-    const grace = aUser().named('Grace Hopper').seenByAdmin()
+    const grace = aUser().named('Grace Hopper').withAdded('read_users', 'manage_tenant').withRemoved('manage_users').seenByAdmin()
     const alan = aUser().named('Alan Turing').inRoles('Admin').seenByAdmin()
     const { id } = grace.build()
     api.mock(usersApi.listReturns([grace, alan]), usersApi.oneIs(grace))
@@ -27,6 +27,8 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.cell('Grace Hopper', 'grace@example.com')).toBeVisible()
     await expect(users.at.cell('Grace Hopper', 'User')).toBeVisible()
     await expect(users.at.cell('Alan Turing', 'Admin')).toBeVisible()
+    await expect(users.at.cell('Grace Hopper', '2 added, 1 removed')).toBeVisible()
+    await expect(users.at.cell('Alan Turing', '—')).toBeVisible()
     await expect(users.at.usersNavLink).toHaveAttribute('aria-current', 'page')
 
     await users.openUser('Grace Hopper', id)
@@ -34,6 +36,8 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detail('grace@example.com')).toBeVisible()
     await expect(users.at.detail('grace')).toBeVisible()
     await expect(users.at.detail('User')).toBeVisible()
+    await expect(users.at.detail('manage_tenant, read_users')).toBeVisible()
+    await expect(users.at.detail('manage_users')).toBeVisible()
     await expect(users.at.usersNavLink).toHaveAttribute('aria-current', 'true')
   })
 
@@ -373,12 +377,13 @@ test.describe('the users pages on a 320 px phone', () => {
   test.use({ actor: as.user('Ana Admin'), viewport: { width: 320, height: 640 } })
 
   test('the list shows the name, the email, and the roles of each row with no sideways scroll', { tag: '@UM-1' }, async ({ page, api }) => {
-    api.mock(usersApi.listReturns([aUser().named('Grace Hopper'), aUser().named(`${longName} Smith`)]))
+    api.mock(usersApi.listReturns([aUser().named('Grace Hopper').withRemoved('manage_users'), aUser().named(`${longName} Smith`)]))
     const users = usersPage(page)
 
     await users.openList()
 
     await expect(users.at.row('Grace Hopper')).toContainText('grace@example.com')
+    await expect(users.at.row('Grace Hopper')).toContainText('1 removed')
     expect(await users.sidewaysOverflowOfTable()).toBe(0)
     expect(await users.pageOverflow()).toBe(0)
   })

@@ -15,6 +15,7 @@ export const member: UserDto = {
   username: 'bob',
   roles: ['User'],
   permissions: [],
+  permissionOverrides: [],
   allowedActions: [],
   version: 1,
 }

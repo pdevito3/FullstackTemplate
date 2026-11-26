@@ -42,6 +42,7 @@ public static partial class UserMapper
     [MapperIgnoreTarget(nameof(UserDto.AllowedActions))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
     [MapProperty(nameof(User.UserRoles), nameof(UserDto.Roles))]
+    [MapProperty(nameof(User.PermissionOverrides), nameof(UserDto.PermissionOverrides))]
     [MapPropertyFromSource(nameof(UserDto.FullName), Use = nameof(MapFullName))]
     private static partial UserDto ToUserDtoWithoutActions(this User user);
 
@@ -58,4 +59,8 @@ public static partial class UserMapper
     [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
     private static IReadOnlyList<string> MapUserRolesToRoles(IReadOnlyCollection<UserRoleAssignment> roles)
         => roles.Select(r => r.Role.Value).ToList();
+
+    [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
+    private static IReadOnlyList<UserPermissionOverrideDto> MapPermissionOverrides(IReadOnlyCollection<UserPermissionOverride> overrides)
+        => overrides.Select(o => new UserPermissionOverrideDto { Permission = o.Permission.Value, Granted = o.Granted }).ToList();
 }

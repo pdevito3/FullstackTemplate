@@ -4041,6 +4041,7 @@
           "username",
           "roles",
           "permissions",
+          "permissionOverrides",
           "allowedActions",
           "version"
         ],
@@ -4097,6 +4098,13 @@
               ],
               "type": "string"
             }
+          },
+          "permissionOverrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserPermissionOverrideDto"
+            },
+            "description": "The permissions that someone added or removed by hand. IReadOnlyList&lt;string&gt; UserDto.Permissions already applies them."
           },
           "allowedActions": {
             "type": "array",
@@ -4221,6 +4229,34 @@
             "type": "string"
           }
         }
+      },
+      "UserPermissionOverrideDto": {
+        "required": [
+          "permission",
+          "granted"
+        ],
+        "type": "object",
+        "properties": {
+          "permission": {
+            "enum": [
+              "manage_agents",
+              "manage_tenant",
+              "manage_user_access",
+              "manage_users",
+              "manage_workshops",
+              "read_agents",
+              "read_audit_log",
+              "read_audit_log_sensitive",
+              "read_users"
+            ],
+            "type": "string"
+          },
+          "granted": {
+            "type": "boolean",
+            "description": "True when the user holds the permission whatever their roles, false when they never hold it."
+          }
+        },
+        "description": "A permission that someone added to the user or removed from the user by hand, on top of their roles."
       },
       "ValidationProblemDetails": {
         "required": [

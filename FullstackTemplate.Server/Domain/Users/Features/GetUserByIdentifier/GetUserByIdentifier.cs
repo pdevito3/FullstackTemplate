@@ -29,6 +29,7 @@ public static class GetUserByIdentifier
                     .TagWithOperationCallSite("users.get_by_identifier")
                     .AsNoTracking()
                     .Include(u => u.UserRoles)
+                    .Include(u => u.PermissionOverrides)
                     .Include(u => u.UserPermissions)
                     .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken)
                 : null;

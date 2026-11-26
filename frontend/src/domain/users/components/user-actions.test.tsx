@@ -18,6 +18,7 @@ function aUser(allowedActions: UserDto['allowedActions']): UserDto {
     username: 'bob',
     roles: ['User'],
     permissions: [],
+    permissionOverrides: [],
     allowedActions,
     version: 1,
   }

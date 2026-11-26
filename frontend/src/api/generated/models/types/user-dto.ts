@@ -3,6 +3,8 @@
 * Do not edit manually.
 */
 
+import type { UserPermissionOverrideDto } from './user-permission-override-dto'
+
 export const userDtoRolesEnum = {
     Admin: "Admin",
     User: "User"
@@ -49,6 +51,11 @@ export type UserDto = {
     */
     roles: UserDtoRolesEnumKey[];
     permissions: UserDtoPermissionsEnumKey[];
+    /**
+     * @description The permissions that someone added or removed by hand. IReadOnlyList&lt;string&gt; UserDto.Permissions already applies them.
+     * @type array
+    */
+    permissionOverrides: UserPermissionOverrideDto[];
     /**
      * @description The actions that the caller can send for this user now. A button in the SPA reads this list.
      * @type array

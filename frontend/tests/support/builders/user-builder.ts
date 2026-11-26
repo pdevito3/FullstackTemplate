@@ -4,6 +4,7 @@ import type {
   UserDtoAllowedActionsEnumKey,
   UserDtoRolesEnumKey,
 } from '@/api/generated/models/types/user-dto'
+import type { UserPermissionOverrideDto } from '@/api/generated/models/types/user-permission-override-dto'
 
 let seed = 0
 const next = () => ++seed
@@ -29,6 +30,7 @@ class UserBuilder {
       username: 'bob',
       roles: ['User'],
       permissions: [],
+      permissionOverrides: [],
       allowedActions: [],
       version: 1,
     })
@@ -51,6 +53,22 @@ class UserBuilder {
 
   inRoles(...roles: UserDtoRolesEnumKey[]) {
     return this.with({ roles })
+  }
+
+  /** Permissions that someone added by hand, on top of the roles. */
+  withAdded(...permissions: UserPermissionOverrideDto['permission'][]) {
+    return this.withOverrides(permissions, true)
+  }
+
+  /** Permissions that someone removed by hand, whatever the roles give. */
+  withRemoved(...permissions: UserPermissionOverrideDto['permission'][]) {
+    return this.withOverrides(permissions, false)
+  }
+
+  private withOverrides(permissions: UserPermissionOverrideDto['permission'][], granted: boolean) {
+    return this.with({
+      permissionOverrides: [...this.user.permissionOverrides, ...permissions.map((permission) => ({ permission, granted }))],
+    })
   }
 
   seenByAdmin() {

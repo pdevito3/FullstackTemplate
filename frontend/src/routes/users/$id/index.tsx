@@ -12,6 +12,7 @@ import { useDeleteUser } from '@/domain/users/apis/delete-user'
 import { useUser } from '@/domain/users/apis/get-user'
 import { useUpdateUserRoles } from '@/domain/users/apis/update-user-roles'
 import { UserKeys } from '@/domain/users/apis/user.keys'
+import { overrideNames } from '@/domain/users/components/permission-overrides'
 import { UserActions } from '@/domain/users/components/user-actions'
 import { roleLabels } from '@/domain/users/components/user-role'
 import { leaveDeletedRecord } from '@/lib/leave-deleted-record'
@@ -53,7 +54,7 @@ function UserPage() {
     )
   }
 
-  const { fullName, email, username, roles } = user.data
+  const { fullName, email, username, roles, permissionOverrides } = user.data
 
   const handleDelete = () =>
     remove.mutate(id, {
@@ -87,6 +88,10 @@ function UserPage() {
           <dd>{username}</dd>
           <dt className="text-muted-foreground">Roles</dt>
           <dd>{roleLabels(roles)}</dd>
+          <dt className="text-muted-foreground">Added by hand</dt>
+          <dd>{overrideNames(permissionOverrides, true)}</dd>
+          <dt className="text-muted-foreground">Removed by hand</dt>
+          <dd>{overrideNames(permissionOverrides, false)}</dd>
         </dl>
       </section>
       <UserActions

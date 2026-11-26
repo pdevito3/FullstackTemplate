@@ -29,7 +29,7 @@ An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID
 
 | ID | Rule | Enforced by | Backstop |
 |---|---|---|---|
-| UM-1 | The users page lists the users of the tenant of the caller, with a pager. | `GetUserList` and its tenant filter | |
+| UM-1 | The users page lists the users of the tenant of the caller, with a pager. The page of a user shows their roles and the permissions that someone added or removed by hand, and the list shows how many. | `GetUserList` and its tenant filter | |
 | UM-2 | The users page changes the roles of a user. A user has any number of roles and holds the union of their permissions, with the permissions that someone added or removed by hand. A change of the roles keeps those adds and removals. The page shows the control only to a caller who can change the roles. | `UpdateUserRoles` handler check | |
 | UM-3 | The users page removes a user after the caller confirms. The page shows the control only to a caller who can remove the user. | `DeleteUser` handler check | |
 | UM-4 | A tenant keeps at least one user who can manage it. A user can manage the tenant when they hold every permission, because nobody can grant a permission that they do not hold. A role change, a permission removal, or a delete that leaves the tenant with no such user fails with 422, also when two managers change each other at the same time. A start of a tenant whose first user cannot manage it fails with 422. A tenant delete removes each user. | `TenantManagers.Decide` in `UpdateUserRoles`, `RemoveUserPermission`, and `DeleteUser`. `User.CreateFirstOfTenant` in `InitiateUserAndTenant` | The exclusive tenant lock from the load of the managers to the save |

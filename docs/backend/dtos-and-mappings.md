@@ -136,6 +136,7 @@ public static partial class UserMapper
     [MapperIgnoreTarget(nameof(UserDto.AllowedActions))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
     [MapProperty(nameof(User.UserRoles), nameof(UserDto.Roles))]
+    [MapProperty(nameof(User.PermissionOverrides), nameof(UserDto.PermissionOverrides))]
     [MapPropertyFromSource(nameof(UserDto.FullName), Use = nameof(MapFullName))]
     private static partial UserDto ToUserDtoWithoutActions(this User user);
 

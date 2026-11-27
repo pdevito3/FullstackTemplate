@@ -54,6 +54,7 @@ public static class CSharpRepl
         var none = new Dictionary<string, string>();
         try
         {
+            // SAFETY: Process.Start returns null only when the shell reuses a process, and UseShellExecute is false.
             using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "dotnet",

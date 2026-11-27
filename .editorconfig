@@ -24,6 +24,8 @@ dotnet_diagnostic.IDE0078.severity = warning
 dotnet_diagnostic.IDE0083.severity = warning
 dotnet_diagnostic.IDE0330.severity = warning
 dotnet_diagnostic.IDE0005.severity = warning
+# CA1851 refuses a second enumeration of an IEnumerable that can run the query or the iterator again.
+dotnet_diagnostic.CA1851.severity = warning
 csharp_style_var_for_built_in_types = true
 csharp_style_var_when_type_is_apparent = true
 csharp_style_var_elsewhere = true

@@ -89,6 +89,7 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
         if (!jwt.TryGetHeaderValue<JsonElement>("jwk", out var jwkElement) || jwkElement.ValueKind != JsonValueKind.Object)
             return DPoPValidationResult.Proof("The jwk header is missing.");
         var (publicKey, keyError) = ReadPublicKey(jwkElement);
+        // SAFETY: ReadPublicKey gives an error when it gives no key.
         if (publicKey is null)
             return DPoPValidationResult.Proof(keyError!);
         var (key, jkt) = publicKey;

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
+using System.Diagnostics.CodeAnalysis;
 using Domain.AuditEntries;
 using Domain.Users;
 
@@ -18,6 +19,8 @@ internal sealed record EntitySnapshot(
 /// each <c>ValueObject</c>, uses its own name ("Email"). A complex property with more values uses "Address.City".</param>
 /// <param name="Original">The provider value before the save. Null for an added entity.</param>
 /// <param name="Current">The provider value that the save writes.</param>
+[SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+    Justification = "EF boundary. EF gives the provider values of a property of any mapped type as object.")]
 internal readonly record struct PropertySnapshot(string Path, object? Original, object? Current);
 
 internal sealed record DataChange(AuditSubject Subject, AuditEntryKind Kind, IReadOnlyList<PropertySnapshot> Properties);

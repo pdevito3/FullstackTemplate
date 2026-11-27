@@ -24,6 +24,7 @@ public static class EndpointDiscovery
             // On the group, not on each list endpoint, so that a new list endpoint cannot forget the header
             .AddEndpointFilter<PaginationHeaderFilter>();
 
+        // SAFETY: EndpointTypes gives only concrete classes that implement IEndpoint, and CreateInstance of a class is not null.
         foreach (var endpointType in EndpointTypes(typeof(EndpointDiscovery).Assembly))
             ((IEndpoint)Activator.CreateInstance(endpointType)!).Map(versionedGroup);
     }

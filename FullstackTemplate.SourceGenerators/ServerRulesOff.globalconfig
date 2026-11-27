@@ -14,3 +14,4 @@ dotnet_diagnostic.FSTTEL002.severity = none
 dotnet_diagnostic.FSTTEL003.severity = none
 dotnet_diagnostic.FSTTEL004.severity = none
 dotnet_diagnostic.FSTQRY001.severity = none
+dotnet_diagnostic.FSTTYP005.severity = none

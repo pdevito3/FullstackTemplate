@@ -11,6 +11,7 @@ public sealed class DomainEventDispatcher(IServiceProvider serviceProvider)
     private delegate Task RunHandlers(
         IServiceProvider serviceProvider, DomainEvent domainEvent, AppDbContext dbContext, CancellationToken cancellationToken);
 
+    // SAFETY: RunHandlersAsync is a private static method of this type.
     private static readonly MethodInfo RunHandlersOfType = typeof(DomainEventDispatcher)
         .GetMethod(nameof(RunHandlersAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
@@ -31,6 +32,7 @@ public sealed class DomainEventDispatcher(IServiceProvider serviceProvider)
         IServiceProvider serviceProvider, DomainEvent domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)
         where TEvent : DomainEvent
     {
+        // SAFETY: DispatchAsync makes this method for the type of domainEvent, so domainEvent is a TEvent.
         foreach (var handler in serviceProvider.GetServices<IDomainEventHandler<TEvent>>())
             await RunHandlerAsync(handler, (TEvent)domainEvent, dbContext, cancellationToken);
     }

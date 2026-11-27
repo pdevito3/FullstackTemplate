@@ -43,6 +43,7 @@ public static class IdpSessionLock
     /// Takes the lock of the <c>sid</c> of a logout token, or of its <c>sub</c> when it has no <c>sid</c>: the
     /// lock of each login that the token ends.
     /// </summary>
+    // SAFETY: A logout token has a sid or a sub (CheckClaims of BackChannelLogoutEndpoint), so with no sid it has a sub.
     public static Task TakeForLogoutAsync(BffDbContext dbContext, string? subjectId, string? sessionId,
         CancellationToken cancellationToken) =>
         sessionId is not null

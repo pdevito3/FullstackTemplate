@@ -29,6 +29,7 @@ public static class SwaggerExtension
         OidcEndpoints? oidcEndpoints = null;
         if (hasOAuthConfig && !OpenApiBuildTime.IsActive)
         {
+            // SAFETY: hasOAuthConfig is true only when authAuthority is not empty.
             oidcEndpoints = DiscoverOidcEndpoints(authAuthority!);
         }
 

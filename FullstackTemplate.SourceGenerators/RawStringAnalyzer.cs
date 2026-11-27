@@ -24,7 +24,8 @@ public sealed class RawStringAnalyzer : DiagnosticAnalyzer
 		messageFormat: """"{0}. Write a raw string literal, for example """say "hi" now""" in place of "say \"hi\" now". Put a text with a new line, or a text that starts or ends with a quote, on the lines between the two delimiters. If an interpolated text has {{ or }}, start it with $$. See docs/backend/code-style.md."""",
 		category: "Style",
 		defaultSeverity: DiagnosticSeverity.Error,
-		isEnabledByDefault: true);
+		isEnabledByDefault: true,
+		customTags: [RuleScope.AllCode]);
 
 	private const string EscapedQuote = """The string has \" in it""";
 	private const string EscapedNewLine = """The string has \n before its end""";

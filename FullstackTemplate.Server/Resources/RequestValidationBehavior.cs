@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,6 +20,8 @@ using MediatR;
 /// for example "shipTo.city" or "lines[1].name". The message names only the JSON name of the field, for example "The
 /// field pageNumber must be between 1 and 4294967." or "The name field is required." under "lines[1].name".
 /// </summary>
+[SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+    Justification = "DataAnnotations boundary. The walker validates each DTO type that a request holds, and Validator takes object.")]
 public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -29,7 +32,7 @@ public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBe
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         foreach (var rule in RequestRules.For(request.GetType()))
         {
-            var value = rule.Property.GetValue(request);
+            var value = rule.Read(request);
             Validate(request, rule, value, rule.JsonName, errors);
             if (rule.Holds == PropertyHolds.Dto && value is not null)
                 ValidateDto(value, "", errors, visited);
@@ -51,7 +54,7 @@ public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBe
 
         foreach (var rule in RequestRules.For(dto.GetType()))
         {
-            var value = rule.Property.GetValue(dto);
+            var value = rule.Read(dto);
             var key = prefix + rule.JsonName;
             Validate(dto, rule, value, key, errors);
             ValidateChildren(rule, value, key, errors, visited);
@@ -98,8 +101,12 @@ internal enum PropertyHolds
     DtoList,
 }
 
+/// <summary>
+/// The rules of one property. <c>Read</c> is a compiled getter of the property, so a request reads no value with
+/// reflection.
+/// </summary>
 internal sealed record PropertyRule(
-    PropertyInfo Property, ValidationAttribute[] Attributes, string JsonName, PropertyHolds Holds);
+    PropertyInfo Property, Func<object, object?> Read, ValidationAttribute[] Attributes, string JsonName, PropertyHolds Holds);
 
 internal static class RequestRules
 {
@@ -112,11 +119,20 @@ internal static class RequestRules
         .Where(property => property.GetIndexParameters().Length == 0 && property.GetMethod is not null)
         .Select(property => new PropertyRule(
             property,
+            ReaderOf(type, property),
             [.. property.GetCustomAttributes<ValidationAttribute>(inherit: true)],
             property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
                 ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name),
             HoldsOf(property.PropertyType, type.Assembly)))
         .ToArray());
+
+    /// <summary>instance => (object?)((Type)instance).Property, compiled one time for each property of a type.</summary>
+    private static Func<object, object?> ReaderOf(Type type, PropertyInfo property)
+    {
+        var instance = Expression.Parameter(typeof(object), "instance");
+        var value = Expression.Property(Expression.Convert(instance, type), property);
+        return Expression.Lambda<Func<object, object?>>(Expression.Convert(value, typeof(object)), instance).Compile();
+    }
 
     private static PropertyHolds HoldsOf(Type type, Assembly owner)
     {

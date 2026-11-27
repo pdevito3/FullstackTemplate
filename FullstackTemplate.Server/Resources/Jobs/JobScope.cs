@@ -18,12 +18,12 @@ public sealed class JobScope(ScopeGrant grant, AppDbContext dbContext)
     /// span and on each log of the job, as <see cref="CallerIdentityBehavior{TRequest,TResponse}"/> does for a request.
     /// Each save of the job then has the job as its audit request.
     /// </summary>
-    internal IDisposable Enter(ITenantJob job) => Enter(grant.GrantTenantJob(job.TenantId), job);
+    internal IDisposable Enter(ITenantJob job) => Enter(grant.GrantTenantJob(job.TenantId), job.GetType());
 
     /// <summary>As <see cref="Enter(ITenantJob)"/>, with the caller <see cref="CallerIdentity.System"/>.</summary>
-    internal IDisposable Enter(ISystemJob job) => Enter(grant.GrantSystem(), job);
+    internal IDisposable Enter(ISystemJob job) => Enter(grant.GrantSystem(), job.GetType());
 
-    private Entered Enter(CallerIdentity caller, object job)
+    private Entered Enter(CallerIdentity caller, Type jobType)
     {
         var properties = CallerTelemetry.Properties(caller);
         // BackWave makes the process span current while the handler runs.
@@ -31,15 +31,15 @@ public sealed class JobScope(ScopeGrant grant, AppDbContext dbContext)
             Activity.Current?.SetTag(tag, value);
 
         ILogEventEnricher[] enrichers = [.. properties.Select(p => new PropertyEnricher(p.LogProperty, p.Value))];
-        return new Entered(LogContext.Push(enrichers), dbContext.EnterRequest(job.GetType().Name));
+        return new Entered(LogContext.Push(enrichers), dbContext.EnterRequest(jobType.Name));
     }
 
     /// <exception cref="InvalidOperationException">The job left a change, an audit action, or a job unsaved.</exception>
-    internal void RefuseUnsavedWork(object job)
+    internal void RefuseUnsavedWork(Type jobType)
     {
         if (dbContext.HasUnsavedJobs || dbContext.HasUnsavedActions || dbContext.ChangeTracker.HasChanges())
             throw new InvalidOperationException(
-                $"{job.GetType().Name} changed data, recorded an audit action, or queued a job, and did not call SaveChangesAsync. Save it.");
+                $"{jobType.Name} changed data, recorded an audit action, or queued a job, and did not call SaveChangesAsync. Save it.");
     }
 
     private sealed class Entered(IDisposable logContext, IDisposable request) : IDisposable

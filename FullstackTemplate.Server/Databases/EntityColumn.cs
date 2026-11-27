@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -31,6 +32,8 @@ internal sealed record EntityColumn(IProperty Property, IComplexProperty? Comple
     }
 
     /// <summary>The value as the column holds it, after the value converter of the property.</summary>
+    [SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+        Justification = "EF boundary. The provider value of a column has the type of its value converter, which differs for each column.")]
     public object? ProviderValueOf(EntityEntry entry, bool original)
     {
         var property = Complex is null ? entry.Property(Property) : entry.ComplexProperty(Complex).Property(Property);

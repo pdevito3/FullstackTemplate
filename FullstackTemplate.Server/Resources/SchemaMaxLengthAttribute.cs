@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 /// <summary>
@@ -12,6 +13,8 @@ using System.Reflection;
 public sealed class SchemaMaxLengthAttribute(Type owner, string member) : Attribute
 {
     /// <exception cref="InvalidOperationException">The member is not a public static int field.</exception>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "OpenAPI transformer. The schema transformer reads it when it makes the document, not for each API request.")]
     public int MaxLength =>
         owner.GetField(member, BindingFlags.Public | BindingFlags.Static)?.GetValue(null) as int?
         ?? throw new InvalidOperationException($"{owner.Name}.{member} is not a public static int field.");

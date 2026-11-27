@@ -26,6 +26,7 @@ public static class NewLogin
         var httpContext = context.HttpContext;
         var cookieOptions = httpContext.RequestServices.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        // SAFETY: AuthExtensions sets Cookie.Name to SessionCookieName.
         var cookieName = cookieOptions.Cookie.Name!;
 
         var cookie = cookieOptions.CookieManager.GetRequestCookie(httpContext, cookieName);

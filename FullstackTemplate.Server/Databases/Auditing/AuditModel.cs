@@ -46,6 +46,7 @@ internal sealed class AuditModel
     /// </summary>
     public IReadOnlySet<string> GuardedTables { get; }
 
+    // SAFETY: The third argument passes the model, so m is not null.
     public static AuditModel Of(IModel model)
         => model.GetOrAddRuntimeAnnotationValue(AnnotationName, static m => new AuditModel(m!), model);
 

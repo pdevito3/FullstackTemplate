@@ -68,6 +68,7 @@ public static class BffApiAuthenticationServiceExtensions
         return services;
     }
 
+    // SAFETY: A registration of IAuthenticationService builds an IAuthenticationService in each of its three forms.
     private static IAuthenticationService CreateInner(IServiceProvider services, ServiceDescriptor descriptor) =>
         (IAuthenticationService)(descriptor switch
         {

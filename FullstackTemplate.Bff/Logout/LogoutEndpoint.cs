@@ -42,6 +42,7 @@ public static class LogoutEndpoint
 
         if (signedIn)
         {
+            // SAFETY: signedIn is true only when result.Principal is not null.
             var sessionId = result.Principal!.FindFirst("sid")?.Value;
             if (!string.IsNullOrWhiteSpace(sessionId)
                 && !string.Equals(sessionId, context.Request.Query["sid"].FirstOrDefault(), StringComparison.Ordinal))

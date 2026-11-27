@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Http;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 /// <summary>
@@ -19,6 +20,8 @@ public sealed class PaginationHeaderFilter : IEndpointFilter
     /// Sets the header when the result is a paged list, or an HTTP result with a paged list value. A union result,
     /// for example <c>Results&lt;Ok&lt;PagedList&lt;T&gt;&gt;, NotFound&gt;</c>, wraps the HTTP result, so the filter reads the inner result.
     /// </summary>
+    [SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+        Justification = "Endpoint filter boundary. A filter gets the result of any endpoint as object.")]
     public static void AddHeader(HttpContext httpContext, object? result)
     {
         while (result is INestedHttpResult nested)

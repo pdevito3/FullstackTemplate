@@ -25,6 +25,7 @@ public sealed class DiscoveryIssuerCheck(string authority) : IConfigurationValid
         if (options.ConfigurationManager is not ConfigurationManager<OpenIdConnectConfiguration> handlerManager)
             return;
 
+        // SAFETY: AuthExtensions refuses to start without Auth:Authority and sets it as the Authority.
         options.ConfigurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
             handlerManager.MetadataAddress,
             new OpenIdConnectConfigurationRetriever(),

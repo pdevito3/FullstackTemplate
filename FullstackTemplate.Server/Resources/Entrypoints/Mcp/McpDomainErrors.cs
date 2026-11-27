@@ -44,7 +44,7 @@ public static partial class McpDomainErrors
     /// <summary>
     /// The code of each kind. The names match the gRPC status codes, so a caller sees one vocabulary.
     /// </summary>
-    // The text of a tool error starts with this code, so that a model can match on it. It is a code by design, not a
+    // SAFETY: The text of a tool error starts with this code, so that a model can match on it. It is a code by design, not a
     // name for the screen.
 #pragma warning disable FSTMSG001
     public static string CodeFor(DomainErrorKind kind) => kind switch
@@ -90,6 +90,7 @@ public static partial class McpDomainErrors
             || context.Params?.Arguments is not { } arguments)
             return [];
 
+        // SAFETY: The Where keeps only the parameters that have a name.
         var types = method.GetParameters()
             .Where(p => p.Name is not null && properties.TryGetProperty(p.Name, out _))
             .ToDictionary(p => p.Name!, p => p.ParameterType);
@@ -117,6 +118,7 @@ public static partial class McpDomainErrors
 
     private static string Shown(JsonElement value)
     {
+        // SAFETY: GetString returns null only for a JSON null, and this branch reads a JSON string.
         var shown = value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText();
         return shown.Length > MaxShownLength ? $"{Cut(shown, MaxShownLength)}..." : shown;
     }

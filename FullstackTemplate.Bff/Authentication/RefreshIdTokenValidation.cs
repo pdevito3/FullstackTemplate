@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Claims;
 using Duende.AccessTokenManagement;
@@ -57,6 +58,8 @@ public sealed class RefreshIdTokenValidation(
 
     private static readonly ILogger Logger = Log.ForContext<RefreshIdTokenValidation>();
 
+    [SuppressMessage("Services", "FSTDI001:Code builds a type that the container builds",
+        Justification = "The registered RefreshTokenRevocation takes the IOpenIdConnectUserTokenEndpoint, which is this decorator. This one revokes through the inner endpoint.")]
     public async Task<TokenResult<UserToken>> RefreshAccessTokenAsync(UserRefreshToken userToken,
         UserTokenRequestParameters parameters, CancellationToken ct = default)
     {
@@ -127,6 +130,7 @@ public sealed class RefreshIdTokenValidation(
         if (!result.IsValid || result.SecurityToken is not JsonWebToken jwt)
             return $"the ID token failed validation: {result.Exception?.GetType().Name ?? "unknown error"}";
 
+        // SAFETY: AuthExtensions refuses to start without Auth:ClientId and sets it as the ClientId.
         if (IdTokenChecks.CheckAudience(jwt.Audiences, options.ClientId!) is { } audienceFailure)
             return audienceFailure;
 

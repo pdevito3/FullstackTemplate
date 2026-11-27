@@ -14,7 +14,7 @@ public abstract class SystemJobHandler<TJob>(JobScope scope) : IJobHandler<TJob>
         using (scope.Enter(job))
         {
             await RunAsync(job, context, cancellationToken);
-            scope.RefuseUnsavedWork(job);
+            scope.RefuseUnsavedWork(job.GetType());
         }
     }
 

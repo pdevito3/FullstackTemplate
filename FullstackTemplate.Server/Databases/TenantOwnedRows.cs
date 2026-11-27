@@ -21,6 +21,7 @@ internal sealed class TenantOwnedRows
     private sealed record OwnedType(string OperationName, LoadRows Load);
 
     // A startup scan: it runs one time for each EF model, and the model keeps the loaders as a runtime annotation.
+    // SAFETY: LoadRowsAsync is a private static method of this type.
     private static readonly MethodInfo LoadRowsOfType = typeof(TenantOwnedRows)
         .GetMethod(nameof(LoadRowsAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
@@ -56,6 +57,7 @@ internal sealed class TenantOwnedRows
 
     public static Task<List<BaseEntity>> LoadAsync(AppDbContext dbContext, string tenantId, CancellationToken cancellationToken)
     {
+        // SAFETY: The third argument passes the model, so m is not null.
         var ownedTypes = dbContext.Model
             .GetOrAddRuntimeAnnotationValue(AnnotationName, static m => new TenantOwnedRows(m!), dbContext.Model)
             ._ownedTypes;

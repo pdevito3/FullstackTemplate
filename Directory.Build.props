@@ -18,8 +18,9 @@
   </PropertyGroup>
 
   <!-- Each C# project gets the analyzers of FullstackTemplate.SourceGenerators, so that the build refuses a string that
-       breaks FSTSTR001 in each project. The other rules check only the code of the Server, so ServerRulesOff.globalconfig
-       turns them off in each other project. A global config cannot turn off a generator, so ValueObjectGenerator runs in
+       breaks FSTSTR001 in each project. A rule with no scope tag (see RuleScope.cs) checks only the code of the Server, so
+       ServerRulesOff.globalconfig turns it off in each other project. A rule tagged AllCode checks each project, and a
+       rule tagged AppCode checks each project but the tests. A global config cannot turn off a generator, so ValueObjectGenerator runs in
        each project and writes code only for a class that derives from ValueObject. IsAspireProjectResource stops the
        AppHost from making the analyzer a resource.
        A file-based script under scripts/ and the analyzer project do not get the analyzer, so ScriptRawStringTests runs
@@ -32,5 +33,9 @@
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and '$(FileBasedProgram)' != 'true' and '$(MSBuildProjectName)' != 'FullstackTemplate.SourceGenerators' and '$(MSBuildProjectName)' != 'FullstackTemplate.Server'">
     <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)FullstackTemplate.SourceGenerators/ServerRulesOff.globalconfig" />
+  </ItemGroup>
+  <!-- The rules of the app code (a cast or a ! with no SAFETY comment, a new of a registered type) are off in the tests -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and '$(FileBasedProgram)' != 'true' and $(MSBuildProjectDirectory.Replace('\', '/').StartsWith('$(MSBuildThisFileDirectory.Replace('\', '/'))tests/'))">
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)FullstackTemplate.SourceGenerators/TestRulesOff.globalconfig" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using Duende.AccessTokenManagement;
@@ -311,6 +312,8 @@ public sealed class RefreshLock(
         }
     }
 
+    [SuppressMessage("Types", "FSTTYP004:A signature takes or returns object",
+        Justification = "ADO.NET boundary. DbParameter.Value is object, and the callers pass a string and a long.")]
     private static void AddParameter(DbCommand command, string name, object value)
     {
         var parameter = command.CreateParameter();

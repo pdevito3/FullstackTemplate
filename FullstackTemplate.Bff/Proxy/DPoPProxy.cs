@@ -125,6 +125,7 @@ public static class DPoPProxy
                     canRetry = false;
             }
 
+            // SAFETY: body is set only when request.Content is not null.
             if (body is not null)
                 request.Content = Replayable(request.Content!, body);
 
@@ -143,6 +144,7 @@ public static class DPoPProxy
                 }
 
                 response.Dispose();
+                // SAFETY: body is set only when request.Content is not null, and the retry keeps the content of the first send.
                 if (body is not null)
                     request.Content = Replayable(request.Content!, body);
                 await SetHeadersAsync(scope.ServiceProvider, request, proxyRequest, nonce, cancellationToken);
